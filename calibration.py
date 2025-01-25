@@ -299,14 +299,16 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         row_to_id = tbl.get_children()
 
         if self._new_polyfit is None:
-            # FIXME: disable New calibration X-axis option
+            if 'x_axis_control' in self._ui_elements:
+                self._ui_elements.x_axis_control.new_enabled(False)
             if 'save_button' in self._ui_elements:
                 self._ui_elements.save_button.config(state='disabled')
             for i in range(0, 6):
                 tbl.set(row_to_id[i], column="current", value="-")
             return
 
-        # FIXME: enable New calibration X-axis option
+        if 'x_axis_control' in self._ui_elements:
+            self._ui_elements.x_axis_control.new_enabled(True)
         if 'save_button' in self._ui_elements:
             self._ui_elements.save_button.config(state='normal')
         # Poly
@@ -631,8 +633,11 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
                 self._x_axis_idx = np.linspace(data['min'], data['max'], num_pixels-first_pixel)
 
             case 'new':
-                # FIXME: implement this
-                self._x_axis_idx = np.polyval(self._initial_polyfit, pixels)
+                if self._new_polyfit is not None:
+                    self._x_axis_idx = np.polyval(self._new_polyfit, pixels)
+                else:
+                    LOGGER.warning("_new_polyfit is None, using _initial_polyfit (and shouldn't)")
+                    self._x_axis_idx = np.polyval(self._initial_polyfit, pixels)
 
             case _:
                 LOGGER.warning("Unhandled x-axis mode %s, using pixels", data)

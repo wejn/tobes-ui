@@ -10,6 +10,7 @@ class XAxisControl(CalibrationControlPanel):  # pylint: disable=too-many-ancesto
     """Control for X-axis display mode."""
 
     def __init__(self, parent, **kwargs):
+        self._new_radio = None
         super().__init__(parent, text='X-Axis', **kwargs)
 
     def _setup_gui(self):
@@ -21,9 +22,9 @@ class XAxisControl(CalibrationControlPanel):  # pylint: disable=too-many-ancesto
         old_radio = ttk.Radiobutton(self, text="Initial calibration", variable=self._mode,
                                     value='init')
         ToolTip(old_radio, "Use initial calibration for X axis")
-        new_radio = ttk.Radiobutton(self, text="New calibration", variable=self._mode, value='new',
-                                    state='disabled')  # FIXME: enable when new cali is available
-        ToolTip(new_radio, "Use new (currently setup) calibration for X axis")
+        self._new_radio = ttk.Radiobutton(self, text="New calibration", variable=self._mode,
+                                          value='new', state='disabled')
+        ToolTip(self._new_radio, "Use new (currently setup) calibration for X axis")
         fixed_radio = ttk.Radiobutton(self, text="Fixed:", variable=self._mode, value='fixed')
         ToolTip(fixed_radio, "Use fixed min..max for X axis")
 
@@ -45,7 +46,7 @@ class XAxisControl(CalibrationControlPanel):  # pylint: disable=too-many-ancesto
 
         # --- Layout ---
         old_radio.grid(row=0, column=0, sticky='w', padx=5, pady=2, columnspan=2)
-        new_radio.grid(row=1, column=0, sticky='w', padx=5, pady=2, columnspan=2)
+        self._new_radio.grid(row=1, column=0, sticky='w', padx=5, pady=2, columnspan=2)
         fixed_radio.grid(row=2, column=0, sticky='w', padx=5, pady=2)
         fixed_widgets_frame.grid(row=2, column=1, sticky='w', padx=5, pady=2)
 
@@ -65,6 +66,15 @@ class XAxisControl(CalibrationControlPanel):  # pylint: disable=too-many-ancesto
 
         self._initialized = True
         _toggle_enabled_state()  # Set initial state & trigger first callback
+
+    def new_enabled(self, enabled):
+        """Callback to set whether the new is enabled (selectable) or not."""
+        if enabled:
+            self._new_radio.config(state='normal')
+        else:
+            self._new_radio.config(state='disabled')
+            if self._mode.get() == 'new':
+                self._mode.set('init')
 
     def _change_cb(self, *_args):
         """Callback for when any control value changes."""
