@@ -55,7 +55,9 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         self._worker_thread = threading.Thread(target=self._data_refresh_loop, daemon=True)
         self._worker_thread.start()
 
-        self._initial_polyfit = np.array(initial_polyfit)
+        self._initial_polyfit = np.array(initial_polyfit)  # Current pixel -> wavelength polynomial
+        self._new_polyfit = None  # New (calibrated) pixel -> wavelength polynomial
+        self._new_polyfit_stats = None  # New polyfit stats
         self._x_axis_idx = None
 
         self._ui_elements = AttrDict()  # all the different UI elements we need access to
@@ -161,7 +163,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
             self._update_pixels_table()
             self._update_plot(peaks=True)
-            # FIXME: Recompute new polyfit...
+            self._update_polyfit_table_and_ui_state()
 
         def _on_double_click(event):
             """Handler for editing points from the table (or adding arbitrary new ones)."""
@@ -178,14 +180,10 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
         return tree
 
-    def _setup_left_frame(self, parent):
-        left_frame = ttk.Frame(parent)
-
-        self._ui_elements.pixels_table = self._setup_pixels_table(left_frame)
-        self._update_pixels_table()
-
+    def _setup_polyfit_table(self, parent):
+        """Sets up the entire "Polynomial Fit" table (Treeview)"""
         # Polynomial fit
-        poly_frame = ttk.Frame(left_frame, height=200)
+        poly_frame = ttk.Frame(parent, height=200)
         poly_frame.pack(fill=tk.X, padx=5, pady=5)
         poly_frame.pack_propagate(False)
 
@@ -208,17 +206,27 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
         poly_tree.pack(fill=tk.BOTH, expand=True)
 
-        #self.init_poly_table() # FIXME
         parameters = [
             ('X⁰', f"{self._initial_polyfit[3]:e}"),
             ('X¹', f"{self._initial_polyfit[2]:e}"),
             ('X²', f"{self._initial_polyfit[1]:e}"),
             ('X³', f"{self._initial_polyfit[0]:e}"),
-            ('R²', "-"),
-            ('Serr', "-")
+            ('R²',   "    n/a    "),
+            ('Serr', "    n/a    ")
         ]
         for param, initial_val in parameters:
             poly_tree.insert('', 'end', values=(param, initial_val, '-'))
+
+        return poly_tree
+
+    def _setup_left_frame(self, parent):
+        left_frame = ttk.Frame(parent)
+
+        self._ui_elements.pixels_table = self._setup_pixels_table(left_frame)
+        self._update_pixels_table()
+
+        self._ui_elements.polyfit_table = self._setup_polyfit_table(left_frame)
+        self._update_polyfit_table_and_ui_state()
 
         # Controls
         controls_frame = ttk.Frame(left_frame)
@@ -257,6 +265,58 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
         return left_frame
 
+    def _recalculate_polyfit_data(self):
+        """Recalculates polyfit data based on current calibration points."""
+        if len(self._pixels) < 5:
+            self._new_polyfit = None
+            self._new_polyfit_stats = None
+            return
+
+        pixels = np.array(list(self._pixels.keys()))
+        values = np.array(list(self._pixels.values()))
+
+        degree = 3
+        coeffs = np.polyfit(pixels, values, degree)
+
+        poly = np.poly1d(coeffs)
+        values_pred = poly(pixels)
+        residuals = values - values_pred
+
+        ss_res = np.sum(residuals ** 2)
+        ss_tot = np.sum((values - np.mean(values)) ** 2)
+        r_squared = 1 - (ss_res / ss_tot)
+
+        stderr = np.sqrt(ss_res / (len(values) - (degree + 1)))
+
+        self._new_polyfit = coeffs
+        self._new_polyfit_stats = [r_squared, stderr]
+
+    def _update_polyfit_table_and_ui_state(self):
+        """Updates polyfit table (and UI state) with current data."""
+        self._recalculate_polyfit_data()
+
+        tbl = self._ui_elements.polyfit_table
+        row_to_id = tbl.get_children()
+
+        if self._new_polyfit is None:
+            # FIXME: disable New calibration X-axis option
+            if 'save_button' in self._ui_elements:
+                self._ui_elements.save_button.config(state='disabled')
+            for i in range(0, 6):
+                tbl.set(row_to_id[i], column="current", value="-")
+            return
+
+        # FIXME: enable New calibration X-axis option
+        if 'save_button' in self._ui_elements:
+            self._ui_elements.save_button.config(state='normal')
+        # Poly
+        for i in range(0, 4):
+            tbl.set(row_to_id[i], column="current", value=f"{self._new_polyfit[3-i]:e}")
+        # R^2
+        tbl.set(row_to_id[4], column="current", value=f"{self._new_polyfit_stats[0]:e}")
+        # Serr
+        tbl.set(row_to_id[5], column="current", value=f"{self._new_polyfit_stats[1]:e}")
+
     def _update_pixels_table(self):
         """Updates pixels table with current data."""
         tbl = self._ui_elements.pixels_table
@@ -264,7 +324,6 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         for pixel, new_wl in sorted(self._pixels.items()):
             cur_wl = np.polyval(self._initial_polyfit, pixel)
             tbl.insert('', 'end', values=(str(pixel), f'{cur_wl:.6f}', f'{new_wl:.6f}'))
-        # FIXME: recompute polyfit data...
 
     def _apply_strong_line_ctrl(self, data):
         LOGGER.debug("%s", {k: len(v) for k, v in data.items()})
@@ -616,7 +675,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         self._pixels[pixel] = wavelength
         self._update_pixels_table()
         self._update_plot(peaks=True)
-        # FIXME: Recompute new polyfit...
+        self._update_polyfit_table_and_ui_state()
 
     def _on_peak_pick(self, event):
         """Callback that gets called when a detected peaks gets picked."""
