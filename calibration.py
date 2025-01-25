@@ -68,7 +68,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         self._strong_lines = StrongLinesContainer({})
         self._peak_detector = None  # callable to detect peaks in spectrum data
         self._peaks = []  # list of peaks detected, indexed against spd_raw, not phys pixels
-        self._pixels = {} # dict of pixels with new wl assigned to them
+        self._calibration_points = {} # dict of pixels with new wl assigned to them
 
         self._x_axis_limits = None  # current x axis limits (min, max)
         self._ref_match_delta = 3  # reference match delta (nm)
@@ -122,12 +122,12 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
             # FIXME: ^^ probably doesn't work as I would expect...
         paned_window.bind('<Configure>', _pw_on_resize)
 
-    def _setup_pixels_table(self, parent):
-        """Sets up the entire "Pixels" table (Treeview)."""
+    def _setup_calibration_points_table(self, parent):
+        """Sets up the entire "Calibration Points" table (Treeview)."""
         table_frame = ttk.Frame(parent)
         table_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        poly_label = ttk.Label(table_frame, text="Pixels")
+        poly_label = ttk.Label(table_frame, text="Calibration Points")
         poly_label.pack()
 
         # Create treeview for table
@@ -159,9 +159,9 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
             for item_id in tree.selection():
                 pixel, _wl, _new_wl = tree.item(item_id, 'values')
-                self._pixels.pop(int(pixel), None)
+                self._calibration_points.pop(int(pixel), None)
 
-            self._update_pixels_table()
+            self._update_calibration_points_table()
             self._update_plot(peaks=True)
             self._update_polyfit_table_and_ui_state()
 
@@ -222,8 +222,9 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
     def _setup_left_frame(self, parent):
         left_frame = ttk.Frame(parent)
 
-        self._ui_elements.pixels_table = self._setup_pixels_table(left_frame)
-        self._update_pixels_table()
+        self._ui_elements.calibration_points_table = self._setup_calibration_points_table(
+                left_frame)
+        self._update_calibration_points_table()
 
         self._ui_elements.polyfit_table = self._setup_polyfit_table(left_frame)
         self._update_polyfit_table_and_ui_state()
@@ -267,13 +268,13 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
     def _recalculate_polyfit_data(self):
         """Recalculates polyfit data based on current calibration points."""
-        if len(self._pixels) < 5:
+        if len(self._calibration_points) < 5:
             self._new_polyfit = None
             self._new_polyfit_stats = None
             return
 
-        pixels = np.array(list(self._pixels.keys()))
-        values = np.array(list(self._pixels.values()))
+        pixels = np.array(list(self._calibration_points.keys()))
+        values = np.array(list(self._calibration_points.values()))
 
         degree = 3
         coeffs = np.polyfit(pixels, values, degree)
@@ -319,11 +320,11 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         # Serr
         tbl.set(row_to_id[5], column="current", value=f"{self._new_polyfit_stats[1]:e}")
 
-    def _update_pixels_table(self):
-        """Updates pixels table with current data."""
-        tbl = self._ui_elements.pixels_table
+    def _update_calibration_points_table(self):
+        """Updates calibration points table with current data."""
+        tbl = self._ui_elements.calibration_points_table
         tbl.delete(*tbl.get_children())
-        for pixel, new_wl in sorted(self._pixels.items()):
+        for pixel, new_wl in sorted(self._calibration_points.items()):
             cur_wl = np.polyval(self._initial_polyfit, pixel)
             tbl.insert('', 'end', values=(str(pixel), f'{cur_wl:.6f}', f'{new_wl:.6f}'))
 
@@ -422,7 +423,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
             def peak_color(pxl):
                 """Colors for peaks, from https://xkcd.com/color/rgb/."""
-                if pxl+first_pixel in self._pixels:
+                if pxl+first_pixel in self._calibration_points:
                     return '#89fe05'  # pixel added to calibration (lime green)
 
                 refs = self._strong_lines.find_in_range(idx[pxl] - self._ref_match_delta,
@@ -435,8 +436,6 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
                     case _:
                         return '#d9544d'  # more than 1 match (pale red)
 
-            # in case I want all the pixels visible all the time:
-            #peak_i = sorted(set(self._peaks + [p-first_pixel for p in self._pixels.keys()]))
             peak_i = self._peaks
             peak_x = [idx[i] for i in peak_i]
             peak_y = [self._spectrum.spd_raw[i] for i in peak_i]
@@ -669,17 +668,17 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
                          pixel=pixel,
                          valid_pixels=valid_pixels,
                          pixel_to_wl=lambda pxl: self._x_axis_idx[pxl - first_pixel],
-                         new_wl=self._pixels.get(pixel, cur_wl),
+                         new_wl=self._calibration_points.get(pixel, cur_wl),
                          reference_lines_lookup=lambda cur_wl: self._strong_lines.find_in_range(
                              cur_wl - self._ref_match_delta,
                              cur_wl + self._ref_match_delta),
-                         on_change=self._add_pixel)
+                         on_change=self._add_calibration_point)
 
-    def _add_pixel(self, pixel, wavelength):
-        """Callback to add a pixel with given wavelength to pixels."""
+    def _add_calibration_point(self, pixel, wavelength):
+        """Callback to add a pixel with given wavelength to calibration points."""
         LOGGER.debug("add pixel: %d: %f", pixel, wavelength)
-        self._pixels[pixel] = wavelength
-        self._update_pixels_table()
+        self._calibration_points[pixel] = wavelength
+        self._update_calibration_points_table()
         self._update_plot(peaks=True)
         self._update_polyfit_table_and_ui_state()
 
