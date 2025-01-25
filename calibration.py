@@ -642,27 +642,28 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
     def _add_or_edit_pixel_dialog(self, pixel, locked=True):
         """Triggers wavelength editor dialog for given pixel (already added or not)."""
+        first_pixel = 0
+        num_pixels = 1
+
+        constants = self._spectrometer.constants()
+        if 'first_pixel' in constants:
+            first_pixel = constants['first_pixel']
+        if 'num_pixels' in constants:
+            num_pixels = constants['num_pixels']
+
         if locked and pixel is not None:
             valid_pixels = [pixel, pixel]
         else:
-            first_pixel = 0
-            num_pixels = 1
-
-            constants = self._spectrometer.constants()
-            if 'first_pixel' in constants:
-                first_pixel = constants['first_pixel']
-            if 'num_pixels' in constants:
-                num_pixels = constants['num_pixels']
             valid_pixels = [first_pixel, num_pixels - 1]
 
         cur_wl = None
         if pixel:
-            cur_wl = np.polyval(self._initial_polyfit, pixel)
+            cur_wl = self._x_axis_idx[pixel - first_pixel]
 
         WavelengthEditor(parent=self._root,
                          pixel=pixel,
                          valid_pixels=valid_pixels,
-                         pixel_to_wl=lambda pxl: self._x_axis_idx[pxl],
+                         pixel_to_wl=lambda pxl: self._x_axis_idx[pxl - first_pixel],
                          new_wl=self._pixels.get(pixel, cur_wl),
                          reference_lines_lookup=lambda cur_wl: self._strong_lines.find_in_range(
                              cur_wl - self._ref_match_delta,
