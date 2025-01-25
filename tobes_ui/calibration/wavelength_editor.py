@@ -12,11 +12,11 @@ from tobes_ui.calibration.common import ClampedSpinbox
 class WavelengthEditor(Dialog):
     """Popup dialog for adding or editing a calibration point."""
 
-    def __init__(self, parent, pixel, valid_pixels, polyfit, new_wl, reference_lines_lookup,
+    def __init__(self, parent, pixel, valid_pixels, pixel_to_wl, new_wl, reference_lines_lookup,
                  on_change):
         self._pixel = pixel
         self._valid_pixels = valid_pixels
-        self._polyfit = polyfit
+        self._pixel_to_wl = pixel_to_wl
         self._new_wl = new_wl
         self._reference_lines_lookup = reference_lines_lookup
         self._on_change = on_change
@@ -53,7 +53,7 @@ class WavelengthEditor(Dialog):
         current_wavelength.grid(row=1, column=0, sticky="w", pady=(0, 10))
         def update_wavelength():
             if self._pixel:
-                wavelength = np.polyval(self._polyfit, self._pixel)
+                wavelength = self._pixel_to_wl(self._pixel)
                 text = f"Current wavelength: {wavelength:.6f}"
             else:
                 text = "Current wavelength: n/a"
@@ -96,7 +96,7 @@ class WavelengthEditor(Dialog):
             self._reference_lines.clear()
 
             if self._pixel:
-                wavelength = np.polyval(self._polyfit, self._pixel)
+                wavelength = self._pixel_to_wl(self._pixel)
                 for line in self._reference_lines_lookup(wavelength):
                     self._reference_lines.append(line)
                     self._treeview.insert(
@@ -181,27 +181,31 @@ if __name__ == "__main__":
         ref_delta = 3  # +- 3nm
 
         # new
-        polyfit = np.array([-1.107232e-09, -2.100606e-05, 0.380489, 341.20639])
         pixel = 678
         pixels = (20, 2047)
         new_wl = 589.1234
+
+        def pixel_to_wl(pixel):
+            polyfit = np.array([-1.107232e-09, -2.100606e-05, 0.380489, 341.20639])
+            return np.polyval(polyfit, pixel)
+
         def ref_lines(cur_wl):
             return strong_lines_container.find_in_range(cur_wl - ref_delta, cur_wl + ref_delta)
 
         ttk.Button(root,
                    text="Open Add Wavelength Dialog (no pxl)",
-                   command=lambda: WavelengthEditor(root, None, pixels, polyfit, None,
+                   command=lambda: WavelengthEditor(root, None, pixels, pixel_to_wl, None,
                                                     ref_lines, test_cb)).pack(pady=10)
 
         ttk.Button(root,
                    text="Open Edit Wavelength Dialog",
-                   command=lambda: WavelengthEditor(root, pixel, pixels, polyfit, new_wl,
+                   command=lambda: WavelengthEditor(root, pixel, pixels, pixel_to_wl, new_wl,
                                                     ref_lines, test_cb)).pack(pady=10)
 
         ttk.Button(root,
                    text="Open Edit Wavelength Dialog (fixed)",
-                   command=lambda: WavelengthEditor(root, pixel, [pixel, pixel], polyfit, new_wl,
-                                                    ref_lines, test_cb)).pack(pady=10)
+                   command=lambda: WavelengthEditor(root, pixel, [pixel, pixel], pixel_to_wl,
+                                                    new_wl, ref_lines, test_cb)).pack(pady=10)
 
         ttk.Button(root, text="Quit", command=root.destroy).pack(pady=10)
 

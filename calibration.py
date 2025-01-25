@@ -603,7 +603,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         WavelengthEditor(parent=self._root,
                          pixel=pixel,
                          valid_pixels=valid_pixels,
-                         polyfit=self._initial_polyfit,
+                         pixel_to_wl=lambda pxl: self._x_axis_idx[pxl],
                          new_wl=self._pixels.get(pixel, cur_wl),
                          reference_lines_lookup=lambda cur_wl: self._strong_lines.find_in_range(
                              cur_wl - self._ref_match_delta,
