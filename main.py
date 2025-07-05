@@ -26,9 +26,8 @@ import protocol
 # pylint: disable=too-many-instance-attributes
 # pylint: disable=too-many-arguments
 
-# Remove most tools by default (ouch)
+# Remove all tools by default (ouch)
 default_toolbar_tools.clear()
-default_toolbar_tools.append(['global', ['save']])
 
 
 class QuickGraphTool(ToolToggleBase):
@@ -49,6 +48,32 @@ class QuickGraphTool(ToolToggleBase):
     def disable(self, event=None):
         self.plot.quick_graph = False
         self.plot.update_plot()
+
+
+class PlotSaveTool(ToolBase):
+    """Plot data save button for the toolbar"""
+    description = 'Save plot data as png'
+
+    def __init__(self, *args, plot, file_template, **kwargs):
+        self.plot = plot
+        self.file_template = file_template
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        self.image = os.path.join(script_dir, "icons/plot_save")
+        super().__init__(*args, **kwargs)
+
+    def trigger(self, *_args, **_kwargs):
+        snap_time = self.plot.data['ts']
+        if not self.file_template:
+            print("File template not defined, can't save")
+        else:
+            template_values = {
+                    'timestamp': str(int(snap_time.timestamp())),
+                    'timestamp_full': str(snap_time.timestamp()),
+                    'timestamp_human': str(snap_time),
+            }
+            filename = self.file_template.format(**template_values) + '.png'
+            self.plot.fig.savefig(filename, format='png')
+            print('Plot saved as:', filename)
 
 
 class RawSaveTool(ToolBase):
@@ -77,7 +102,7 @@ class RawSaveTool(ToolBase):
                     'timestamp_full': str(snap_time.timestamp()),
                     'timestamp_human': str(snap_time),
             }
-            filename = self.file_template.format(**template_values)
+            filename = self.file_template.format(**template_values) + '.json'
             with open(filename, 'w', encoding='utf-8') as file:
                 file.write(json.dumps(raw_data, indent=4))
             print('Raw data saved as:', filename)
@@ -134,7 +159,7 @@ class RefreshTool(ToolToggleBase):
 class RefreshableSpectralPlot:
     """Refreshable plot (graph); basically main window of the app"""
     def __init__(self, initial_data, refresh_func=None, quick_graph=False,
-                 oneshot=False, raw_file_template=None):
+                 oneshot=False, file_template=None):
         self.data = initial_data
         self.running = False
         self.thread = None
@@ -151,7 +176,7 @@ class RefreshableSpectralPlot:
         self.oneshot = oneshot
         self.data_status = 'initializing'
         self.quick_graph = quick_graph
-        self.raw_file_template = raw_file_template
+        self.file_template = file_template
 
     def start_plot(self):
         """Start the plotting in main thread; blocks"""
@@ -287,10 +312,13 @@ class RefreshableSpectralPlot:
             tool_mgr.add_tool("oneshot", OneShotTool, plot=self)
             tool_mgr.add_tool("quick", QuickGraphTool, plot=self)
             tool_mgr.add_tool("power", PowerTool, plot=self)
+            tool_mgr.add_tool("plot_save", PlotSaveTool, plot=self,
+                              file_template=self.file_template)
             tool_mgr.add_tool("raw_save", RawSaveTool, plot=self,
-                              file_template=self.raw_file_template)
+                              file_template=self.file_template)
 
-            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("raw_save"), "io")
+            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("plot_save"), "export")
+            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("raw_save"), "export")
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("refresh"), "refresh")
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("oneshot"), "refresh")
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("quick"), "refresh")
@@ -634,11 +662,11 @@ if __name__ == "__main__":
             help="One shot mode (single good capture)"
         )
 
-        default_template = 'spectrum-{timestamp_full}.json'
+        default_template = 'spectrum-{timestamp_full}'
         parser.add_argument(
-            '-f', '--raw_file_template',
+            '-f', '--file_template',
             default=default_template,
-            help=f"File template for raw data export (default: {default_template})"
+            help=f"File template (without .ext) for data export (default: {default_template})"
         )
 
         return parser.parse_args()
@@ -709,7 +737,7 @@ if __name__ == "__main__":
                                   refresh_func=SPECTROMETER.stream_data,
                                   quick_graph=argv.quick_graph,
                                   oneshot=argv.oneshot,
-                                  raw_file_template=argv.raw_file_template)
+                                  file_template=argv.file_template)
     app.start_plot()
 
 sys.exit(0)

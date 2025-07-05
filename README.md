@@ -16,7 +16,7 @@ and improved (beyond recognition?).
 
 ```
 $ python3 main.py -h
-usage: main.py [-h] [-e EXPOSURE] [-q] [-o] [-f RAW_FILE_TEMPLATE] input_device
+usage: main.py [-h] [-e EXPOSURE] [-q] [-o] [-f FILE_TEMPLATE] input_device
 
 TorchBearer spectrometer tool
 
@@ -29,8 +29,8 @@ options:
                         Exposure time in milliseconds (100..5000) or 'auto' (default: auto)
   -q, --quick-graph     Enable quick graph mode
   -o, --oneshot         One shot mode (single good capture)
-  -f RAW_FILE_TEMPLATE, --raw_file_template RAW_FILE_TEMPLATE
-                        File template for raw data export (default: spectrum-{timestamp_full}.json)
+  -f FILE_TEMPLATE, --file_template FILE_TEMPLATE
+                        File template (without .ext) for data export (default: spectrum-{timestamp_full})
 ```
 
 My typical use is:
@@ -45,7 +45,7 @@ which gives one-shot spectrum on auto exposure (from `/dev/ttyUSB0`):
 
 There are several icons on the toolbar:
 
-- `Floppy` ("save" icon): saves rendered graph
+- ![save](icons/plot_save.png): Saves rendered graph as png
 - ![download](icons/raw_save.png): Save raw data as json
 - ![refresh](icons/refresh.png): Keep refreshing data
 - ![oneshot](icons/oneshot.png): One good acquisition
