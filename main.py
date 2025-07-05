@@ -184,10 +184,11 @@ class RefreshableSpectralPlot:
                                 "Treat the new Tool classes introduced "
                                 "in v1.5 as experimental")
         plt.rcParams['toolbar'] = 'toolmanager'
-        self.fig, self.axes = colour.plotting.plot_single_sd(
-                colour.SpectralDistribution(self.data['spd']),
-                show=False)
-        plt.ylabel("Spectral Distribution (W/m²)")
+        spd = colour.SpectralDistribution(self.data['spd'])
+        self.fig, self.axes = colour.plotting.plot_single_sd(spd, show=False,
+                                                             transparent_background=False)
+        plt.xlabel("Wavelength $\\lambda$ (nm)")
+        plt.ylabel("Spectral Distribution ($W/m^2$)")
         plt.ylim([0, 0.1]) # initial
         self._setup_cursor()
         self.update_status()
@@ -284,15 +285,18 @@ class RefreshableSpectralPlot:
             # Plot directly to the existing axes
             #start = time.perf_counter()
             spd = colour.SpectralDistribution(self.data['spd'])
+            plt.title(f"{spd.display_name}")
             if self.quick_graph:
                 self.axes.plot(list(spd.wavelengths),
                              list(spd.values),
                              label='Spectral Distribution')
             else:
-                colour.plotting.plot_single_sd(spd, axes=self.axes, show=False)
+                colour.plotting.plot_single_sd(spd, axes=self.axes,
+                                               show=False, transparent_background=False)
 
             #print(f"Elapsed time: {time.perf_counter() - start} seconds")
-            plt.ylabel("Spectral Distribution (W/m²)")
+            plt.xlabel("Wavelength $\\lambda$ (nm)")
+            plt.ylabel("Spectral Distribution ($W/m^2$)")
             # Re-setup cursor after clearing
             self._setup_cursor()
             # Restore cursor state if it was visible
