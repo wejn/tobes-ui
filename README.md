@@ -1,7 +1,7 @@
-# tobes-ui: Torch Bearer Spectroscope UI
+# tobes-ui: Torch Bearer Spectrometer UI
 
 This is a UI for [Torch Bearer](https://www.torchbearer.tech/)
-Spectroscope (`Y21B7W10034CCPD`) that is available on Amazon
+Spectrometer (`Y21B7W10034CCPD`) that is available on Amazon
 and AliExpress ([TB Store](https://www.aliexpress.com/store/1104401209)).
 
 Forked from [ZoidTechnology/Torch-Bearer-Tools](https://github.com/ZoidTechnology/Torch-Bearer-Tools)[^1]
