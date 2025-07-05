@@ -634,10 +634,11 @@ if __name__ == "__main__":
             help="One shot mode (single good capture)"
         )
 
+        default_template = 'spectrum-{timestamp_full}.json'
         parser.add_argument(
             '-f', '--raw_file_template',
-            default='spectrum-{timestamp_full}.json',
-            help="File template for raw data export"
+            default=default_template,
+            help=f"File template for raw data export (default: {default_template})"
         )
 
         return parser.parse_args()
