@@ -16,7 +16,7 @@ and improved (beyond recognition?).
 
 ```
 $ python3 main.py -h
-usage: main.py [-h] [-e EXPOSURE] [-q] [-o] [-f FILE_TEMPLATE] input_device
+usage: main.py [-h] [-e EXPOSURE] [-q | -t GRAPH_TYPE] [-o] [-f FILE_TEMPLATE] input_device
 
 TorchBearer spectrometer tool
 
@@ -27,10 +27,13 @@ options:
   -h, --help            show this help message and exit
   -e EXPOSURE, --exposure EXPOSURE
                         Exposure time in milliseconds (100..5000) or 'auto' (default: auto)
-  -q, --quick-graph     Enable quick graph mode
+  -q, --quick-graph     Enable quick (LINE) graph mode
+  -t GRAPH_TYPE, --graph_type GRAPH_TYPE
+                        Graph type (LINE, SPECTRUM, CIE1931, CIE1960UCS, CIE1976UCS) (default SPECTRUM)
   -o, --oneshot         One shot mode (single good capture)
   -f FILE_TEMPLATE, --file_template FILE_TEMPLATE
-                        File template (without .ext) for data export (default: spectrum-{timestamp_full})
+                        File template (without .ext) for data export (default:
+                        spectrum-{timestamp_full}{graph_type})
 ```
 
 My typical use is:
@@ -43,13 +46,19 @@ which gives one-shot spectrum on auto exposure (from `/dev/ttyUSB0`):
 
 ![screenshot](pictures/oneshot.png)
 
+Or, if you prefer, [screenshot of the CIE1976UCS locus](pictures/oneshot-cie1976ucs.png).
+
 There are several icons on the toolbar:
 
 - ![save](icons/plot_save.png): Saves rendered graph as png (key: `S`)
 - ![download](icons/raw_save.png): Save raw data as json (key: `D`)
 - ![refresh](icons/refresh.png): Keep refreshing data (key: `R`)
 - ![oneshot](icons/oneshot.png): One good acquisition (key: `1` or `O`)
-- ![quick graph](icons/quick.png): Quick graph vs. colorful graph (that's _SLOW_ to draw) (key: `Q`)
+- ![line graph](icons/line_graph.png): Line graph (key: `Q`, `L`)
+- ![spectral graph](icons/spectrum_graph.png): Spectrum graph _(slow to draw)_ (key: `C`)
+- ![cie1931 locus](icons/cie1931_graph.png): CIE1931 locus graph (key: `3`)
+- ![cie1960UCS locus](icons/cie1960ucs_graph.png): CIE1960UCS locus graph (key: `6`)
+- ![cie1976UCS locus](icons/cie1976ucs_graph.png): CIE1976UCS locus graph (key: `7`)
 - ![power](icons/power.png): Quit the app (key: `Esc`)
 
 ## Exported data

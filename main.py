@@ -2,6 +2,7 @@
 
 import argparse
 import atexit
+from enum import Enum
 import os
 import pprint
 import queue
@@ -16,6 +17,14 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.backend_tools import ToolBase, ToolToggleBase
 from matplotlib.backend_tools import default_toolbar_tools
+from matplotlib.backend_managers import ToolManager
+from colour.plotting import (
+    plot_planckian_locus_in_chromaticity_diagram_CIE1931,
+    plot_planckian_locus_in_chromaticity_diagram_CIE1960UCS,
+    plot_planckian_locus_in_chromaticity_diagram_CIE1976UCS,
+)
+from colour.colorimetry import sd_to_XYZ
+from colour.models import XYZ_to_xy
 
 import protocol
 import spectrometer
@@ -28,33 +37,61 @@ import spectrometer
 default_toolbar_tools.clear()
 
 
-class InspectableToggleBase(ToolToggleBase):
-    """ToolToggleBase that also allows inspecting tool status"""
+class GraphType(Enum):
+    """Defines graph type to display"""
+    LINE = 1
+    SPECTRUM = 2
+    CIE1931 = 3
+    CIE1960UCS = 4
+    CIE1976UCS = 5
 
-    def is_enabled(self) -> bool:
-        """Tell whether enabled"""
-        return self._toggled
+    def __str__(self):
+        """Convert to readable string"""
+        return str(self.name).lower()
 
 
-class QuickGraphTool(InspectableToggleBase):
-    """Quick Graph toggle for the toolbar"""
-    description = 'Quick vs. colorful graph (key: Q)'
-    default_keymap = ['Q', 'q']
+class GraphSelectTool(ToolToggleBase):
+    """Graph toggle for the toolbar"""
+    radio_group = 'graph_select'
 
-    def __init__(self, *args, plot, **kwargs):
+    def __init__(self, *args, plot, graph_type, **kwargs):
         self.plot = plot
-        self.default_toggled = self.plot.quick_graph
+        self.graph_type = graph_type
+        self.default_toggled = self.plot.graph_type == graph_type
         script_dir = os.path.dirname(os.path.abspath(__file__))
         self.image = os.path.join(script_dir, "icons/quick")
+        match graph_type:
+            case GraphType.LINE:
+                self.description = 'Line graph (key: Q, L)'
+                self.default_keymap = ['Q', 'q', 'L', 'l']
+                self.image = os.path.join(script_dir, "icons/line_graph")
+            case GraphType.SPECTRUM:
+                self.description = 'Spectrum graph (key: C)'
+                self.default_keymap = ['C', 'c']
+                self.image = os.path.join(script_dir, "icons/spectrum_graph")
+            case GraphType.CIE1931:
+                self.description = 'CIE1931 locus graph (key: 3)'
+                self.default_keymap = ['3']
+                self.image = os.path.join(script_dir, "icons/cie1931_graph")
+            case GraphType.CIE1960UCS:
+                self.description = 'CIE1960UCS locus graph (key: 6)'
+                self.default_keymap = ['6']
+                self.image = os.path.join(script_dir, "icons/cie1960ucs_graph")
+            case GraphType.CIE1976UCS:
+                self.description = 'CIE1976UCS locus graph (key: 7)'
+                self.default_keymap = ['7']
+                self.image = os.path.join(script_dir, "icons/cie1976ucs_graph")
+            case _:
+                raise ValueError(f'weird graph type: {graph_type}')
+
         super().__init__(*args, **kwargs)
 
     def enable(self, event=None):
-        self.plot.quick_graph = True
+        self.plot.graph_type = self.graph_type
         self.plot.update_plot()
 
     def disable(self, event=None):
-        self.plot.quick_graph = False
-        self.plot.update_plot()
+        pass
 
 
 class PlotSaveTool(ToolBase):
@@ -75,6 +112,7 @@ class PlotSaveTool(ToolBase):
             print("File template not defined, can't save")
         else:
             template_values = {
+                    'graph_type': '-' + str(self.plot.graph_type),
                     'timestamp': str(int(snap_time.timestamp())),
                     'timestamp_full': str(snap_time.timestamp()),
                     'timestamp_human': str(snap_time),
@@ -102,6 +140,7 @@ class RawSaveTool(ToolBase):
             print(self.plot.data.to_json())
         else:
             template_values = {
+                    'graph_type': '',
                     'timestamp': str(int(snap_time.timestamp())),
                     'timestamp_full': str(snap_time.timestamp()),
                     'timestamp_human': str(snap_time),
@@ -129,7 +168,7 @@ class OneShotTool(ToolBase):
 
         tool_mgr = self.plot.fig.canvas.manager.toolmanager
         refresh = tool_mgr.get_tool("refresh", warn=False)
-        if refresh and refresh.is_enabled():
+        if refresh and refresh.toggled:
             tool_mgr.trigger_tool('refresh')
 
 
@@ -148,7 +187,7 @@ class PowerTool(ToolBase):
         self.plot.stop()
 
 
-class RefreshTool(InspectableToggleBase):
+class RefreshTool(ToolToggleBase):
     """Refresh data toggle for the toolbar"""
     description = 'Keep refreshing data (key: R)'
     default_keymap = ['r', 'R']
@@ -171,7 +210,7 @@ class RefreshTool(InspectableToggleBase):
 
 class RefreshableSpectralPlot:
     """Refreshable plot (graph); basically main window of the app"""
-    def __init__(self, initial_data, refresh_func=None, quick_graph=False,
+    def __init__(self, initial_data, refresh_func=None, graph_type=GraphType.SPECTRUM,
                  oneshot=False, file_template=None):
         self.data = initial_data
         self.running = False
@@ -188,15 +227,18 @@ class RefreshableSpectralPlot:
         self.keep_refreshing = not oneshot
         self.oneshot = oneshot
         self.data_status = 'initializing'
-        self.quick_graph = quick_graph
+        self.graph_type = graph_type
         self.file_template = file_template
 
     WARNINGS_TO_IGNORE = [
             "Treat the new Tool classes introduced in v1.5 as experimental",
             "Key r changed from home to refresh",
-            "Key q changed from quit to quick",
             "Key s changed from save to plot_save",
             "Key o changed from zoom to oneshot",
+            "Key q changed from quit to line",
+            "Key L changed from xscale to line",
+            "Key l changed from yscale to line",
+            "Key c changed from back to spectrum",
     ]
 
     def start_plot(self):
@@ -210,6 +252,7 @@ class RefreshableSpectralPlot:
         plt.xlabel("Wavelength $\\lambda$ (nm)")
         plt.ylabel("Spectral Distribution ($W/m^2$)")
         plt.ylim([0, 0.1]) # initial
+        self.axes.set_aspect('auto')
         self._setup_cursor()
         self.update_status()
 
@@ -303,20 +346,40 @@ class RefreshableSpectralPlot:
             # Clear the existing axes instead of the whole figure
             self.axes.clear()
             # Plot directly to the existing axes
-            #start = time.perf_counter()
             spd = self.data.to_spectral_distribution()
-            plt.title(f"{spd.display_name}")
-            if self.quick_graph:
-                self.axes.plot(list(spd.wavelengths),
-                             list(spd.values),
-                             label='Spectral Distribution')
-            else:
-                colour.plotting.plot_single_sd(spd, axes=self.axes,
-                                               show=False, transparent_background=False)
+            xy = XYZ_to_xy(sd_to_XYZ(spd))
+            kwargs = {
+                    'annotate_kwargs': {'annotate':False},
+                    'transparent_background': False,
+                    'show': False,
+                    'axes': self.axes,
+            }
+            match self.graph_type:
+                case GraphType.CIE1931:
+                    plot_planckian_locus_in_chromaticity_diagram_CIE1931(
+                            {"X": xy}, title=spd.name, **kwargs)
+                case GraphType.CIE1960UCS:
+                    plot_planckian_locus_in_chromaticity_diagram_CIE1960UCS(
+                            {"X": xy}, title=spd.name, **kwargs)
+                case GraphType.CIE1976UCS:
+                    plot_planckian_locus_in_chromaticity_diagram_CIE1976UCS(
+                            {"X": xy}, title=spd.name, **kwargs)
+                case GraphType.SPECTRUM:
+                    self.axes.set_aspect('auto')
+                    plt.title(f"{spd.display_name}")
+                    colour.plotting.plot_single_sd(spd, **kwargs)
+                    plt.xlabel("Wavelength $\\lambda$ (nm)")
+                    plt.ylabel("Spectral Distribution ($W/m^2$)")
+                case _:
+                    # GraphType.LINE goes here, too
+                    plt.title(f"{spd.display_name}")
+                    self.axes.set_aspect('auto')
+                    self.axes.plot(list(spd.wavelengths),
+                                 list(spd.values),
+                                 label='Spectral Distribution')
+                    plt.xlabel("Wavelength $\\lambda$ (nm)")
+                    plt.ylabel("Spectral Distribution ($W/m^2$)")
 
-            #print(f"Elapsed time: {time.perf_counter() - start} seconds")
-            plt.xlabel("Wavelength $\\lambda$ (nm)")
-            plt.ylabel("Spectral Distribution ($W/m^2$)")
             # Re-setup cursor after clearing
             self._setup_cursor()
             # Restore cursor state if it was visible
@@ -334,7 +397,26 @@ class RefreshableSpectralPlot:
             tool_mgr = self.fig.canvas.manager.toolmanager
             tool_mgr.add_tool("refresh", RefreshTool, plot=self)
             tool_mgr.add_tool("oneshot", OneShotTool, plot=self)
-            tool_mgr.add_tool("quick", QuickGraphTool, plot=self)
+
+            tool_mgr.add_tool("line", GraphSelectTool, plot=self, graph_type=GraphType.LINE)
+            tool_mgr.add_tool("spectrum", GraphSelectTool, plot=self, graph_type=GraphType.SPECTRUM)
+            tool_mgr.add_tool("cie1931", GraphSelectTool, plot=self, graph_type=GraphType.CIE1931)
+            tool_mgr.add_tool("cie1960ucs", GraphSelectTool, plot=self, graph_type=GraphType.CIE1960UCS)
+            tool_mgr.add_tool("cie1976ucs", GraphSelectTool, plot=self, graph_type=GraphType.CIE1976UCS)
+
+            def avoid_untoggle(event):
+                if not isinstance(event.sender, ToolManager):
+                    # not coming from toolmanager (that's the untoggle trigger)
+                    if not event.tool.toggled:
+                        # not toggled
+                        tool_mgr.trigger_tool(event.tool.name)
+
+            tool_mgr.toolmanager_connect("tool_trigger_line", avoid_untoggle)
+            tool_mgr.toolmanager_connect("tool_trigger_spectrum", avoid_untoggle)
+            tool_mgr.toolmanager_connect("tool_trigger_cie1931", avoid_untoggle)
+            tool_mgr.toolmanager_connect("tool_trigger_cie1960ucs", avoid_untoggle)
+            tool_mgr.toolmanager_connect("tool_trigger_cie1976ucs", avoid_untoggle)
+
             tool_mgr.add_tool("power", PowerTool, plot=self)
             tool_mgr.add_tool("plot_save", PlotSaveTool, plot=self,
                               file_template=self.file_template)
@@ -345,7 +427,11 @@ class RefreshableSpectralPlot:
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("raw_save"), "export")
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("refresh"), "refresh")
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("oneshot"), "refresh")
-            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("quick"), "refresh")
+            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("line"), "graph")
+            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("spectrum"), "graph")
+            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("cie1931"), "graph")
+            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("cie1960ucs"), "graph")
+            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("cie1976ucs"), "graph")
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("power"), "power")
 
     def _setup_cursor(self):
@@ -482,6 +568,7 @@ class RefreshableSpectralPlot:
         except Exception:
             pass  # Ignore errors during figure cleanup
 
+
 if __name__ == "__main__":
     def parse_args():
         """Parse the arguments for the cli"""
@@ -510,10 +597,25 @@ if __name__ == "__main__":
             help="Exposure time in milliseconds (100..5000) or 'auto' (default: auto)"
         )
 
-        parser.add_argument(
+        graph_opts_group = parser.add_mutually_exclusive_group()
+
+        graph_opts_group.add_argument(
             '-q', '--quick-graph',
             action='store_true',
-            help="Enable quick graph mode"
+            help="Enable quick (LINE) graph mode"
+        )
+
+        def graph_type(value):
+            try:
+                return GraphType[value.upper()]
+            except KeyError:
+                raise argparse.ArgumentTypeError(f"Invalid graph type {value}")
+
+        graph_opts_group.add_argument(
+            '-t', '--graph_type',
+            type=graph_type,
+            default=GraphType.SPECTRUM,
+            help=f"Graph type ({', '.join([e.name for e in GraphType])}) (default SPECTRUM)"
         )
 
         parser.add_argument(
@@ -522,7 +624,7 @@ if __name__ == "__main__":
             help="One shot mode (single good capture)"
         )
 
-        default_template = 'spectrum-{timestamp_full}'
+        default_template = 'spectrum-{timestamp_full}{graph_type}'
         parser.add_argument(
             '-f', '--file_template',
             default=default_template,
@@ -583,11 +685,12 @@ if __name__ == "__main__":
     print("Device basic info: ")
     pprint.pprint(basic_info)
 
-    app = RefreshableSpectralPlot(spectrometer.Spectrum.initial(basic_info['range']),
-                                  refresh_func=SPECTROMETER.stream_data,
-                                  quick_graph=argv.quick_graph,
-                                  oneshot=argv.oneshot,
-                                  file_template=argv.file_template)
+    app = RefreshableSpectralPlot(
+            spectrometer.Spectrum.initial(basic_info['range']),
+            refresh_func=SPECTROMETER.stream_data,
+            graph_type=GraphType.LINE if argv.quick_graph else argv.graph_type,
+            oneshot=argv.oneshot,
+            file_template=argv.file_template)
     app.start_plot()
 
 sys.exit(0)
