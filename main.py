@@ -18,6 +18,7 @@ from matplotlib import pyplot as plt
 from matplotlib.backend_tools import ToolBase, ToolToggleBase
 from matplotlib.backend_tools import default_toolbar_tools
 from matplotlib.backend_managers import ToolManager
+from matplotlib.backend_bases import KeyEvent
 from colour.plotting import (
     plot_planckian_locus_in_chromaticity_diagram_CIE1931,
     plot_planckian_locus_in_chromaticity_diagram_CIE1960UCS,
@@ -411,7 +412,13 @@ class RefreshableSpectralPlot:
                               graph_type=GraphType.CIE1976UCS)
 
             def avoid_untoggle(event):
-                if not isinstance(event.sender, ToolManager):
+                if isinstance(event.sender, ToolManager):
+                    # coming from toolmanager, but key event (untoggle)
+                    if isinstance(event.canvasevent, KeyEvent) and not event.tool.toggled:
+                        if event.canvasevent.key in event.tool.default_keymap:
+                            # and the trigger key is our key...
+                            tool_mgr.trigger_tool(event.tool.name)
+                else:
                     # not coming from toolmanager (that's the untoggle trigger)
                     if not event.tool.toggled:
                         # not toggled
