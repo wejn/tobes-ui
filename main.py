@@ -128,7 +128,7 @@ class OneShotTool(ToolBase):
         self.plot.oneshot = True
 
         tool_mgr = self.plot.fig.canvas.manager.toolmanager
-        refresh = tool_mgr.trigger_tool("refresh")
+        refresh = tool_mgr.get_tool("refresh", warn=False)
         if refresh and refresh.is_enabled():
             tool_mgr.trigger_tool('refresh')
 
