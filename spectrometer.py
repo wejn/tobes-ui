@@ -72,12 +72,12 @@ class Spectrum(NamedTuple):
             exposure=protocol.ExposureMode.MANUAL,
             time=0,
             spd={
-                k: 0.01
+                k: 0
                 for k in new_range
             },
             wavelength_range=for_range,
             spd_raw={
-                0.01
+                0
                 for k in new_range
             },
             ts=datetime.now()

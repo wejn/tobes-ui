@@ -239,6 +239,8 @@ class RefreshableSpectralPlot:
             "Key L changed from xscale to line",
             "Key l changed from yscale to line",
             "Key c changed from back to spectrum",
+            "Attempting to set identical low and high ylims makes transformation"+
+                " singular; automatically expanding.",
     ]
 
     def start_plot(self):
@@ -251,7 +253,6 @@ class RefreshableSpectralPlot:
                                                              transparent_background=False)
         plt.xlabel("Wavelength $\\lambda$ (nm)")
         plt.ylabel("Spectral Distribution ($W/m^2$)")
-        plt.ylim([0, 0.1]) # initial
         self.axes.set_aspect('auto')
         self._setup_cursor()
         self.update_status()
@@ -635,7 +636,6 @@ if __name__ == "__main__":
 
     argv = parse_args()
 
-    SPECTROMETER = None
     try:
         SPECTROMETER = spectrometer.Spectrometer(argv.input_device)
     except Exception as spec_ex:
