@@ -45,6 +45,11 @@ class Spectrum(NamedTuple):
     def from_json(cls, json_str: str) -> "Spectrum":
         """Convert json string to Spectrum"""
         data = json.loads(json_str)
+        if "wavelength_range" not in data:
+            wls = {int(k) for k,v in data["spd"].items()}
+            data["wavelength_range"] = [min(wls), max(wls)]
+        if "spd_raw" not in data:
+            data["spd_raw"] = [v for k, v in data["spd"].items()]
         return cls(
             status=data["status"],
             exposure=data["exposure"],
