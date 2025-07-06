@@ -13,25 +13,22 @@ import time
 import warnings
 
 import colour
-import numpy as np
-from matplotlib import pyplot as plt
-from matplotlib.backend_tools import ToolBase, ToolToggleBase
-from matplotlib.backend_tools import default_toolbar_tools
-from matplotlib.backend_managers import ToolManager
-from matplotlib.backend_bases import KeyEvent
+from colour.colorimetry import sd_to_XYZ
+from colour.models import XYZ_to_xy
 from colour.plotting import (
     plot_planckian_locus_in_chromaticity_diagram_CIE1931,
     plot_planckian_locus_in_chromaticity_diagram_CIE1960UCS,
     plot_planckian_locus_in_chromaticity_diagram_CIE1976UCS,
 )
-from colour.colorimetry import sd_to_XYZ
-from colour.models import XYZ_to_xy
 from colour.plotting.tm3018.components import (
     plot_colour_vector_graphic
 )
 from colour.quality import colour_fidelity_index_ANSIIESTM3018
-from colour.io import SpectralDistribution_IESTM2714
-
+from matplotlib import pyplot as plt
+from matplotlib.backend_bases import KeyEvent
+from matplotlib.backend_managers import ToolManager
+from matplotlib.backend_tools import ToolBase, ToolToggleBase, default_toolbar_tools
+import numpy as np
 
 import protocol
 import spectrometer
@@ -252,9 +249,12 @@ class RefreshableSpectralPlot:
             "Key L changed from xscale to line",
             "Key l changed from yscale to line",
             "Key c changed from back to spectrum",
-            "Attempting to set identical low and high ylims makes transformation"+
+            "Attempting to set identical low and high ylims makes transformation" +
                 " singular; automatically expanding.",
             '"OpenImageIO" related API features are not available, switching to "Imageio"!',
+            # TM30 running on crap spectrum
+            'Mean of empty slice .*',
+            'Correlated colour temperature must be in domain.*'
     ]
 
     def start_plot(self):
@@ -384,16 +384,18 @@ class RefreshableSpectralPlot:
                     plot_planckian_locus_in_chromaticity_diagram_CIE1976UCS(
                             {"X": xy_point}, title=spd.name, **kwargs)
                 case GraphType.TM30:
-                    spec = colour_fidelity_index_ANSIIESTM3018(spd, True)
-                    if spec.R_f < 50:
+                    cct = colour.temperature.xy_to_CCT(xy_point, method='daylight')
+                    spec = colour_fidelity_index_ANSIIESTM3018(spd)
+                    if cct < 1000 or cct > 10000 or spec < 50:
                         self.axes.axis('off')
                         self.error_text = self.fig.text(
                                 0.5, 0.5,
-                                f'Error: $R_f$ too low: {spec.R_f:.2f} (must be $\geq 50$)',
+                                f'$R_f$={spec:.2f} (need $\\geq 50$), CCT={cct:.0f} (need 1-10K)',
                                 ha='center', va='center', fontsize=16, color='red')
 
                     else:
-                        plot_colour_vector_graphic(spec, **kwargs)
+                        spec_full = colour_fidelity_index_ANSIIESTM3018(spd, True)
+                        plot_colour_vector_graphic(spec_full, **kwargs)
                 case GraphType.SPECTRUM:
                     self.axes.set_aspect('auto')
                     plt.title(f"{spd.display_name}")
@@ -411,7 +413,8 @@ class RefreshableSpectralPlot:
                     plt.ylabel("Spectral Distribution ($W/m^2$)")
 
             # Re-setup cursor after clearing
-            self._setup_cursor()
+            if not self.error_text:
+                self._setup_cursor()
             # Restore cursor state if it was visible
             if self.cursor_visible and self.last_mouse_pos:
                 self._update_cursor_position(self.last_mouse_pos[0], self.last_mouse_pos[1])
