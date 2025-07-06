@@ -45,12 +45,12 @@ which gives one-shot spectrum on auto exposure (from `/dev/ttyUSB0`):
 
 There are several icons on the toolbar:
 
-- ![save](icons/plot_save.png): Saves rendered graph as png
-- ![download](icons/raw_save.png): Save raw data as json
-- ![refresh](icons/refresh.png): Keep refreshing data
-- ![oneshot](icons/oneshot.png): One good acquisition
-- ![quick graph](icons/quick.png): Quick graph vs. colorful graph (that's _SLOW_ to draw)
-- ![power](icons/power.png): Quit the app
+- ![save](icons/plot_save.png): Saves rendered graph as png (key: `S`)
+- ![download](icons/raw_save.png): Save raw data as json (key: `D`)
+- ![refresh](icons/refresh.png): Keep refreshing data (key: `R`)
+- ![oneshot](icons/oneshot.png): One good acquisition (key: `1` or `O`)
+- ![quick graph](icons/quick.png): Quick graph vs. colorful graph (that's _SLOW_ to draw) (key: `Q`)
+- ![power](icons/power.png): Quit the app (key: `Esc`)
 
 ## Exported data
 

@@ -30,7 +30,8 @@ default_toolbar_tools.clear()
 
 class QuickGraphTool(ToolToggleBase):
     """Quick Graph toggle for the toolbar"""
-    description = 'Quick vs. colorful graph'
+    description = 'Quick vs. colorful graph (key: Q)'
+    default_keymap = ['Q', 'q']
 
     def __init__(self, *args, plot, **kwargs):
         self.plot = plot
@@ -50,7 +51,8 @@ class QuickGraphTool(ToolToggleBase):
 
 class PlotSaveTool(ToolBase):
     """Plot data save button for the toolbar"""
-    description = 'Save plot data as png'
+    description = 'Save plot data as png (key: S)'
+    default_keymap = ['S', 's']
 
     def __init__(self, *args, plot, file_template, **kwargs):
         self.plot = plot
@@ -76,7 +78,8 @@ class PlotSaveTool(ToolBase):
 
 class RawSaveTool(ToolBase):
     """Raw data save button for the toolbar"""
-    description = 'Save raw data as json'
+    description = 'Save raw data as json (key: D)'
+    default_keymap = ['D', 'd']
 
     def __init__(self, *args, plot, file_template, **kwargs):
         self.plot = plot
@@ -103,7 +106,8 @@ class RawSaveTool(ToolBase):
 
 class OneShotTool(ToolBase):
     """One Shot button for the toolbar"""
-    description = 'One good acquisition'
+    description = 'One good acquisition (key: 1 || O)'
+    default_keymap = ['1', 'O', 'o']
 
     def __init__(self, *args, plot, **kwargs):
         self.plot = plot
@@ -112,12 +116,14 @@ class OneShotTool(ToolBase):
         super().__init__(*args, **kwargs)
 
     def trigger(self, *_args, **_kwargs):
+        print('Oneshot refresh...')
         self.plot.oneshot = True
 
 
 class PowerTool(ToolBase):
     """Quit button for the toolbar"""
-    description = 'Quit application'
+    description = 'Quit application (key: Esc)'
+    default_keymap = ['escape', 'ctrl+q', 'ctrl+Q']
 
     def __init__(self, *args, plot, **kwargs):
         self.plot = plot
@@ -131,7 +137,8 @@ class PowerTool(ToolBase):
 
 class RefreshTool(ToolToggleBase):
     """Refresh data toggle for the toolbar"""
-    description = 'Keep refreshing data'
+    description = 'Keep refreshing data (key: R)'
+    default_keymap = ['r', 'R']
 
     def __init__(self, *args, plot, **kwargs):
         self.plot = plot
@@ -171,11 +178,18 @@ class RefreshableSpectralPlot:
         self.quick_graph = quick_graph
         self.file_template = file_template
 
+    WARNINGS_TO_IGNORE = [
+            "Treat the new Tool classes introduced in v1.5 as experimental",
+            "Key r changed from home to refresh",
+            "Key q changed from quit to quick",
+            "Key s changed from save to plot_save",
+            "Key o changed from zoom to oneshot",
+    ]
+
     def start_plot(self):
         """Start the plotting in main thread; blocks"""
-        warnings.filterwarnings("ignore",
-                                "Treat the new Tool classes introduced "
-                                "in v1.5 as experimental")
+        for warning in self.WARNINGS_TO_IGNORE:
+            warnings.filterwarnings("ignore", warning)
         plt.rcParams['toolbar'] = 'toolmanager'
         spd = self.data.to_spectral_distribution()
         self.fig, self.axes = colour.plotting.plot_single_sd(spd, show=False,
