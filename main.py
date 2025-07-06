@@ -28,7 +28,15 @@ import spectrometer
 default_toolbar_tools.clear()
 
 
-class QuickGraphTool(ToolToggleBase):
+class InspectableToggleBase(ToolToggleBase):
+    """ToolToggleBase that also allows inspecting tool status"""
+
+    def is_enabled(self) -> bool:
+        """Tell whether enabled"""
+        return self._toggled
+
+
+class QuickGraphTool(InspectableToggleBase):
     """Quick Graph toggle for the toolbar"""
     description = 'Quick vs. colorful graph (key: Q)'
     default_keymap = ['Q', 'q']
@@ -119,6 +127,11 @@ class OneShotTool(ToolBase):
         print('Oneshot refresh...')
         self.plot.oneshot = True
 
+        tool_mgr = self.plot.fig.canvas.manager.toolmanager
+        refresh = tool_mgr.trigger_tool("refresh")
+        if refresh and refresh.is_enabled():
+            tool_mgr.trigger_tool('refresh')
+
 
 class PowerTool(ToolBase):
     """Quit button for the toolbar"""
@@ -135,7 +148,7 @@ class PowerTool(ToolBase):
         self.plot.stop()
 
 
-class RefreshTool(ToolToggleBase):
+class RefreshTool(InspectableToggleBase):
     """Refresh data toggle for the toolbar"""
     description = 'Keep refreshing data (key: R)'
     default_keymap = ['r', 'R']
