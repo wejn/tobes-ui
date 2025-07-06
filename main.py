@@ -1,13 +1,11 @@
 """Nice UI for TorchBearer Spectrometer"""
+
 import argparse
 import atexit
-from datetime import datetime
-import json
 import os
 import pprint
 import queue
 import signal
-import struct
 import sys
 import threading
 import time
@@ -18,9 +16,9 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.backend_tools import ToolBase, ToolToggleBase
 from matplotlib.backend_tools import default_toolbar_tools
-from serial import Serial
 
 import protocol
+import spectrometer
 
 # pylint: disable=broad-exception-caught
 # pylint: disable=too-many-instance-attributes
@@ -62,7 +60,7 @@ class PlotSaveTool(ToolBase):
         super().__init__(*args, **kwargs)
 
     def trigger(self, *_args, **_kwargs):
-        snap_time = self.plot.data['ts']
+        snap_time = self.plot.data.ts
         if not self.file_template:
             print("File template not defined, can't save")
         else:
@@ -88,14 +86,9 @@ class RawSaveTool(ToolBase):
         super().__init__(*args, **kwargs)
 
     def trigger(self, *_args, **_kwargs):
-        raw_data = self.plot.data.copy()
-        snap_time = raw_data['ts']
-        # Sigh, python, really?
-        raw_data['status'] = str(raw_data['status'])
-        raw_data['exposure'] = str(raw_data['exposure'])
-        raw_data['ts'] = raw_data['ts'].timestamp()
+        snap_time = self.plot.data.ts
         if not self.file_template:
-            print(json.dumps(raw_data, indent=4))
+            print(self.plot.data.to_json())
         else:
             template_values = {
                     'timestamp': str(int(snap_time.timestamp())),
@@ -104,7 +97,7 @@ class RawSaveTool(ToolBase):
             }
             filename = self.file_template.format(**template_values) + '.json'
             with open(filename, 'w', encoding='utf-8') as file:
-                file.write(json.dumps(raw_data, indent=4))
+                file.write(self.plot.data.to_json())
             print('Raw data saved as:', filename)
 
 
@@ -184,7 +177,7 @@ class RefreshableSpectralPlot:
                                 "Treat the new Tool classes introduced "
                                 "in v1.5 as experimental")
         plt.rcParams['toolbar'] = 'toolmanager'
-        spd = colour.SpectralDistribution(self.data['spd'])
+        spd = self.data.to_spectral_distribution()
         self.fig, self.axes = colour.plotting.plot_single_sd(spd, show=False,
                                                              transparent_background=False)
         plt.xlabel("Wavelength $\\lambda$ (nm)")
@@ -242,7 +235,7 @@ class RefreshableSpectralPlot:
     def _refresh_cb(self, data):
         """Refresh callback that receives new spectral data, returns if further refreshes wanted"""
         if self.keep_refreshing or self.oneshot:
-            match data['status']:
+            match data.status:
                 case protocol.ExposureStatus.NORMAL:
                     self.update_queue.put(data)
                     self.data_status = 'ok'
@@ -256,7 +249,7 @@ class RefreshableSpectralPlot:
                     self.data_status = 'over-exposed'
 
                 case _:
-                    self.data_status = 'error: ' + str(data['status'])
+                    self.data_status = 'error: ' + str(data.status)
 
         return self.running and (self.keep_refreshing or self.oneshot)
 
@@ -284,7 +277,7 @@ class RefreshableSpectralPlot:
             self.axes.clear()
             # Plot directly to the existing axes
             #start = time.perf_counter()
-            spd = colour.SpectralDistribution(self.data['spd'])
+            spd = self.data.to_spectral_distribution()
             plt.title(f"{spd.display_name}")
             if self.quick_graph:
                 self.axes.plot(list(spd.wavelengths),
@@ -363,7 +356,7 @@ class RefreshableSpectralPlot:
         try:
             if x_pos is not None and self.cursor_dot and self.cursor_text:
                 # Find closest wavelength
-                spd = colour.SpectralDistribution(self.data['spd'])
+                spd = self.data.to_spectral_distribution()
                 wavelengths = np.array(spd.wavelengths)
                 values = np.array(spd.values)
 
@@ -399,11 +392,11 @@ class RefreshableSpectralPlot:
         """Set toolbar message"""
         toolbar = self.fig.canvas.manager.toolbar
         if self.data_status and self.data_status == 'ok':
-            stamp = self.data['ts'].astimezone().strftime('%Y-%m-%d %H:%M:%S %Z')
+            stamp = self.data.ts.astimezone().strftime('%Y-%m-%d %H:%M:%S %Z')
             status = f'{self.data_status} ({stamp})'
         else:
             status = self.data_status
-        toolbar.set_message(f'acquisition: {status}, exp: {self.data["time"]} ms')
+        toolbar.set_message(f'acquisition: {status}, exp: {self.data.time} ms')
 
     def _on_mouse_move(self, event):
         """Handle mouse movement"""
@@ -462,170 +455,6 @@ class RefreshableSpectralPlot:
         except Exception:
             pass  # Ignore errors during figure cleanup
 
-
-class Spectrometer:
-    """Handles the spectrometer (wraps the `protocol`)"""
-
-    def __init__(self, path):
-        try:
-            self.port = Serial(path, 115200, timeout=0.1)
-            self.buffer = b""
-            self.start_wavelength = None
-            self.exposure_mode = None
-        except Exception as ex:
-            raise ValueError(f"Couldn't open serial: {ex}") from ex
-
-    def send_message(self, message_type, data=b""):
-        """Send message of given type and payload to the device"""
-        if not self.port:
-            raise ValueError("Already closed")
-
-        self.port.write(protocol.build_message(message_type, data))
-
-    def read_message(self, message_type=None):
-        """Read message, possibly guarding the type"""
-        if not self.port:
-            raise ValueError("Already closed")
-
-        while True:
-            (self.buffer, messages) = protocol.parse_messages(self.buffer + self.port.read())
-
-            if messages:
-                message = messages[0]
-
-                if message_type and message["message_type"] != message_type:
-                    raise ValueError("Unexpected message type")
-
-                return message
-
-    def cleanup(self):
-        """Cleanup function to ensure proper shutdown"""
-        try:
-            self.send_message(protocol.MessageType.STOP)
-            self.port.close()
-            self.port = None
-            self.buffer = b""
-            self.start_wavelength = None
-        except Exception:
-            pass  # Ignore errors during cleanup
-
-    def get_device_id(self):
-        """Get device identifier (serial)"""
-        if not self.port:
-            raise ValueError("Already closed")
-
-        self.send_message(protocol.MessageType.GET_DEVICE_ID, b"\x18")
-        response = self.read_message(protocol.MessageType.GET_DEVICE_ID)
-        return response['device_id']
-
-    def get_range(self):
-        """Get device spectral range (min, max) in nm"""
-        if not self.port:
-            raise ValueError("Already closed")
-
-        self.send_message(protocol.MessageType.GET_RANGE)
-        response = self.read_message(protocol.MessageType.GET_RANGE)
-        start_wavelength = response["start_wavelength"]
-        end_wavelength = response["end_wavelength"]
-
-        if not self.start_wavelength:
-            self.start_wavelength = start_wavelength
-
-        return [start_wavelength, end_wavelength]
-
-    def set_exposure_mode(self, mode: protocol.ExposureMode):
-        """Set device exposure mode"""
-        if not self.port:
-            raise ValueError("Already closed")
-
-        self.send_message(protocol.MessageType.SET_EXPOSURE_MODE, struct.pack("<B", mode.value))
-        response = self.read_message(protocol.MessageType.SET_EXPOSURE_MODE)
-        if response['success']:
-            self.exposure_mode = mode
-        return response['success']
-
-    def get_exposure_mode(self):
-        """Get device exposure mode"""
-        if not self.port:
-            raise ValueError("Already closed")
-
-        self.send_message(protocol.MessageType.GET_EXPOSURE_MODE)
-        response = self.read_message(protocol.MessageType.GET_EXPOSURE_MODE)
-        self.exposure_mode = response['exposure_mode']
-        return response["exposure_mode"]
-
-    def set_exposure_value(self, exposure_time_us: int):
-        """Set device exposure mode in microseconds"""
-        if not self.port:
-            raise ValueError("Already closed")
-
-        self.send_message(protocol.MessageType.SET_EXPOSURE_VALUE,
-                          struct.pack("<I", exposure_time_us))
-        response = self.read_message(protocol.MessageType.SET_EXPOSURE_VALUE)
-        return response['success']
-
-    def get_exposure_value(self):
-        """Get device exposure mode in microseconds"""
-        if not self.port:
-            raise ValueError("Already closed")
-
-        self.send_message(protocol.MessageType.GET_EXPOSURE_VALUE)
-        response = self.read_message(protocol.MessageType.GET_EXPOSURE_VALUE)
-        return response['exposure_time_us']
-
-    def get_basic_info(self):
-        """Get basic info about the device"""
-        if not self.port:
-            raise ValueError("Already closed")
-
-        return {
-                'device_id': self.get_device_id(),
-                'range': self.get_range(),
-                'exposure_mode': self.get_exposure_mode(),
-                'exposure_value': self.get_exposure_value(),
-                }
-
-    def stream_data(self, where_to):
-        """Stream spectral data to the where_to callback, until told to stop"""
-        if not self.start_wavelength:
-            spec_range = self.get_range()
-            self.start_wavelength = spec_range[0]
-
-        if not self.exposure_mode:
-            mode = self.get_exposure_mode()
-            self.exposure_mode = mode
-
-        self.send_message(protocol.MessageType.GET_DATA)
-
-        while True:
-            response = self.read_message()
-
-            data = {
-                'status': response['exposure_status'],
-                'exposure': self.exposure_mode,
-                'time': response["exposure_time"],
-                'spd': {
-                    self.start_wavelength + index: value
-                    for index, value in enumerate(response["spectrum"])
-                },
-                'ts': datetime.now(),
-            }
-
-            if where_to:
-                cont = where_to(data)
-                if not cont:
-                    break
-            else:
-                print('Data (no where_to):')
-                pprint.pprint(data)
-
-        # Terminate streaming
-        self.send_message(protocol.MessageType.STOP)
-        while self.read_message()["message_type"] != protocol.MessageType.STOP:
-            pass
-
-        return self
-
 if __name__ == "__main__":
     def parse_args():
         """Parse the arguments for the cli"""
@@ -679,7 +508,7 @@ if __name__ == "__main__":
 
     SPECTROMETER = None
     try:
-        SPECTROMETER = Spectrometer(argv.input_device)
+        SPECTROMETER = spectrometer.Spectrometer(argv.input_device)
     except Exception as spec_ex:
         print(f"Couldn't init spectrometer: {spec_ex}")
         sys.exit(1)
@@ -727,17 +556,7 @@ if __name__ == "__main__":
     print("Device basic info: ")
     pprint.pprint(basic_info)
 
-    init_data = {
-        'status': protocol.ExposureStatus.NORMAL,
-        'exposure': protocol.ExposureMode.MANUAL,
-        'time': 0,
-        'spd': {
-            k: 0.01
-            for k in range(basic_info['range'][0], basic_info['range'][1] + 1)
-        },
-        'ts': datetime.now(),
-    }
-    app = RefreshableSpectralPlot(init_data,
+    app = RefreshableSpectralPlot(spectrometer.Spectrum.initial(basic_info['range']),
                                   refresh_func=SPECTROMETER.stream_data,
                                   quick_graph=argv.quick_graph,
                                   oneshot=argv.oneshot,
