@@ -348,7 +348,7 @@ class RefreshableSpectralPlot:
             self.axes.clear()
             # Plot directly to the existing axes
             spd = self.data.to_spectral_distribution()
-            xy = XYZ_to_xy(sd_to_XYZ(spd))
+            xy_point = XYZ_to_xy(sd_to_XYZ(spd))
             kwargs = {
                     'annotate_kwargs': {'annotate':False},
                     'transparent_background': False,
@@ -358,13 +358,13 @@ class RefreshableSpectralPlot:
             match self.graph_type:
                 case GraphType.CIE1931:
                     plot_planckian_locus_in_chromaticity_diagram_CIE1931(
-                            {"X": xy}, title=spd.name, **kwargs)
+                            {"X": xy_point}, title=spd.name, **kwargs)
                 case GraphType.CIE1960UCS:
                     plot_planckian_locus_in_chromaticity_diagram_CIE1960UCS(
-                            {"X": xy}, title=spd.name, **kwargs)
+                            {"X": xy_point}, title=spd.name, **kwargs)
                 case GraphType.CIE1976UCS:
                     plot_planckian_locus_in_chromaticity_diagram_CIE1976UCS(
-                            {"X": xy}, title=spd.name, **kwargs)
+                            {"X": xy_point}, title=spd.name, **kwargs)
                 case GraphType.SPECTRUM:
                     self.axes.set_aspect('auto')
                     plt.title(f"{spd.display_name}")
@@ -399,11 +399,16 @@ class RefreshableSpectralPlot:
             tool_mgr.add_tool("refresh", RefreshTool, plot=self)
             tool_mgr.add_tool("oneshot", OneShotTool, plot=self)
 
-            tool_mgr.add_tool("line", GraphSelectTool, plot=self, graph_type=GraphType.LINE)
-            tool_mgr.add_tool("spectrum", GraphSelectTool, plot=self, graph_type=GraphType.SPECTRUM)
-            tool_mgr.add_tool("cie1931", GraphSelectTool, plot=self, graph_type=GraphType.CIE1931)
-            tool_mgr.add_tool("cie1960ucs", GraphSelectTool, plot=self, graph_type=GraphType.CIE1960UCS)
-            tool_mgr.add_tool("cie1976ucs", GraphSelectTool, plot=self, graph_type=GraphType.CIE1976UCS)
+            tool_mgr.add_tool("line", GraphSelectTool, plot=self,
+                              graph_type=GraphType.LINE)
+            tool_mgr.add_tool("spectrum", GraphSelectTool, plot=self,
+                              graph_type=GraphType.SPECTRUM)
+            tool_mgr.add_tool("cie1931", GraphSelectTool, plot=self,
+                              graph_type=GraphType.CIE1931)
+            tool_mgr.add_tool("cie1960ucs", GraphSelectTool, plot=self,
+                              graph_type=GraphType.CIE1960UCS)
+            tool_mgr.add_tool("cie1976ucs", GraphSelectTool, plot=self,
+                              graph_type=GraphType.CIE1976UCS)
 
             def avoid_untoggle(event):
                 if not isinstance(event.sender, ToolManager):
@@ -609,8 +614,8 @@ if __name__ == "__main__":
         def graph_type(value):
             try:
                 return GraphType[value.upper()]
-            except KeyError:
-                raise argparse.ArgumentTypeError(f"Invalid graph type {value}")
+            except KeyError as exc:
+                raise argparse.ArgumentTypeError(f"Invalid graph type {value}") from exc
 
         graph_opts_group.add_argument(
             '-t', '--graph_type',
