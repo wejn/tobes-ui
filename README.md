@@ -29,7 +29,8 @@ options:
                         Exposure time in milliseconds (100..5000) or 'auto' (default: auto)
   -q, --quick-graph     Enable quick (LINE) graph mode
   -t GRAPH_TYPE, --graph_type GRAPH_TYPE
-                        Graph type (LINE, SPECTRUM, CIE1931, CIE1960UCS, CIE1976UCS) (default SPECTRUM)
+                        Graph type (LINE, SPECTRUM, CIE1931, CIE1960UCS, CIE1976UCS, TM30)
+                        (default SPECTRUM)
   -o, --oneshot         One shot mode (single good capture)
   -f FILE_TEMPLATE, --file_template FILE_TEMPLATE
                         File template (without .ext) for data export (default:
@@ -46,7 +47,8 @@ which gives one-shot spectrum on auto exposure (from `/dev/ttyUSB0`):
 
 ![screenshot](pictures/oneshot.png)
 
-Or, if you prefer, [screenshot of the CIE1976UCS locus](pictures/oneshot-cie1976ucs.png).
+Or, if you prefer, [screenshot of the CIE1976UCS locus](pictures/oneshot-cie1976ucs.png)
+or [screenshot of the TM30 graph](pictures/oneshot-tm30.png).
 
 There are several icons on the toolbar:
 
@@ -59,6 +61,7 @@ There are several icons on the toolbar:
 - ![cie1931 locus](icons/cie1931_graph.png): CIE1931 locus graph (key: `3`)
 - ![cie1960UCS locus](icons/cie1960ucs_graph.png): CIE1960UCS locus graph (key: `6`)
 - ![cie1976UCS locus](icons/cie1976ucs_graph.png): CIE1976UCS locus graph (key: `7`)
+- ![tm30 graph](icons/tm30_graph.png): TM30 graph (key: `t`)
 - ![power](icons/power.png): Quit the app (key: `Esc`)
 
 ## Exported data

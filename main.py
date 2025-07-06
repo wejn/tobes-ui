@@ -26,6 +26,12 @@ from colour.plotting import (
 )
 from colour.colorimetry import sd_to_XYZ
 from colour.models import XYZ_to_xy
+from colour.plotting.tm3018.components import (
+    plot_colour_vector_graphic
+)
+from colour.quality import colour_fidelity_index_ANSIIESTM3018
+from colour.io import SpectralDistribution_IESTM2714
+
 
 import protocol
 import spectrometer
@@ -45,6 +51,7 @@ class GraphType(Enum):
     CIE1931 = 3
     CIE1960UCS = 4
     CIE1976UCS = 5
+    TM30 = 6
 
     def __str__(self):
         """Convert to readable string"""
@@ -82,6 +89,10 @@ class GraphSelectTool(ToolToggleBase):
                 self.description = 'CIE1976UCS locus graph (key: 7)'
                 self.default_keymap = ['7']
                 self.image = os.path.join(script_dir, "icons/cie1976ucs_graph")
+            case GraphType.TM30:
+                self.description = 'TM30 graph (key: t)'
+                self.default_keymap = ['t', 'T']
+                self.image = os.path.join(script_dir, "icons/tm30_graph")
             case _:
                 raise ValueError(f'weird graph type: {graph_type}')
 
@@ -230,6 +241,7 @@ class RefreshableSpectralPlot:
         self.data_status = 'initializing'
         self.graph_type = graph_type
         self.file_template = file_template
+        self.error_text = None
 
     WARNINGS_TO_IGNORE = [
             "Treat the new Tool classes introduced in v1.5 as experimental",
@@ -242,6 +254,7 @@ class RefreshableSpectralPlot:
             "Key c changed from back to spectrum",
             "Attempting to set identical low and high ylims makes transformation"+
                 " singular; automatically expanding.",
+            '"OpenImageIO" related API features are not available, switching to "Imageio"!',
     ]
 
     def start_plot(self):
@@ -345,6 +358,10 @@ class RefreshableSpectralPlot:
     def update_plot(self):
         """Update plot in main thread"""
         try:
+            # Kill existing error message
+            if self.error_text:
+                self.error_text.remove()
+                self.error_text = None
             # Clear the existing axes instead of the whole figure
             self.axes.clear()
             # Plot directly to the existing axes
@@ -366,6 +383,17 @@ class RefreshableSpectralPlot:
                 case GraphType.CIE1976UCS:
                     plot_planckian_locus_in_chromaticity_diagram_CIE1976UCS(
                             {"X": xy_point}, title=spd.name, **kwargs)
+                case GraphType.TM30:
+                    spec = colour_fidelity_index_ANSIIESTM3018(spd, True)
+                    if spec.R_f < 50:
+                        self.axes.axis('off')
+                        self.error_text = self.fig.text(
+                                0.5, 0.5,
+                                f'Error: $R_f$ too low: {spec.R_f:.2f} (must be $\geq 50$)',
+                                ha='center', va='center', fontsize=16, color='red')
+
+                    else:
+                        plot_colour_vector_graphic(spec, **kwargs)
                 case GraphType.SPECTRUM:
                     self.axes.set_aspect('auto')
                     plt.title(f"{spd.display_name}")
@@ -410,6 +438,8 @@ class RefreshableSpectralPlot:
                               graph_type=GraphType.CIE1960UCS)
             tool_mgr.add_tool("cie1976ucs", GraphSelectTool, plot=self,
                               graph_type=GraphType.CIE1976UCS)
+            tool_mgr.add_tool("tm30", GraphSelectTool, plot=self,
+                              graph_type=GraphType.TM30)
 
             def avoid_untoggle(event):
                 if isinstance(event.sender, ToolManager):
@@ -429,6 +459,7 @@ class RefreshableSpectralPlot:
             tool_mgr.toolmanager_connect("tool_trigger_cie1931", avoid_untoggle)
             tool_mgr.toolmanager_connect("tool_trigger_cie1960ucs", avoid_untoggle)
             tool_mgr.toolmanager_connect("tool_trigger_cie1976ucs", avoid_untoggle)
+            tool_mgr.toolmanager_connect("tool_trigger_tm30", avoid_untoggle)
 
             tool_mgr.add_tool("power", PowerTool, plot=self)
             tool_mgr.add_tool("plot_save", PlotSaveTool, plot=self,
@@ -445,6 +476,7 @@ class RefreshableSpectralPlot:
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("cie1931"), "graph")
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("cie1960ucs"), "graph")
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("cie1976ucs"), "graph")
+            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("tm30"), "graph")
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("power"), "power")
 
     def _setup_cursor(self):
