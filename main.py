@@ -638,16 +638,16 @@ if __name__ == "__main__":
         # Required positional argument: input file
         parser.add_argument('input_device', help="Spectrometer device (/dev/ttyUSB0)")
 
-        # Exposure: either 'auto' or integer milliseconds
+        # Exposure: either 'auto' or number of milliseconds
         def exposure_type(value):
-            err = "Exposure must be 'auto' or a positive integer (100..5000)"
+            err = "Exposure must be 'auto' or a positive number between 0.1 and 5000"
             if value == 'auto':
                 return value
             try:
-                ivalue = int(value)
-                if ivalue < 100 or ivalue > 5000:
+                fvalue = float(value)
+                if fvalue < 0.1 or fvalue > 5000: # Minimum value accepted appears to be 0.1 ms
                     raise argparse.ArgumentTypeError(err)
-                return ivalue
+                return fvalue
             except ValueError as exc:
                 raise argparse.ArgumentTypeError(err) from exc
 
@@ -655,7 +655,7 @@ if __name__ == "__main__":
             '-e', '--exposure',
             type=exposure_type,
             default='auto',
-            help="Exposure time in milliseconds (100..5000) or 'auto' (default: auto)"
+            help="Exposure time in milliseconds (0.1-5000) or 'auto' (default: auto)"
         )
 
         graph_opts_group = parser.add_mutually_exclusive_group()
@@ -732,9 +732,10 @@ if __name__ == "__main__":
                   is_ok(SPECTROMETER.set_exposure_mode(protocol.ExposureMode.MANUAL)))
         else:
             print('Spectrometer already in manual mode.')
-        if basic_info['exposure_value'] != argv.exposure * 1000:
+        exposure_time_us = int(argv.exposure * 1000)
+        if basic_info['exposure_value'] != exposure_time_us:
             print('Setting exposure value:',
-                  is_ok(SPECTROMETER.set_exposure_value(argv.exposure * 1000)))
+                  is_ok(SPECTROMETER.set_exposure_value(exposure_time_us)))
         else:
             print(f'Spectrometer already has exposure value of {argv.exposure} ms.')
 
