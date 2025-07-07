@@ -399,7 +399,15 @@ class RefreshableSpectralPlot:
                 case GraphType.SPECTRUM:
                     self.axes.set_aspect('auto')
                     plt.title(f"{spd.display_name}")
-                    colour.plotting.plot_single_sd(spd, **kwargs)
+                    cmfs_data = {}
+                    cmfs_source = colour.MSDS_CMFS["CIE 1931 2 Degree Standard Observer"]
+                    for wavelength in range(
+                        self.data.wavelength_range.start,
+                        self.data.wavelength_range.stop + 1
+                    ):
+                        cmfs_data[wavelength] = cmfs_source[wavelength]
+                    cmfs = colour.MultiSpectralDistributions(cmfs_data)
+                    colour.plotting.plot_single_sd(spd, cmfs, **kwargs)
                     plt.xlabel("Wavelength $\\lambda$ (nm)")
                     plt.ylabel("Spectral Distribution ($W/m^2$)")
                 case _:
