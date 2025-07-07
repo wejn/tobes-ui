@@ -270,6 +270,7 @@ class RefreshableSpectralPlot:
         self.axes.set_aspect('auto')
         self._setup_cursor()
         self.update_status()
+        self.fig.canvas.mpl_connect('close_event', self._on_close)
 
         plt.ion()
         plt.show(block=False)
@@ -609,6 +610,10 @@ class RefreshableSpectralPlot:
             self.update_status()
         except Exception:
             pass
+
+    def _on_close(self, _event):
+        """Handle window being closed"""
+        self.stop()
 
     def stop(self):
         """Stop the app (clean up)"""
