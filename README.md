@@ -16,7 +16,9 @@ and improved (beyond recognition?).
 
 ```
 $ python3 main.py -h
-usage: main.py [-h] [-e EXPOSURE] [-q | -t GRAPH_TYPE] [-o] [-f FILE_TEMPLATE] input_device
+usage: main.py [-h] [-e EXPOSURE] [-q | -t GRAPH_TYPE] [-o | -n] [-f FILE_TEMPLATE]
+               [-d DATA]
+               input_device
 
 TorchBearer spectrometer tool
 
@@ -32,9 +34,11 @@ options:
                         Graph type (LINE, SPECTRUM, CIE1931, CIE1960UCS, CIE1976UCS, TM30)
                         (default SPECTRUM)
   -o, --oneshot         One shot mode (single good capture)
+  -n, --no-refresh      Start without refresh
   -f FILE_TEMPLATE, --file_template FILE_TEMPLATE
                         File template (without .ext) for data export (default:
                         spectrum-{timestamp_full}{graph_type})
+  -d DATA, --data DATA  JSON dump file to load for viewing (disables data refresh)
 ```
 
 My typical use is:
