@@ -40,9 +40,6 @@ import spectrometer
 # pylint: disable=too-many-instance-attributes
 # pylint: disable=too-many-arguments
 
-# Remove all tools by default (ouch)
-default_toolbar_tools.clear()
-
 
 class GraphType(Enum):
     """Defines graph type to display"""
@@ -703,6 +700,9 @@ class RefreshableSpectralPlot:
 
 
 if __name__ == "__main__":
+    # Remove all tools by default (ouch)
+    default_toolbar_tools.clear()
+
     def parse_args():
         """Parse the arguments for the cli"""
         parser = argparse.ArgumentParser(description="TorchBearer spectrometer tool")
