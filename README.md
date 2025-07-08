@@ -18,7 +18,7 @@ and improved (beyond recognition?).
 $ python3 main.py -h
 usage: main.py [-h] [-e EXPOSURE] [-q | -t GRAPH_TYPE] [-o | -n] [-f FILE_TEMPLATE]
                [-d DATA]
-               input_device
+               [input_device]
 
 TorchBearer spectrometer tool
 
@@ -28,7 +28,7 @@ positional arguments:
 options:
   -h, --help            show this help message and exit
   -e EXPOSURE, --exposure EXPOSURE
-                        Exposure time in milliseconds (100..5000) or 'auto' (default: auto)
+                        Exposure time in milliseconds (0.1-5000) or 'auto' (default: auto)
   -q, --quick-graph     Enable quick (LINE) graph mode
   -t GRAPH_TYPE, --graph_type GRAPH_TYPE
                         Graph type (LINE, SPECTRUM, CIE1931, CIE1960UCS, CIE1976UCS, TM30)
