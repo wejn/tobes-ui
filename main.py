@@ -694,8 +694,9 @@ if __name__ == "__main__":
         """Parse the arguments for the cli"""
         parser = argparse.ArgumentParser(description="TorchBearer spectrometer tool")
 
-        # Required positional argument: input file
-        parser.add_argument('input_device', help="Spectrometer device (/dev/ttyUSB0)")
+        # Somewhat optional argument: input file
+        parser.add_argument('input_device', nargs='?', default=None,
+                            help="Spectrometer device (/dev/ttyUSB0)")
 
         # Exposure: either 'auto' or integer milliseconds
         def exposure_type(value):
@@ -808,6 +809,10 @@ if __name__ == "__main__":
         if argv.data:
             meter = None
         else:
+            if not argv.input_device:
+                print("In non-viewer mode, you MUST specify input device (/dev/ttyUSB0 maybe?)")
+                sys.exit(1)
+
             try:
                 meter = spectrometer.Spectrometer(argv.input_device)
             except Exception as spec_ex:
