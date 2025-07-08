@@ -56,17 +56,19 @@ or [screenshot of the TM30 graph](pictures/oneshot-tm30.png).
 
 There are several icons on the toolbar:
 
-- ![save](icons/plot_save.png): Saves rendered graph as png (key: `S`)
-- ![download](icons/raw_save.png): Save raw data as json (key: `D`)
-- ![refresh](icons/refresh.png): Keep refreshing data (key: `R`)
-- ![oneshot](icons/oneshot.png): One good acquisition (key: `1` or `O`)
-- ![line graph](icons/line_graph.png): Line graph (key: `Q`, `L`)
-- ![spectral graph](icons/spectrum_graph.png): Spectrum graph _(slow to draw)_ (key: `C`)
-- ![cie1931 locus](icons/cie1931_graph.png): CIE1931 locus graph (key: `3`)
-- ![cie1960UCS locus](icons/cie1960ucs_graph.png): CIE1960UCS locus graph (key: `6`)
-- ![cie1976UCS locus](icons/cie1976ucs_graph.png): CIE1976UCS locus graph (key: `7`)
-- ![tm30 graph](icons/tm30_graph.png): TM30 graph (key: `t`)
-- ![power](icons/power.png): Quit the app (key: `Esc`)
+| Icon | Key | Explanation |
+|:---|:---:|:---|
+| ![save](icons/plot_save.png) | `S` | Saves rendered graph as png |
+| ![download](icons/raw_save.png) | `D` | Save raw data as json |
+| ![refresh](icons/refresh.png) | `R` | Keep refreshing data |
+| ![oneshot](icons/oneshot.png) | `1`, `O` | One good acquisition |
+| ![line graph](icons/line_graph.png) | `Q`, `L` | Line graph |
+| ![spectral graph](icons/spectrum_graph.png) | `C` | Spectrum graph _(slow to draw)_ |
+| ![cie1931 locus](icons/cie1931_graph.png) | `3` | CIE1931 locus graph |
+| ![cie1960UCS locus](icons/cie1960ucs_graph.png) | `6` | CIE1960UCS locus graph |
+| ![cie1976UCS locus](icons/cie1976ucs_graph.png) | `7` | CIE1976UCS locus graph |
+| ![tm30 graph](icons/tm30_graph.png) | `T` | TM30 graph |
+| ![power](icons/power.png) | `Esc`, `Ctrl+Q` | Quit the app |
 
 ## Exported data
 
