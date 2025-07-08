@@ -4,6 +4,7 @@ import argparse
 import atexit
 from datetime import datetime
 from enum import Enum
+import json
 import os
 import pprint
 import queue
@@ -51,6 +52,18 @@ class GraphType(Enum):
     CIE1960UCS = 4
     CIE1976UCS = 5
     TM30 = 6
+
+    def __str__(self):
+        """Convert to readable string"""
+        return str(self.name).lower()
+
+
+class RefreshType(Enum):
+    """Defines active refresh"""
+    DISABLED = 1
+    NONE = 2
+    ONESHOT = 3
+    CONTINUOUS = 4
 
     def __str__(self):
         """Convert to readable string"""
@@ -173,12 +186,12 @@ class OneShotTool(ToolBase):
         super().__init__(*args, **kwargs)
 
     def trigger(self, *_args, **_kwargs):
-        self.plot.trigger_oneshot()
-
         tool_mgr = self.plot.fig.canvas.manager.toolmanager
         refresh = tool_mgr.get_tool("refresh", warn=False)
         if refresh and refresh.toggled:
             tool_mgr.trigger_tool('refresh')
+
+        self.plot.trigger_oneshot()
 
 
 class PowerTool(ToolBase):
@@ -203,22 +216,24 @@ class RefreshTool(ToolToggleBase):
 
     def __init__(self, *args, plot, **kwargs):
         self.plot = plot
-        self.default_toggled = self.plot.keep_refreshing
+        self.default_toggled = self.plot.refresh_type == RefreshType.CONTINUOUS
         script_dir = os.path.dirname(os.path.abspath(__file__))
         self.image = os.path.join(script_dir, "icons/refresh")
         super().__init__(*args, **kwargs)
 
     def enable(self, event=None):
-        self.plot.set_refresh(True)
+        if self.plot.refresh_type != RefreshType.DISABLED:
+            self.plot.refresh_type = RefreshType.CONTINUOUS
 
     def disable(self, event=None):
-        self.plot.set_refresh(False)
+        if self.plot.refresh_type != RefreshType.DISABLED:
+            self.plot.refresh_type = RefreshType.NONE
 
 
 class RefreshableSpectralPlot:
     """Refreshable plot (graph); basically main window of the app"""
     def __init__(self, initial_data, refresh_func=None, graph_type=GraphType.SPECTRUM,
-                 oneshot=False, file_template=None):
+                 refresh_type=RefreshType.DISABLED, file_template=None):
         self.data = initial_data
         self.running = False
         self.thread = None
@@ -231,8 +246,7 @@ class RefreshableSpectralPlot:
         self.last_mouse_pos = None  # Store last mouse position
         self.cursor_visible = False  # Track cursor visibility state
         self.refresh_func = refresh_func
-        self.keep_refreshing = not oneshot
-        self.oneshot = oneshot
+        self.refresh_type = refresh_type
         self.data_refresh_issue = None
         self.graph_type = graph_type
         self.file_template = file_template
@@ -320,16 +334,20 @@ class RefreshableSpectralPlot:
         finally:
             self.stop()
 
+    def _should_refresh(self):
+        """Determines whether refresh is enabled"""
+        return self.running and self.refresh_type in [RefreshType.ONESHOT, RefreshType.CONTINUOUS]
+
     def _refresh_cb(self, data):
         """Refresh callback that receives new spectral data, returns if further refreshes wanted"""
-        if self.keep_refreshing or self.oneshot:
+        if self._should_refresh():
             now_str = str(datetime.now()).split(' ')[1]
             match data.status:
                 case protocol.ExposureStatus.NORMAL:
                     self.update_queue.put(data)
                     self.data_refresh_issue = None
-                    if self.oneshot:
-                        self.oneshot = False
+                    if self.refresh_type == RefreshType.ONESHOT:
+                        self.refresh_type = RefreshType.NONE
 
                 case protocol.ExposureStatus.UNDER:
                     self.data_refresh_issue = f'under-exposed @ {data.time:.01f} ({now_str})'
@@ -340,20 +358,22 @@ class RefreshableSpectralPlot:
                 case _:
                     self.data_refresh_issue = f'error: {data.status} ({now_str})'
 
-        return self.running and (self.keep_refreshing or self.oneshot)
+        return self._should_refresh()
 
     def _data_loop(self):
         """Background thread that generates new data throuh refresh func"""
         while self.running:
             try:
                 time.sleep(1)
-                if not self.keep_refreshing and not self.oneshot:
+                if not self._should_refresh():
                     continue
 
                 if self.refresh_func:
                     self.refresh_func(self._refresh_cb)
                 else:
-                    print("No refresh func?!")
+                    # Shouldn't happen
+                    self.refresh_type = RefreshType.DISABLED
+                    self.dirty = True
             except Exception:
                 # If we can't get new data, just continue
                 if self.running:
@@ -369,12 +389,9 @@ class RefreshableSpectralPlot:
 
     def trigger_oneshot(self):
         """Trigger oneshot refresh of the data"""
-        self.oneshot = True
-        self._make_overlay('One-shot refreshing...')
-
-    def set_refresh(self, keep_refreshing):
-        """Set whether we should refresh data"""
-        self.keep_refreshing = keep_refreshing
+        if self.refresh_type != RefreshType.DISABLED:
+            self.refresh_type = RefreshType.ONESHOT
+            self._make_overlay('One-shot refreshing...')
 
     def switch_graph(self, graph_type: GraphType):
         """Switch graph to given type"""
@@ -472,7 +489,7 @@ class RefreshableSpectralPlot:
                 self._draw_graph()
             else:
                 self.axes.set_axis_off()
-                if self.keep_refreshing or self.oneshot:
+                if self._should_refresh():
                     self._make_overlay('Loading data...')
                 else:
                     self._make_overlay('No data.')
@@ -487,8 +504,9 @@ class RefreshableSpectralPlot:
         """Add custom buttons to the toolbar"""
         if self.fig and hasattr(self.fig.canvas, 'manager') and self.fig.canvas.manager.toolmanager:
             tool_mgr = self.fig.canvas.manager.toolmanager
-            tool_mgr.add_tool("refresh", RefreshTool, plot=self)
-            tool_mgr.add_tool("oneshot", OneShotTool, plot=self)
+            if not self.refresh_type == RefreshType.DISABLED:
+                tool_mgr.add_tool("refresh", RefreshTool, plot=self)
+                tool_mgr.add_tool("oneshot", OneShotTool, plot=self)
 
             tool_mgr.add_tool("line", GraphSelectTool, plot=self,
                               graph_type=GraphType.LINE)
@@ -531,8 +549,9 @@ class RefreshableSpectralPlot:
 
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("plot_save"), "export")
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("raw_save"), "export")
-            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("refresh"), "refresh")
-            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("oneshot"), "refresh")
+            if not self.refresh_type == RefreshType.DISABLED:
+                self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("refresh"), "refresh")
+                self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("oneshot"), "refresh")
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("line"), "graph")
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("spectrum"), "graph")
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("cie1931"), "graph")
@@ -732,10 +751,18 @@ if __name__ == "__main__":
             help=f"Graph type ({', '.join([e.name for e in GraphType])}) (default SPECTRUM)"
         )
 
-        parser.add_argument(
+        refresh_opts_group = parser.add_mutually_exclusive_group()
+
+        refresh_opts_group.add_argument(
             '-o', '--oneshot',
             action='store_true',
             help="One shot mode (single good capture)"
+        )
+
+        refresh_opts_group.add_argument(
+            '-n', '--no-refresh',
+            action='store_true',
+            help="Start without refresh"
         )
 
         default_template = 'spectrum-{timestamp_full}{graph_type}'
@@ -745,65 +772,89 @@ if __name__ == "__main__":
             help=f"File template (without .ext) for data export (default: {default_template})"
         )
 
+        parser.add_argument(
+            '-d', '--data',
+            default=None,
+            help='JSON dump file to load for viewing (disables data refresh)'
+        )
+
         return parser.parse_args()
 
     argv = parse_args()
 
-    try:
-        SPECTROMETER = spectrometer.Spectrometer(argv.input_device)
-    except Exception as spec_ex:
-        print(f"Couldn't init spectrometer: {spec_ex}")
-        sys.exit(1)
-
-    atexit.register(SPECTROMETER.cleanup)
-
-    def signal_handler(_signum, _frame):
-        """Signal handler to trigger cleanup"""
-        print("\nReceived interrupt signal, shutting down gracefully...")
-        SPECTROMETER.cleanup()
-        sys.exit(0)
-
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
-
-    basic_info = SPECTROMETER.get_basic_info()
-    if not basic_info['device_id'].startswith('Y'):
-        print(f'Warning: only tested on Y21B*, this is {basic_info["device_id"]}')
-
-    def is_ok(result):
-        """Bool to string with extra nonsense on top, pylint"""
-        return "success" if result else "failure"
-    if argv.exposure == 'auto':
-        if basic_info['exposure_mode'] != protocol.ExposureMode.AUTOMATIC:
-            print('Setting auto mode:',
-                  is_ok(SPECTROMETER.set_exposure_mode(protocol.ExposureMode.AUTOMATIC)))
-        else:
-            print('Spectrometer already in auto mode.')
+    if argv.data:
+        SPECTROMETER = None
     else:
-        if basic_info['exposure_mode'] != protocol.ExposureMode.MANUAL:
-            print('Setting manual mode:',
-                  is_ok(SPECTROMETER.set_exposure_mode(protocol.ExposureMode.MANUAL)))
-        else:
-            print('Spectrometer already in manual mode.')
-        exposure_time_us = int(argv.exposure * 1000)
-        if basic_info['exposure_value'] != exposure_time_us:
-            print('Setting exposure value:',
-                  is_ok(SPECTROMETER.set_exposure_value(exposure_time_us)))
-        else:
-            print(f'Spectrometer already has exposure value of {argv.exposure} ms.')
+        try:
+            SPECTROMETER = spectrometer.Spectrometer(argv.input_device)
+        except Exception as spec_ex:
+            print(f"Couldn't init spectrometer: {spec_ex}")
+            sys.exit(1)
 
-    print("Exposure mode:", SPECTROMETER.get_exposure_mode())
-    print("Exposure value:", SPECTROMETER.get_exposure_value(), 'μs')
+        atexit.register(SPECTROMETER.cleanup)
 
-    basic_info = SPECTROMETER.get_basic_info()
-    print("Device basic info: ")
-    pprint.pprint(basic_info)
+        def signal_handler(_signum, _frame):
+            """Signal handler to trigger cleanup"""
+            print("\nReceived interrupt signal, shutting down gracefully...")
+            SPECTROMETER.cleanup()
+            sys.exit(0)
+
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
+
+        basic_info = SPECTROMETER.get_basic_info()
+        if not basic_info['device_id'].startswith('Y'):
+            print(f'Warning: only tested on Y21B*, this is {basic_info["device_id"]}')
+
+        def is_ok(result):
+            """Bool to string with extra nonsense on top, pylint"""
+            return "success" if result else "failure"
+        if argv.exposure == 'auto':
+            if basic_info['exposure_mode'] != protocol.ExposureMode.AUTOMATIC:
+                print('Setting auto mode:',
+                      is_ok(SPECTROMETER.set_exposure_mode(protocol.ExposureMode.AUTOMATIC)))
+            else:
+                print('Spectrometer already in auto mode.')
+        else:
+            if basic_info['exposure_mode'] != protocol.ExposureMode.MANUAL:
+                print('Setting manual mode:',
+                      is_ok(SPECTROMETER.set_exposure_mode(protocol.ExposureMode.MANUAL)))
+            else:
+                print('Spectrometer already in manual mode.')
+            exposure_time_us = int(argv.exposure * 1000)
+            if basic_info['exposure_value'] != exposure_time_us:
+                print('Setting exposure value:',
+                      is_ok(SPECTROMETER.set_exposure_value(exposure_time_us)))
+            else:
+                print(f'Spectrometer already has exposure value of {argv.exposure} ms.')
+
+        print("Exposure mode:", SPECTROMETER.get_exposure_mode())
+        print("Exposure value:", SPECTROMETER.get_exposure_value(), 'μs')
+
+        basic_info = SPECTROMETER.get_basic_info()
+        print("Device basic info: ")
+        pprint.pprint(basic_info)
+
+    data = None
+    if argv.data:
+        refresh = RefreshType.DISABLED
+        try:
+            data = spectrometer.Spectrum.from_file(argv.data)
+        except (OSError, json.decoder.JSONDecodeError) as exc:
+            print(f"File '{argv.data}' couldn't be parsed: {exc}")
+            sys.exit(1)
+    elif argv.no_refresh:
+        refresh = RefreshType.NONE
+    elif argv.oneshot:
+        refresh = RefreshType.ONESHOT
+    else:
+        refresh = RefreshType.CONTINUOUS
 
     app = RefreshableSpectralPlot(
-            None,
-            refresh_func=SPECTROMETER.stream_data,
+            data,
+            refresh_func=SPECTROMETER.stream_data if SPECTROMETER else None,
             graph_type=GraphType.LINE if argv.quick_graph else argv.graph_type,
-            oneshot=argv.oneshot,
+            refresh_type=refresh,
             file_template=argv.file_template)
     app.start_plot()
 
