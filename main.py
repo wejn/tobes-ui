@@ -2,6 +2,7 @@
 
 import argparse
 import atexit
+from datetime import datetime
 from enum import Enum
 import os
 import pprint
@@ -232,7 +233,7 @@ class RefreshableSpectralPlot:
         self.refresh_func = refresh_func
         self.keep_refreshing = not oneshot
         self.oneshot = oneshot
-        self.data_status = 'initializing'
+        self.data_refresh_issue = None
         self.graph_type = graph_type
         self.file_template = file_template
         self.error_text = None
@@ -299,14 +300,15 @@ class RefreshableSpectralPlot:
                     self.data = new_data
                     self.dirty = True
                 except queue.Empty:
-                    if not self.keep_refreshing and not self.oneshot:
-                        self.data_status = 'idle'
+                    pass
 
                 # Safely handle matplotlib events
                 try:
                     if self.dirty:
                         self.dirty = False
                         self.update_plot()
+                    else:
+                        self.update_status()
                     plt.pause(0.01)
                 except Exception as ex:
                     # Catch any matplotlib/Tkinter exceptions during shutdown
@@ -321,21 +323,22 @@ class RefreshableSpectralPlot:
     def _refresh_cb(self, data):
         """Refresh callback that receives new spectral data, returns if further refreshes wanted"""
         if self.keep_refreshing or self.oneshot:
+            now_str = str(datetime.now()).split(' ')[1]
             match data.status:
                 case protocol.ExposureStatus.NORMAL:
                     self.update_queue.put(data)
-                    self.data_status = 'ok'
+                    self.data_refresh_issue = None
                     if self.oneshot:
                         self.oneshot = False
 
                 case protocol.ExposureStatus.UNDER:
-                    self.data_status = 'under-exposed'
+                    self.data_refresh_issue = f'under-exposed @ {data.time:.01f} ({now_str})'
 
                 case protocol.ExposureStatus.OVER:
-                    self.data_status = 'over-exposed'
+                    self.data_refresh_issue = f'over-exposed @ {data.time:.01f} ({now_str})'
 
                 case _:
-                    self.data_status = 'error: ' + str(data.status)
+                    self.data_refresh_issue = f'error: {data.status} ({now_str})'
 
         return self.running and (self.keep_refreshing or self.oneshot)
 
@@ -610,16 +613,13 @@ class RefreshableSpectralPlot:
         toolbar = self.fig.canvas.manager.toolbar
         status = []
 
-        if self.data_status and self.data_status == 'ok':
-            stamp = self.data.ts.astimezone().strftime('%Y-%m-%d %H:%M:%S %Z')
-            status.append(f'acquisition: {self.data_status} ({stamp})')
-        else:
-            status.append(f'acquisition: {self.data_status}')
+        if self.data_refresh_issue:
+            status.append(self.data_refresh_issue)
 
         if self.data:
             status.append(f'exp: {self.data.time} ms')
 
-        toolbar.set_message(', '.join(status))
+        toolbar.set_message(' | '.join(status))
 
     def _on_mouse_move(self, event):
         """Handle mouse movement"""
@@ -800,7 +800,7 @@ if __name__ == "__main__":
     pprint.pprint(basic_info)
 
     app = RefreshableSpectralPlot(
-            spectrometer.Spectrum.initial(basic_info['range']),
+            None,
             refresh_func=SPECTROMETER.stream_data,
             graph_type=GraphType.LINE if argv.quick_graph else argv.graph_type,
             oneshot=argv.oneshot,

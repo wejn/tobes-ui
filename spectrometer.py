@@ -63,26 +63,6 @@ class Spectrum(NamedTuple):
             ts=datetime.fromtimestamp(data["ts"])
         )
 
-    @classmethod
-    def initial(cls, for_range: range) -> "Spectrum":
-        """Get initial (fake) spectrum, to bootstrap the refreshable graph"""
-        new_range = range(for_range.start, for_range.stop + 1) # sigh
-        return cls(
-            status=protocol.ExposureStatus.NORMAL,
-            exposure=protocol.ExposureMode.MANUAL,
-            time=0,
-            spd={
-                k: 0
-                for k in new_range
-            },
-            wavelength_range=for_range,
-            spd_raw={
-                0
-                for k in new_range
-            },
-            ts=datetime.now()
-        )
-
 
 class Spectrometer:
     """Handles the spectrometer (wraps the `protocol`)"""
