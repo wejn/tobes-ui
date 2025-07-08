@@ -279,6 +279,7 @@ class RefreshableSpectralPlot:
         self._make_overlay('Initializing...')
 
         self.update_status()
+        self.fig.canvas.mpl_connect('close_event', self._on_close)
 
         plt.ion()
         plt.show(block=False)
@@ -442,7 +443,15 @@ class RefreshableSpectralPlot:
             case GraphType.SPECTRUM:
                 self.axes.set_aspect('auto')
                 plt.title(f"{spd.display_name}")
-                colour.plotting.plot_single_sd(spd, **kwargs)
+                cmfs_data = {}
+                cmfs_source = colour.MSDS_CMFS["CIE 1931 2 Degree Standard Observer"]
+                for wavelength in range(
+                    self.data.wavelength_range.start,
+                    self.data.wavelength_range.stop + 1
+                ):
+                    cmfs_data[wavelength] = cmfs_source[wavelength]
+                cmfs = colour.MultiSpectralDistributions(cmfs_data)
+                colour.plotting.plot_single_sd(spd, cmfs, **kwargs)
                 plt.xlabel("Wavelength $\\lambda$ (nm)")
                 plt.ylabel("Spectral Distribution ($W/m^2$)")
             case _:
@@ -671,6 +680,10 @@ class RefreshableSpectralPlot:
         except Exception:
             pass
 
+    def _on_close(self, _event):
+        """Handle window being closed"""
+        self.stop()
+
     def stop(self):
         """Stop the app (clean up)"""
         self.running = False
@@ -698,16 +711,16 @@ if __name__ == "__main__":
         parser.add_argument('input_device', nargs='?', default=None,
                             help="Spectrometer device (/dev/ttyUSB0)")
 
-        # Exposure: either 'auto' or integer milliseconds
+        # Exposure: either 'auto' or number of milliseconds
         def exposure_type(value):
-            err = "Exposure must be 'auto' or a positive integer (100..5000)"
+            err = "Exposure must be 'auto' or a positive number between 0.1 and 5000"
             if value == 'auto':
                 return value
             try:
-                ivalue = int(value)
-                if ivalue < 100 or ivalue > 5000:
+                fvalue = float(value)
+                if fvalue < 0.1 or fvalue > 5000: # Minimum value accepted appears to be 0.1 ms
                     raise argparse.ArgumentTypeError(err)
-                return ivalue
+                return fvalue
             except ValueError as exc:
                 raise argparse.ArgumentTypeError(err) from exc
 
@@ -715,7 +728,7 @@ if __name__ == "__main__":
             '-e', '--exposure',
             type=exposure_type,
             default='auto',
-            help="Exposure time in milliseconds (100..5000) or 'auto' (default: auto)"
+            help="Exposure time in milliseconds (0.1-5000) or 'auto' (default: auto)"
         )
 
         graph_opts_group = parser.add_mutually_exclusive_group()
@@ -788,9 +801,10 @@ if __name__ == "__main__":
                       is_ok(meter.set_exposure_mode(protocol.ExposureMode.MANUAL)))
             else:
                 print('Spectrometer already in manual mode.')
-            if basic_info['exposure_value'] != argv.exposure * 1000:
+            exposure_time_us = int(argv.exposure * 1000)
+            if basic_info['exposure_value'] != exposure_time_us:
                 print('Setting exposure value:',
-                      is_ok(meter.set_exposure_value(argv.exposure * 1000)))
+                      is_ok(meter.set_exposure_value(exposure_time_us)))
             else:
                 print(f'Spectrometer already has exposure value of {argv.exposure} ms.')
 
