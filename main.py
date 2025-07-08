@@ -16,6 +16,7 @@ import colour
 from colour.colorimetry import sd_to_XYZ
 from colour.models import XYZ_to_xy
 from colour.plotting import (
+    CONSTANTS_COLOUR_STYLE,
     plot_planckian_locus_in_chromaticity_diagram_CIE1931,
     plot_planckian_locus_in_chromaticity_diagram_CIE1960UCS,
     plot_planckian_locus_in_chromaticity_diagram_CIE1976UCS,
@@ -96,8 +97,7 @@ class GraphSelectTool(ToolToggleBase):
         super().__init__(*args, **kwargs)
 
     def enable(self, event=None):
-        self.plot.graph_type = self.graph_type
-        self.plot.update_plot()
+        self.plot.switch_graph(self.graph_type)
 
     def disable(self, event=None):
         pass
@@ -172,8 +172,7 @@ class OneShotTool(ToolBase):
         super().__init__(*args, **kwargs)
 
     def trigger(self, *_args, **_kwargs):
-        print('Oneshot refresh...')
-        self.plot.oneshot = True
+        self.plot.trigger_oneshot()
 
         tool_mgr = self.plot.fig.canvas.manager.toolmanager
         refresh = tool_mgr.get_tool("refresh", warn=False)
@@ -209,12 +208,10 @@ class RefreshTool(ToolToggleBase):
         super().__init__(*args, **kwargs)
 
     def enable(self, event=None):
-        self.plot.keep_refreshing = True
-        self.plot.update_status()
+        self.plot.set_refresh(True)
 
     def disable(self, event=None):
-        self.plot.keep_refreshing = False
-        self.plot.update_status()
+        self.plot.set_refresh(False)
 
 
 class RefreshableSpectralPlot:
@@ -239,6 +236,8 @@ class RefreshableSpectralPlot:
         self.graph_type = graph_type
         self.file_template = file_template
         self.error_text = None
+        self.overlay_text = None
+        self.dirty = False
 
     WARNINGS_TO_IGNORE = [
             "Treat the new Tool classes introduced in v1.5 as experimental",
@@ -262,20 +261,18 @@ class RefreshableSpectralPlot:
         for warning in self.WARNINGS_TO_IGNORE:
             warnings.filterwarnings("ignore", warning)
         plt.rcParams['toolbar'] = 'toolmanager'
-        spd = self.data.to_spectral_distribution()
-        self.fig, self.axes = colour.plotting.plot_single_sd(spd, show=False,
-                                                             transparent_background=False)
-        plt.xlabel("Wavelength $\\lambda$ (nm)")
-        plt.ylabel("Spectral Distribution ($W/m^2$)")
-        self.axes.set_aspect('auto')
-        self._setup_cursor()
+
+        self.fig, self.axes = plt.subplots()
+        self.axes.set_axis_off()
+        self._make_overlay('Initializing...')
+
         self.update_status()
 
         plt.ion()
         plt.show(block=False)
-        self.fig.canvas.draw()
-
         self._add_toolbar_buttons()
+
+        plt.pause(0.1)
 
         # Start background data generation
         self.running = True
@@ -299,13 +296,16 @@ class RefreshableSpectralPlot:
                     trim_queue()
                     new_data = self.update_queue.get_nowait()
                     self.data = new_data
-                    self.update_plot()
+                    self.dirty = True
                 except queue.Empty:
                     if not self.keep_refreshing and not self.oneshot:
                         self.data_status = 'idle'
 
                 # Safely handle matplotlib events
                 try:
+                    if self.dirty:
+                        self.dirty = False
+                        self.update_plot()
                     plt.pause(0.01)
                 except Exception as ex:
                     # Catch any matplotlib/Tkinter exceptions during shutdown
@@ -355,69 +355,116 @@ class RefreshableSpectralPlot:
                 if self.running:
                     break
 
+    def _make_overlay(self, text):
+        if self.overlay_text:
+            self.overlay_text.remove()
+        self.overlay_text = self.fig.text(
+                0.5, 0.5, text,
+                ha='center', va='center', fontsize=16, color='black',
+                bbox={"facecolor": 'white', "alpha": 0.9, "pad": 20})
+
+    def trigger_oneshot(self):
+        """Trigger oneshot refresh of the data"""
+        self.oneshot = True
+        self._make_overlay('One-shot refreshing...')
+
+    def set_refresh(self, keep_refreshing):
+        """Set whether we should refresh data"""
+        self.keep_refreshing = keep_refreshing
+
+    def switch_graph(self, graph_type: GraphType):
+        """Switch graph to given type"""
+        self.graph_type = graph_type
+        self.dirty = True
+
+    def _clear_overlays(self):
+        """Remove existing overlay messages"""
+        if self.overlay_text:
+            self.overlay_text.remove()
+            self.overlay_text = None
+        if self.error_text:
+            self.error_text.remove()
+            self.error_text = None
+
+    def _draw_graph(self):
+        """Draw graph based on configuration"""
+
+        spd = self.data.to_spectral_distribution()
+        xy_point = XYZ_to_xy(sd_to_XYZ(spd))
+        kwargs = {
+                'annotate_kwargs': {'annotate':False},
+                'transparent_background': False,
+                'show': False,
+                'axes': self.axes,
+        }
+        match self.graph_type:
+            case GraphType.CIE1931:
+                plot_planckian_locus_in_chromaticity_diagram_CIE1931(
+                        {"X": xy_point}, title=spd.name, **kwargs)
+            case GraphType.CIE1960UCS:
+                plot_planckian_locus_in_chromaticity_diagram_CIE1960UCS(
+                        {"X": xy_point}, title=spd.name, **kwargs)
+            case GraphType.CIE1976UCS:
+                plot_planckian_locus_in_chromaticity_diagram_CIE1976UCS(
+                        {"X": xy_point}, title=spd.name, **kwargs)
+            case GraphType.TM30:
+                cct = colour.temperature.xy_to_CCT(xy_point, method='daylight')
+                spec = colour_fidelity_index_ANSIIESTM3018(spd)
+                if cct < 1000 or cct > 10000 or spec < 50:
+                    self.axes.axis('off')
+                    self.error_text = self.fig.text(
+                            0.5, 0.5,
+                            f'$R_f$={spec:.2f} (need $\\geq 50$), CCT={cct:.0f} (need 1-10K)',
+                            ha='center', va='center', fontsize=16, color='red',
+                            bbox={"facecolor": 'white', "alpha": 0.9, "pad": 20})
+
+                else:
+                    spec_full = colour_fidelity_index_ANSIIESTM3018(spd, True)
+                    plot_colour_vector_graphic(spec_full, **kwargs)
+                    plt.title(f"{spd.display_name}")
+            case GraphType.SPECTRUM:
+                self.axes.set_aspect('auto')
+                plt.title(f"{spd.display_name}")
+                colour.plotting.plot_single_sd(spd, **kwargs)
+                plt.xlabel("Wavelength $\\lambda$ (nm)")
+                plt.ylabel("Spectral Distribution ($W/m^2$)")
+            case _:
+                # GraphType.LINE goes here, too
+                self.axes.set_aspect('auto')
+                self.fig.tight_layout()
+                plt.title(f"{spd.display_name}")
+                self.axes.plot(list(spd.wavelengths),
+                             list(spd.values),
+                             label='Spectral Distribution')
+                plt.xlabel("Wavelength $\\lambda$ (nm)")
+                plt.ylabel("Spectral Distribution ($W/m^2$)")
+                self.fig.tight_layout()
+                self.fig.figure.subplots_adjust(
+                        hspace=CONSTANTS_COLOUR_STYLE.geometry.short / 2)
+
+        # Re-setup cursor after clearing
+        if not self.error_text:
+            self._setup_cursor()
+
+        # Restore cursor state if it was visible
+        if self.cursor_visible and self.last_mouse_pos:
+            self._update_cursor_position(self.last_mouse_pos[0], self.last_mouse_pos[1])
+
     def update_plot(self):
         """Update plot in main thread"""
         try:
-            # Kill existing error message
-            if self.error_text:
-                self.error_text.remove()
-                self.error_text = None
-            # Clear the existing axes instead of the whole figure
+            self._clear_overlays()
             self.axes.clear()
-            # Plot directly to the existing axes
-            spd = self.data.to_spectral_distribution()
-            xy_point = XYZ_to_xy(sd_to_XYZ(spd))
-            kwargs = {
-                    'annotate_kwargs': {'annotate':False},
-                    'transparent_background': False,
-                    'show': False,
-                    'axes': self.axes,
-            }
-            match self.graph_type:
-                case GraphType.CIE1931:
-                    plot_planckian_locus_in_chromaticity_diagram_CIE1931(
-                            {"X": xy_point}, title=spd.name, **kwargs)
-                case GraphType.CIE1960UCS:
-                    plot_planckian_locus_in_chromaticity_diagram_CIE1960UCS(
-                            {"X": xy_point}, title=spd.name, **kwargs)
-                case GraphType.CIE1976UCS:
-                    plot_planckian_locus_in_chromaticity_diagram_CIE1976UCS(
-                            {"X": xy_point}, title=spd.name, **kwargs)
-                case GraphType.TM30:
-                    cct = colour.temperature.xy_to_CCT(xy_point, method='daylight')
-                    spec = colour_fidelity_index_ANSIIESTM3018(spd)
-                    if cct < 1000 or cct > 10000 or spec < 50:
-                        self.axes.axis('off')
-                        self.error_text = self.fig.text(
-                                0.5, 0.5,
-                                f'$R_f$={spec:.2f} (need $\\geq 50$), CCT={cct:.0f} (need 1-10K)',
-                                ha='center', va='center', fontsize=16, color='red')
 
-                    else:
-                        spec_full = colour_fidelity_index_ANSIIESTM3018(spd, True)
-                        plot_colour_vector_graphic(spec_full, **kwargs)
-                case GraphType.SPECTRUM:
-                    self.axes.set_aspect('auto')
-                    plt.title(f"{spd.display_name}")
-                    colour.plotting.plot_single_sd(spd, **kwargs)
-                    plt.xlabel("Wavelength $\\lambda$ (nm)")
-                    plt.ylabel("Spectral Distribution ($W/m^2$)")
-                case _:
-                    # GraphType.LINE goes here, too
-                    plt.title(f"{spd.display_name}")
-                    self.axes.set_aspect('auto')
-                    self.axes.plot(list(spd.wavelengths),
-                                 list(spd.values),
-                                 label='Spectral Distribution')
-                    plt.xlabel("Wavelength $\\lambda$ (nm)")
-                    plt.ylabel("Spectral Distribution ($W/m^2$)")
+            if self.data:
+                self._draw_graph()
+            else:
+                self.axes.set_axis_off()
+                if self.keep_refreshing or self.oneshot:
+                    self._make_overlay('Loading data...')
+                else:
+                    self._make_overlay('No data.')
 
-            # Re-setup cursor after clearing
-            if not self.error_text:
-                self._setup_cursor()
-            # Restore cursor state if it was visible
-            if self.cursor_visible and self.last_mouse_pos:
-                self._update_cursor_position(self.last_mouse_pos[0], self.last_mouse_pos[1])
             self.update_status()
             self.fig.canvas.draw()
         except Exception as ex:
@@ -552,12 +599,18 @@ class RefreshableSpectralPlot:
     def update_status(self):
         """Set toolbar message"""
         toolbar = self.fig.canvas.manager.toolbar
+        status = []
+
         if self.data_status and self.data_status == 'ok':
             stamp = self.data.ts.astimezone().strftime('%Y-%m-%d %H:%M:%S %Z')
-            status = f'{self.data_status} ({stamp})'
+            status.append(f'acquisition: {self.data_status} ({stamp})')
         else:
-            status = self.data_status
-        toolbar.set_message(f'acquisition: {status}, exp: {self.data.time} ms')
+            status.append(f'acquisition: {self.data_status}')
+
+        if self.data:
+            status.append(f'exp: {self.data.time} ms')
+
+        toolbar.set_message(', '.join(status))
 
     def _on_mouse_move(self, event):
         """Handle mouse movement"""
