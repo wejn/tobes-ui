@@ -63,6 +63,12 @@ class Spectrum(NamedTuple):
             ts=datetime.fromtimestamp(data["ts"])
         )
 
+    @classmethod
+    def from_file(cls, name: str) -> "Spectrum":
+        """Load Spectrum from given file"""
+        with open(name, 'r', encoding='utf-8') as file:
+            return cls.from_json(file.read())
+
 
 class Spectrometer:
     """Handles the spectrometer (wraps the `protocol`)"""
