@@ -767,29 +767,8 @@ if __name__ == "__main__":
 
         return parser.parse_args()
 
-    argv = parse_args()
-
-    if argv.data:
-        SPECTROMETER = None
-    else:
-        try:
-            SPECTROMETER = spectrometer.Spectrometer(argv.input_device)
-        except Exception as spec_ex:
-            print(f"Couldn't init spectrometer: {spec_ex}")
-            sys.exit(1)
-
-        atexit.register(SPECTROMETER.cleanup)
-
-        def signal_handler(_signum, _frame):
-            """Signal handler to trigger cleanup"""
-            print("\nReceived interrupt signal, shutting down gracefully...")
-            SPECTROMETER.cleanup()
-            sys.exit(0)
-
-        signal.signal(signal.SIGINT, signal_handler)
-        signal.signal(signal.SIGTERM, signal_handler)
-
-        basic_info = SPECTROMETER.get_basic_info()
+    def _init_meter(meter, argv):
+        basic_info = meter.get_basic_info()
         if not basic_info['device_id'].startswith('Y'):
             print(f'Warning: only tested on Y21B*, this is {basic_info["device_id"]}')
 
@@ -799,49 +778,77 @@ if __name__ == "__main__":
         if argv.exposure == 'auto':
             if basic_info['exposure_mode'] != protocol.ExposureMode.AUTOMATIC:
                 print('Setting auto mode:',
-                      is_ok(SPECTROMETER.set_exposure_mode(protocol.ExposureMode.AUTOMATIC)))
+                      is_ok(meter.set_exposure_mode(protocol.ExposureMode.AUTOMATIC)))
             else:
                 print('Spectrometer already in auto mode.')
         else:
             if basic_info['exposure_mode'] != protocol.ExposureMode.MANUAL:
                 print('Setting manual mode:',
-                      is_ok(SPECTROMETER.set_exposure_mode(protocol.ExposureMode.MANUAL)))
+                      is_ok(meter.set_exposure_mode(protocol.ExposureMode.MANUAL)))
             else:
                 print('Spectrometer already in manual mode.')
             if basic_info['exposure_value'] != argv.exposure * 1000:
                 print('Setting exposure value:',
-                      is_ok(SPECTROMETER.set_exposure_value(argv.exposure * 1000)))
+                      is_ok(meter.set_exposure_value(argv.exposure * 1000)))
             else:
                 print(f'Spectrometer already has exposure value of {argv.exposure} ms.')
 
-        print("Exposure mode:", SPECTROMETER.get_exposure_mode())
-        print("Exposure value:", SPECTROMETER.get_exposure_value(), 'μs')
+        print("Exposure mode:", meter.get_exposure_mode())
+        print("Exposure value:", meter.get_exposure_value(), 'μs')
 
-        basic_info = SPECTROMETER.get_basic_info()
+        basic_info = meter.get_basic_info()
         print("Device basic info: ")
         pprint.pprint(basic_info)
 
-    data = None
-    if argv.data:
-        refresh = RefreshType.DISABLED
-        try:
-            data = spectrometer.Spectrum.from_file(argv.data)
-        except (OSError, json.decoder.JSONDecodeError) as exc:
-            print(f"File '{argv.data}' couldn't be parsed: {exc}")
-            sys.exit(1)
-    elif argv.no_refresh:
-        refresh = RefreshType.NONE
-    elif argv.oneshot:
-        refresh = RefreshType.ONESHOT
-    else:
-        refresh = RefreshType.CONTINUOUS
 
-    app = RefreshableSpectralPlot(
-            data,
-            refresh_func=SPECTROMETER.stream_data if SPECTROMETER else None,
-            graph_type=GraphType.LINE if argv.quick_graph else argv.graph_type,
-            refresh_type=refresh,
-            file_template=argv.file_template)
-    app.start_plot()
+    def main():
+        """Zee main(), like in C"""
+        argv = parse_args()
 
-sys.exit(0)
+        if argv.data:
+            meter = None
+        else:
+            try:
+                meter = spectrometer.Spectrometer(argv.input_device)
+            except Exception as spec_ex:
+                print(f"Couldn't init spectrometer: {spec_ex}")
+                sys.exit(1)
+
+            atexit.register(meter.cleanup)
+
+            def signal_handler(_signum, _frame):
+                """Signal handler to trigger cleanup"""
+                print("\nReceived interrupt signal, shutting down gracefully...")
+                meter.cleanup()
+                sys.exit(0)
+
+            signal.signal(signal.SIGINT, signal_handler)
+            signal.signal(signal.SIGTERM, signal_handler)
+
+            _init_meter(meter, argv)
+
+        data = None
+        if argv.data:
+            refresh = RefreshType.DISABLED
+            try:
+                data = spectrometer.Spectrum.from_file(argv.data)
+            except (OSError, json.decoder.JSONDecodeError) as exc:
+                print(f"File '{argv.data}' couldn't be parsed: {exc}")
+                sys.exit(1)
+        elif argv.no_refresh:
+            refresh = RefreshType.NONE
+        elif argv.oneshot:
+            refresh = RefreshType.ONESHOT
+        else:
+            refresh = RefreshType.CONTINUOUS
+
+        app = RefreshableSpectralPlot(
+                data,
+                refresh_func=meter.stream_data if meter else None,
+                graph_type=GraphType.LINE if argv.quick_graph else argv.graph_type,
+                refresh_type=refresh,
+                file_template=argv.file_template)
+        app.start_plot()
+
+    main()
+    sys.exit(0)
