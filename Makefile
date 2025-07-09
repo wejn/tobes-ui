@@ -5,4 +5,4 @@ help:
 	COLUMNS=94 python3 main.py -h
 
 lint:
-	pylint *.py helpers/*.py
+	pylint *.py helpers/*.py tobes_ui/*.py

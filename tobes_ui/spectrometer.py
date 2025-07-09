@@ -9,13 +9,19 @@ from typing import NamedTuple
 import colour
 from serial import Serial
 
-import protocol
+from .protocol import (
+    ExposureMode,
+    ExposureStatus,
+    MessageType,
+    build_message,
+    parse_messages
+)
 
 
 class Spectrum(NamedTuple):
     """Wraps measured spectrum"""
-    status: protocol.ExposureStatus
-    exposure: protocol.ExposureMode
+    status: ExposureStatus
+    exposure: ExposureMode
     time: float
     spd: dict[int, float]
     wavelength_range: int
@@ -88,7 +94,7 @@ class Spectrometer:
         if not self.port:
             raise ValueError("Already closed")
 
-        self.port.write(protocol.build_message(message_type, data))
+        self.port.write(build_message(message_type, data))
 
     def read_message(self, message_type=None):
         """Read message, possibly guarding the type"""
@@ -96,7 +102,7 @@ class Spectrometer:
             raise ValueError("Already closed")
 
         while True:
-            (self.buffer, messages) = protocol.parse_messages(self.buffer + self.port.read())
+            (self.buffer, messages) = parse_messages(self.buffer + self.port.read())
 
             if messages:
                 message = messages[0]
@@ -109,7 +115,7 @@ class Spectrometer:
     def cleanup(self):
         """Cleanup function to ensure proper shutdown"""
         try:
-            self.send_message(protocol.MessageType.STOP)
+            self.send_message(MessageType.STOP)
             self.port.close()
             self.port = None
             self.buffer = b""
@@ -122,8 +128,8 @@ class Spectrometer:
         if not self.port:
             raise ValueError("Already closed")
 
-        self.send_message(protocol.MessageType.GET_DEVICE_ID, b"\x18")
-        response = self.read_message(protocol.MessageType.GET_DEVICE_ID)
+        self.send_message(MessageType.GET_DEVICE_ID, b"\x18")
+        response = self.read_message(MessageType.GET_DEVICE_ID)
         self.device_id = response['device_id']
         return response['device_id']
 
@@ -132,8 +138,8 @@ class Spectrometer:
         if not self.port:
             raise ValueError("Already closed")
 
-        self.send_message(protocol.MessageType.GET_RANGE)
-        response = self.read_message(protocol.MessageType.GET_RANGE)
+        self.send_message(MessageType.GET_RANGE)
+        response = self.read_message(MessageType.GET_RANGE)
 
         self.wavelength_range = range(
                 response["start_wavelength"],
@@ -141,13 +147,13 @@ class Spectrometer:
 
         return self.wavelength_range
 
-    def set_exposure_mode(self, mode: protocol.ExposureMode):
+    def set_exposure_mode(self, mode: ExposureMode):
         """Set device exposure mode"""
         if not self.port:
             raise ValueError("Already closed")
 
-        self.send_message(protocol.MessageType.SET_EXPOSURE_MODE, struct.pack("<B", mode.value))
-        response = self.read_message(protocol.MessageType.SET_EXPOSURE_MODE)
+        self.send_message(MessageType.SET_EXPOSURE_MODE, struct.pack("<B", mode.value))
+        response = self.read_message(MessageType.SET_EXPOSURE_MODE)
         if response['success']:
             self.exposure_mode = mode
         return response['success']
@@ -157,8 +163,8 @@ class Spectrometer:
         if not self.port:
             raise ValueError("Already closed")
 
-        self.send_message(protocol.MessageType.GET_EXPOSURE_MODE)
-        response = self.read_message(protocol.MessageType.GET_EXPOSURE_MODE)
+        self.send_message(MessageType.GET_EXPOSURE_MODE)
+        response = self.read_message(MessageType.GET_EXPOSURE_MODE)
         self.exposure_mode = response['exposure_mode']
         return response["exposure_mode"]
 
@@ -167,9 +173,9 @@ class Spectrometer:
         if not self.port:
             raise ValueError("Already closed")
 
-        self.send_message(protocol.MessageType.SET_EXPOSURE_VALUE,
+        self.send_message(MessageType.SET_EXPOSURE_VALUE,
                           struct.pack("<I", exposure_time_us))
-        response = self.read_message(protocol.MessageType.SET_EXPOSURE_VALUE)
+        response = self.read_message(MessageType.SET_EXPOSURE_VALUE)
         return response['success']
 
     def get_exposure_value(self):
@@ -177,8 +183,8 @@ class Spectrometer:
         if not self.port:
             raise ValueError("Already closed")
 
-        self.send_message(protocol.MessageType.GET_EXPOSURE_VALUE)
-        response = self.read_message(protocol.MessageType.GET_EXPOSURE_VALUE)
+        self.send_message(MessageType.GET_EXPOSURE_VALUE)
+        response = self.read_message(MessageType.GET_EXPOSURE_VALUE)
         return response['exposure_time_us']
 
     def get_basic_info(self):
@@ -204,7 +210,7 @@ class Spectrometer:
             mode = self.get_exposure_mode()
             self.exposure_mode = mode
 
-        self.send_message(protocol.MessageType.GET_DATA)
+        self.send_message(MessageType.GET_DATA)
 
         while True:
             response = self.read_message()
@@ -231,8 +237,8 @@ class Spectrometer:
                 pprint.pprint(spectrum)
 
         # Terminate streaming
-        self.send_message(protocol.MessageType.STOP)
-        while self.read_message()["message_type"] != protocol.MessageType.STOP:
+        self.send_message(MessageType.STOP)
+        while self.read_message()["message_type"] != MessageType.STOP:
             pass
 
         return self
