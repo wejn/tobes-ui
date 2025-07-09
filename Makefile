@@ -5,4 +5,4 @@ help:
 	COLUMNS=94 python3 main.py -h
 
 lint:
-	pylint *.py
+	pylint *.py helpers/*.py
