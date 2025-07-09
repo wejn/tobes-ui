@@ -3,10 +3,18 @@
 
 # pylint: disable=too-many-arguments
 
+import os
+
 from PIL import Image, ImageDraw, ImageFont
 
 def create_text_icon(text, font, size, output_path, tunex=0, tuney=0):
     """Create icon from text"""
+
+    if os.path.isfile(output_path):
+        print(f"+ {output_path} already exists (skip)")
+    else:
+        print(f"- {output_path} generating...")
+
     img = Image.new("RGBA", (size, size), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
 
@@ -36,5 +44,12 @@ if __name__ == "__main__":
         font = '/usr/share/fonts/truetype/noto/NotoSansSymbols2-Regular.ttf'
         create_text_icon("🗘", font, 24, "icons/refresh.png", 0, 0.1)
         create_text_icon("🗘", font, 48, "icons/refresh_large.png", 0, 0.1)
+
+        create_text_icon("⭥", font, 24, "icons/yrange_fix.png", 0, 0.1)
+        create_text_icon("⭥", font, 48, "icons/yrange_fix_large.png", 0, 0.1)
+
+        font = '/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf'
+        create_text_icon("ℓᵧ", font, 24, "icons/log_yscale.png", 0, -0.1)
+        create_text_icon("ℓᵧ", font, 48, "icons/log_yscale_large.png", 0, -0.1)
 
     main()

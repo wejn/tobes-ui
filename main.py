@@ -287,6 +287,49 @@ class HistoryEndTool(ToolBase):
         self.plot.history_end()
 
 
+class FixYRangeTool(ToolToggleBase):
+    """Fix Y range of the plot"""
+    description = 'Only line+spectrum graphs: Fix Y-axis range (key: Y)'
+    default_keymap = ['y', 'Y']
+
+    def __init__(self, *args, plot, **kwargs):
+        self.plot = plot
+        self.default_toggled = self.plot.fix_y_range
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        self.image = os.path.join(script_dir, "icons/yrange_fix.png")
+        super().__init__(*args, **kwargs)
+
+    def enable(self, event=None):
+        self.plot.fix_y_range = True
+        self.plot.dirty = True # FIXME: this is expensive, can we do without?
+
+    def disable(self, event=None):
+        self.plot.fix_y_range = False
+        self.plot.fixed_y_lim = None
+        self.plot.dirty = True # FIXME: this is expensive, can we do without?
+
+
+class LogYScaleTool(ToolToggleBase):
+    """Switch Y axis to log scale"""
+    description = 'Only line graph: Use logarithmic Y-axis (key: K)'
+    default_keymap = ['k', 'K']
+
+    def __init__(self, *args, plot, **kwargs):
+        self.plot = plot
+        self.default_toggled = self.plot.log_y_scale
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        self.image = os.path.join(script_dir, "icons/log_yscale.png")
+        super().__init__(*args, **kwargs)
+
+    def enable(self, event=None):
+        self.plot.log_y_scale = True
+        self.plot.dirty = True
+
+    def disable(self, event=None):
+        self.plot.log_y_scale = False
+        self.plot.dirty = True
+
+
 class RefreshableSpectralPlot:
     """Refreshable plot (graph); basically main window of the app"""
     def __init__(self, initial_data, refresh_func=None, graph_type=GraphType.SPECTRUM,
@@ -318,6 +361,9 @@ class RefreshableSpectralPlot:
         self.error_text = None
         self.overlay_text = None
         self.dirty = False
+        self.fix_y_range = False
+        self.fixed_y_lim = None
+        self.log_y_scale = False
 
     @property
     def data(self):
@@ -517,6 +563,33 @@ class RefreshableSpectralPlot:
             self.error_text.remove()
             self.error_text = None
 
+    def _tweak_y_axis(self, spd):
+        if self.log_y_scale and self.graph_type == GraphType.LINE:
+            self.axes.set_yscale('log')
+        else:
+            self.axes.set_yscale('linear')
+
+        if self.graph_type in [GraphType.LINE, GraphType.SPECTRUM]:
+            if self.fix_y_range:
+                if self.fixed_y_lim is None:
+                    self.fixed_y_lim = self.axes.get_ylim()
+
+                current_lim = self.fixed_y_lim
+
+                # log graph can't have min = 0
+                if self.log_y_scale and self.graph_type == GraphType.LINE:
+                    current_lim = self.fixed_y_lim
+                    if self.log_y_scale and current_lim[0] <= 0:
+                        all_values = np.array(list(spd.values))
+                        positive_values = all_values[all_values > 0]
+                        if positive_values.any():
+                            min_val = np.min(positive_values)
+                            current_lim = (min_val * 0.1, current_lim[1])
+
+                self.axes.set_ylim(current_lim)
+            else:
+                self.fixed_y_lim = None
+
     def _draw_graph(self):
         """Draw graph based on configuration"""
 
@@ -556,7 +629,6 @@ class RefreshableSpectralPlot:
                     plot_colour_vector_graphic(spec_full, **kwargs)
             case GraphType.SPECTRUM:
                 self.axes.set_aspect('auto')
-                plt.title(f"{spd.display_name}")
                 cmfs_data = {}
                 cmfs_source = colour.MSDS_CMFS["CIE 1931 2 Degree Standard Observer"]
                 for wavelength in range(
@@ -568,6 +640,10 @@ class RefreshableSpectralPlot:
                 colour.plotting.plot_single_sd(spd, cmfs, **kwargs)
                 plt.xlabel("Wavelength $\\lambda$ (nm)")
                 plt.ylabel("Spectral Distribution ($W/m^2$)")
+                plt.title(f"{spd.display_name}")
+
+                self._tweak_y_axis(spd)
+
             case _:
                 # GraphType.LINE goes here, too
                 self.axes.set_aspect('auto')
@@ -578,6 +654,9 @@ class RefreshableSpectralPlot:
                              label='Spectral Distribution')
                 plt.xlabel("Wavelength $\\lambda$ (nm)")
                 plt.ylabel("Spectral Distribution ($W/m^2$)")
+
+                self._tweak_y_axis(spd)
+
                 self.fig.tight_layout()
                 self.fig.figure.subplots_adjust(
                         hspace=CONSTANTS_COLOUR_STYLE.geometry.short / 2)
@@ -610,6 +689,7 @@ class RefreshableSpectralPlot:
         except Exception as ex:
             if self.running:  # Only print if we're not shutting down
                 print(f"Plot update error: {ex}")
+                print(ex)
 
     def _add_toolbar_buttons(self):
         """Add custom buttons to the toolbar"""
@@ -635,6 +715,9 @@ class RefreshableSpectralPlot:
                               graph_type=GraphType.CIE1976UCS)
             tool_mgr.add_tool("tm30", GraphSelectTool, plot=self,
                               graph_type=GraphType.TM30)
+
+            tool_mgr.add_tool("yrange_fix", FixYRangeTool, plot=self)
+            tool_mgr.add_tool("log_yscale", LogYScaleTool, plot=self)
 
             def avoid_untoggle(event):
                 if isinstance(event.sender, ToolManager):
@@ -679,6 +762,10 @@ class RefreshableSpectralPlot:
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("cie1960ucs"), "graph")
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("cie1976ucs"), "graph")
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("tm30"), "graph")
+
+            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("yrange_fix"), "axes")
+            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("log_yscale"), "axes")
+
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("power"), "power")
 
     def _setup_cursor(self):
