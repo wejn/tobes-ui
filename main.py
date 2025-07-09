@@ -550,9 +550,10 @@ class RefreshableSpectralPlot:
                             bbox={"facecolor": 'white', "alpha": 0.9, "pad": 20})
 
                 else:
-                    spec_full = colour_fidelity_index_ANSIIESTM3018(spd, True)
-                    plot_colour_vector_graphic(spec_full, **kwargs)
                     plt.title(f"{spd.display_name}")
+                    spec_full = colour_fidelity_index_ANSIIESTM3018(spd, True)
+                    kwargs.update({'hspace': CONSTANTS_COLOUR_STYLE.geometry.short / 2})
+                    plot_colour_vector_graphic(spec_full, **kwargs)
             case GraphType.SPECTRUM:
                 self.axes.set_aspect('auto')
                 plt.title(f"{spd.display_name}")
