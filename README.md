@@ -17,7 +17,7 @@ and improved (beyond recognition?).
 ```
 $ python3 main.py -h
 usage: main.py [-h] [-e EXPOSURE] [-q | -t GRAPH_TYPE] [-o | -n] [-f FILE_TEMPLATE]
-               [-d DATA]
+               [-d [DATA ...]] [-s HISTORY_SIZE]
                [input_device]
 
 TorchBearer spectrometer tool
@@ -38,16 +38,23 @@ options:
   -f FILE_TEMPLATE, --file_template FILE_TEMPLATE
                         File template (without .ext) for data export (default:
                         spectrum-{timestamp_full}{graph_type})
-  -d DATA, --data DATA  JSON dump file to load for viewing (disables data refresh)
+  -d [DATA ...], --data [DATA ...]
+                        JSON dump file(s) to load for viewing (disables data refresh)
+  -s HISTORY_SIZE, --history-size HISTORY_SIZE
+                        Size of the measurement history (default: 50)
 ```
 
 My typical use is:
 
 ``` sh
+# To gather new data
 python3 main.py /dev/ttyUSB0 -e auto -o
+
+# To "replay" existing samples:
+python3 main.py -d *.json
 ```
 
-which gives one-shot spectrum on auto exposure (from `/dev/ttyUSB0`):
+The first one gives one-shot spectrum on auto exposure (from `/dev/ttyUSB0`):
 
 ![screenshot](pictures/oneshot.png)
 
@@ -62,6 +69,10 @@ There are several icons on the toolbar:
 | ![download](icons/raw_save.png) | `D` | Save raw data as json |
 | ![refresh](icons/refresh.png) | `R` | Keep refreshing data |
 | ![oneshot](icons/oneshot.png) | `1`, `O` | One good acquisition |
+| ![history start](icons/hist_start.png) | `Home`, `H` | Go to start of history |
+| ![history back](icons/hist_back.png) | `←`, `P` | Go to previous sample |
+| ![history forward](icons/hist_forward.png) | `→`, `N` | Go to next sample |
+| ![history start](icons/hist_start.png) | `End`, `E` | Go to end of history |
 | ![line graph](icons/line_graph.png) | `Q`, `L` | Line graph |
 | ![spectral graph](icons/spectrum_graph.png) | `C` | Spectrum graph _(slow to draw)_ |
 | ![cie1931 locus](icons/cie1931_graph.png) | `3` | CIE1931 locus graph |

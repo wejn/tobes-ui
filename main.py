@@ -227,11 +227,79 @@ class RefreshTool(ToolToggleBase):
             self.plot.refresh_type = RefreshType.NONE
 
 
+class HistoryBackTool(ToolBase):
+    """Go back in history"""
+    description = 'Go back in history (key: ← || P)'
+    default_keymap = ['left', 'p', 'P']
+
+    def __init__(self, *args, plot, **kwargs):
+        self.plot = plot
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        self.image = os.path.join(script_dir, "icons/hist_back")
+        super().__init__(*args, **kwargs)
+
+    def trigger(self, *_args, **_kwargs):
+        self.plot.history_back()
+
+
+class HistoryForwardTool(ToolBase):
+    """Go forward in history"""
+    description = 'Go forward in history (key: → || N)'
+    default_keymap = ['right', 'n', 'N']
+
+    def __init__(self, *args, plot, **kwargs):
+        self.plot = plot
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        self.image = os.path.join(script_dir, "icons/hist_forward")
+        super().__init__(*args, **kwargs)
+
+    def trigger(self, *_args, **_kwargs):
+        self.plot.history_forward()
+
+
+class HistoryStartTool(ToolBase):
+    """Go to start of history"""
+    description = 'Go to start of history (key: home || H)'
+    default_keymap = ['home', 'h', 'H']
+
+    def __init__(self, *args, plot, **kwargs):
+        self.plot = plot
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        self.image = os.path.join(script_dir, "icons/hist_start")
+        super().__init__(*args, **kwargs)
+
+    def trigger(self, *_args, **_kwargs):
+        self.plot.history_start()
+
+
+class HistoryEndTool(ToolBase):
+    """Go to end of history"""
+    description = 'Go to end of history (key: end || E)'
+    default_keymap = ['end', 'e', 'E']
+
+    def __init__(self, *args, plot, **kwargs):
+        self.plot = plot
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        self.image = os.path.join(script_dir, "icons/hist_end")
+        super().__init__(*args, **kwargs)
+
+    def trigger(self, *_args, **_kwargs):
+        self.plot.history_end()
+
+
 class RefreshableSpectralPlot:
     """Refreshable plot (graph); basically main window of the app"""
     def __init__(self, initial_data, refresh_func=None, graph_type=GraphType.SPECTRUM,
-                 refresh_type=RefreshType.DISABLED, file_template=None):
-        self.data = initial_data
+                 refresh_type=RefreshType.DISABLED, file_template=None, history_size=50):
+        self._history = []
+        self._history_index = -1
+        self.max_history_size = history_size
+        self.data = None
+        # Load 'em all up
+        if initial_data:
+            for spectrum in initial_data:
+                self.data = spectrum
+
         self.running = False
         self.thread = None
         self.fig = None
@@ -251,15 +319,28 @@ class RefreshableSpectralPlot:
         self.overlay_text = None
         self.dirty = False
 
+    @property
+    def data(self):
+        """Currently selected data from history"""
+        if self._history_index >= 0 and self._history_index < len(self._history):
+            return self._history[self._history_index]
+        return None
+
+    @data.setter
+    def data(self, new_data):
+        """Add data to history"""
+        if new_data is None:
+            return
+
+        self._history.append(new_data)
+        if len(self._history) > self.max_history_size:
+            self._history.pop(0)
+
+        self._history_index = len(self._history) - 1
+
     WARNINGS_TO_IGNORE = [
             "Treat the new Tool classes introduced in v1.5 as experimental",
-            "Key r changed from home to refresh",
-            "Key s changed from save to plot_save",
-            "Key o changed from zoom to oneshot",
-            "Key q changed from quit to line",
-            "Key L changed from xscale to line",
-            "Key l changed from yscale to line",
-            "Key c changed from back to spectrum",
+            "Key \\w+ changed from [a-z_]+ to [a-z_]+",
             "Attempting to set identical low and high ylims makes transformation" +
                 " singular; automatically expanding.",
             '"OpenImageIO" related API features are not available, switching to "Imageio"!',
@@ -390,6 +471,38 @@ class RefreshableSpectralPlot:
             self.refresh_type = RefreshType.ONESHOT
             self._make_overlay('One-shot refreshing...')
 
+    def history_back(self):
+        """Go one step back in history"""
+        if self._history_index > 0:
+            if self.refresh_type == RefreshType.CONTINUOUS:
+                tool_mgr = self.fig.canvas.manager.toolmanager
+                tool_mgr.trigger_tool('refresh')
+
+            self._history_index -= 1
+            self.dirty = True
+
+    def history_forward(self):
+        """Go one step forward in history"""
+        if self._history_index < len(self._history) - 1:
+            self._history_index += 1
+            self.dirty = True
+
+    def history_start(self):
+        """Go to start of history"""
+        if self._history_index > 0:
+            if self.refresh_type == RefreshType.CONTINUOUS:
+                tool_mgr = self.fig.canvas.manager.toolmanager
+                tool_mgr.trigger_tool('refresh')
+
+            self._history_index = 0
+            self.dirty = True
+
+    def history_end(self):
+        """Go to end of history"""
+        if self._history_index < len(self._history) - 1:
+            self._history_index = len(self._history) - 1
+            self.dirty = True
+
     def switch_graph(self, graph_type: GraphType):
         """Switch graph to given type"""
         self.graph_type = graph_type
@@ -505,6 +618,10 @@ class RefreshableSpectralPlot:
                 tool_mgr.add_tool("refresh", RefreshTool, plot=self)
                 tool_mgr.add_tool("oneshot", OneShotTool, plot=self)
 
+            tool_mgr.add_tool("history_start", HistoryStartTool, plot=self)
+            tool_mgr.add_tool("history_back", HistoryBackTool, plot=self)
+            tool_mgr.add_tool("history_forward", HistoryForwardTool, plot=self)
+            tool_mgr.add_tool("history_end", HistoryEndTool, plot=self)
             tool_mgr.add_tool("line", GraphSelectTool, plot=self,
                               graph_type=GraphType.LINE)
             tool_mgr.add_tool("spectrum", GraphSelectTool, plot=self,
@@ -549,6 +666,12 @@ class RefreshableSpectralPlot:
             if not self.refresh_type == RefreshType.DISABLED:
                 self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("refresh"), "refresh")
                 self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("oneshot"), "refresh")
+
+            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("history_start"), "nav")
+            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("history_back"), "nav")
+            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("history_forward"), "nav")
+            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("history_end"), "nav")
+
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("line"), "graph")
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("spectrum"), "graph")
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("cie1931"), "graph")
@@ -634,6 +757,9 @@ class RefreshableSpectralPlot:
 
         if self.data:
             status.append(f'exp: {self.data.time} ms')
+
+        if self._history:
+            status.append(f'hist: {self._history_index + 1}/{len(self._history)}')
 
         toolbar.set_message(' | '.join(status))
 
@@ -776,7 +902,16 @@ if __name__ == "__main__":
         parser.add_argument(
             '-d', '--data',
             default=None,
-            help='JSON dump file to load for viewing (disables data refresh)'
+            nargs='*',
+            help='JSON dump file(s) to load for viewing (disables data refresh)'
+        )
+
+        parser.add_argument(
+            '-s', '--history-size',
+            type=int,
+            default=50,
+            dest='history_size',
+            help='Size of the measurement history (default: 50)'
         )
 
         return parser.parse_args()
@@ -820,13 +955,7 @@ if __name__ == "__main__":
         """Zee main(), like in C"""
         argv = parse_args()
 
-        if argv.data:
-            meter = None
-        else:
-            if not argv.input_device:
-                print("In non-viewer mode, you MUST specify input device (/dev/ttyUSB0 maybe?)")
-                sys.exit(1)
-
+        if argv.input_device:
             try:
                 meter = spectrometer.Spectrometer(argv.input_device)
             except Exception as spec_ex:
@@ -845,15 +974,19 @@ if __name__ == "__main__":
             signal.signal(signal.SIGTERM, signal_handler)
 
             _init_meter(meter, argv)
+        else:
+            meter = None
 
-        data = None
+        data = []
         if argv.data:
+            for filename in argv.data:
+                try:
+                    data.append(spectrometer.Spectrum.from_file(filename))
+                except (OSError, json.decoder.JSONDecodeError) as exc:
+                    print(f"File '{filename}' couldn't be parsed, skipping: {exc}")
+
+        if not argv.input_device:
             refresh = RefreshType.DISABLED
-            try:
-                data = spectrometer.Spectrum.from_file(argv.data)
-            except (OSError, json.decoder.JSONDecodeError) as exc:
-                print(f"File '{argv.data}' couldn't be parsed: {exc}")
-                sys.exit(1)
         elif argv.no_refresh:
             refresh = RefreshType.NONE
         elif argv.oneshot:
@@ -866,7 +999,8 @@ if __name__ == "__main__":
                 refresh_func=meter.stream_data if meter else None,
                 graph_type=GraphType.LINE if argv.quick_graph else argv.graph_type,
                 refresh_type=refresh,
-                file_template=argv.file_template)
+                file_template=argv.file_template,
+                history_size=argv.history_size)
         app.start_plot()
 
     main()
