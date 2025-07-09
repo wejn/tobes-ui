@@ -51,15 +51,19 @@ My typical use is:
 python3 main.py /dev/ttyUSB0 -e auto -o
 
 # To "replay" existing samples:
-python3 main.py -d *.json
+python3 main.py -d examples/*.json
 ```
 
-The first one gives one-shot spectrum on auto exposure (from `/dev/ttyUSB0`):
+The first invocation gives one-shot spectrum on auto exposure (from `/dev/ttyUSB0`):
 
-![screenshot](pictures/oneshot.png)
+![screenshot of live capture](pictures/oneshot.png)
 
 Or, if you prefer, [screenshot of the CIE1976UCS locus](pictures/oneshot-cie1976ucs.png)
 or [screenshot of the TM30 graph](pictures/oneshot-tm30.png).
+
+The second invocation shows you replay of examples (no spectrometer needed!):
+
+![screenshot of replay](pictures/replay.png)
 
 There are several icons on the toolbar:
 
