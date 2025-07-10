@@ -100,8 +100,6 @@ class RefreshableSpectralPlot:
         self._history_index = len(self._history) - 1
         self._fixed_y_global_lim = (0, max(self._history_max))
 
-        print('data:', len(self._history), self._history_index, self._history_max, self._fixed_y_global_lim)
-
     WARNINGS_TO_IGNORE = [
             "Treat the new Tool classes introduced in v1.5 as experimental",
             "Key \\w+ changed from [a-z_]+ to [a-z_]+",
@@ -412,7 +410,6 @@ class RefreshableSpectralPlot:
         except Exception as ex:
             if self.running:  # Only print if we're not shutting down
                 print(f"Plot update error: {ex}")
-                print(ex)
 
     def _add_toolbar_buttons(self):
         """Add custom buttons to the toolbar"""
