@@ -28,8 +28,8 @@ from .protocol import ExposureStatus
 from .types import GraphType, RefreshType
 from .tools import (
     RefreshTool, OneShotTool, HistoryStartTool, HistoryBackTool, HistoryForwardTool,
-    HistoryEndTool, GraphSelectTool, FixYRangeTool, LogYScaleTool, PowerTool,
-    PlotSaveTool, RawSaveTool)
+    HistoryEndTool, GraphSelectTool, FixYRangeGlobalTool, FixYRangeTool, LogYScaleTool,
+    PowerTool, PlotSaveTool, RawSaveTool)
 
 # pylint: disable=broad-exception-caught
 # pylint: disable=too-many-instance-attributes
@@ -42,7 +42,9 @@ class RefreshableSpectralPlot:
     def __init__(self, initial_data, refresh_func=None, graph_type=GraphType.SPECTRUM,
                  refresh_type=RefreshType.DISABLED, file_template=None, history_size=50):
         self._history = []
+        self._history_max = []
         self._history_index = -1
+        self._fixed_y_global_lim = None
         self.max_history_size = history_size
         self.data = None
         # Load 'em all up
@@ -69,6 +71,7 @@ class RefreshableSpectralPlot:
         self.overlay_text = None
         self.dirty = False
         self.fix_y_range = False
+        self.fix_y_range_global = False
         self.fixed_y_lim = None
         self.log_y_scale = False
 
@@ -85,11 +88,19 @@ class RefreshableSpectralPlot:
         if new_data is None:
             return
 
+        new_max =  max(new_data.spd.values())
+
         self._history.append(new_data)
+        self._history_max.append(new_max)
+
         if len(self._history) > self.max_history_size:
             self._history.pop(0)
+            self._history_max.pop(0)
 
         self._history_index = len(self._history) - 1
+        self._fixed_y_global_lim = (0, max(self._history_max))
+
+        print('data:', len(self._history), self._history_index, self._history_max, self._fixed_y_global_lim)
 
     WARNINGS_TO_IGNORE = [
             "Treat the new Tool classes introduced in v1.5 as experimental",
@@ -277,12 +288,19 @@ class RefreshableSpectralPlot:
             self.axes.set_yscale('linear')
 
         if self.graph_type in [GraphType.LINE, GraphType.SPECTRUM]:
-            if self.fix_y_range:
+            if self.fix_y_range_global:
+                current_lim = (0, self._fixed_y_global_lim[1] * 1.05)
+            elif self.fix_y_range:
                 if self.fixed_y_lim is None:
                     self.fixed_y_lim = self.axes.get_ylim()
 
                 current_lim = self.fixed_y_lim
 
+            else:
+                self.fixed_y_lim = None
+                current_lim = None
+
+            if current_lim:
                 # log graph can't have min = 0
                 if self.log_y_scale and self.graph_type == GraphType.LINE:
                     current_lim = self.fixed_y_lim
@@ -294,8 +312,6 @@ class RefreshableSpectralPlot:
                             current_lim = (min_val * 0.1, current_lim[1])
 
                 self.axes.set_ylim(current_lim)
-            else:
-                self.fixed_y_lim = None
 
     def _draw_graph(self):
         """Draw graph based on configuration"""
@@ -424,6 +440,7 @@ class RefreshableSpectralPlot:
                               graph_type=GraphType.TM30)
 
             tool_mgr.add_tool("yrange_fix", FixYRangeTool, plot=self)
+            tool_mgr.add_tool("yrange_global_fix", FixYRangeGlobalTool, plot=self)
             tool_mgr.add_tool("log_yscale", LogYScaleTool, plot=self)
 
             def avoid_untoggle(event):
@@ -471,6 +488,7 @@ class RefreshableSpectralPlot:
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("tm30"), "graph")
 
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("yrange_fix"), "axes")
+            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("yrange_global_fix"), "axes")
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("log_yscale"), "axes")
 
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("power"), "power")

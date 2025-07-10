@@ -231,14 +231,15 @@ class HistoryEndTool(ToolBase):
 
 class FixYRangeTool(ToolToggleBase):
     """Fix Y range of the plot"""
-    description = 'Only line+spectrum graphs: Fix Y-axis range (key: Y)'
+    description = 'Only line+spectrum: Fix Y-axis range based on current graph (key: Y)'
     default_keymap = ['y', 'Y']
+    radio_group = 'yrange_fixes'
 
     def __init__(self, *args, plot, **kwargs):
         self.plot = plot
         self.default_toggled = self.plot.fix_y_range
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        self.image = os.path.join(script_dir, "../icons/yrange_fix.png")
+        self.image = os.path.join(script_dir, "../icons/yrange_fix")
         super().__init__(*args, **kwargs)
 
     def enable(self, event=None):
@@ -251,6 +252,28 @@ class FixYRangeTool(ToolToggleBase):
         self.plot.dirty = True # FIXME: this is expensive, can we do without?
 
 
+class FixYRangeGlobalTool(ToolToggleBase):
+    """Fix Y range of the plot based on all graphs in history"""
+    description = 'Only line+spectrum: Fix Y-axis range based on all graphs (key: G)'
+    default_keymap = ['g', 'G']
+    radio_group = 'yrange_fixes'
+
+    def __init__(self, *args, plot, **kwargs):
+        self.plot = plot
+        self.default_toggled = self.plot.fix_y_range_global
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        self.image = os.path.join(script_dir, "../icons/yrange_global_fix")
+        super().__init__(*args, **kwargs)
+
+    def enable(self, event=None):
+        self.plot.fix_y_range_global = True
+        self.plot.dirty = True # FIXME: this is expensive, can we do without?
+
+    def disable(self, event=None):
+        self.plot.fix_y_range_global = False
+        self.plot.dirty = True # FIXME: this is expensive, can we do without?
+
+
 class LogYScaleTool(ToolToggleBase):
     """Switch Y axis to log scale"""
     description = 'Only line graph: Use logarithmic Y-axis (key: K)'
@@ -260,7 +283,7 @@ class LogYScaleTool(ToolToggleBase):
         self.plot = plot
         self.default_toggled = self.plot.log_y_scale
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        self.image = os.path.join(script_dir, "../icons/log_yscale.png")
+        self.image = os.path.join(script_dir, "../icons/log_yscale")
         super().__init__(*args, **kwargs)
 
     def enable(self, event=None):

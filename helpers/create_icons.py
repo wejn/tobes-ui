@@ -45,8 +45,11 @@ if __name__ == "__main__":
         create_text_icon("🗘", font, 24, "icons/refresh.png", 0, 0.1)
         create_text_icon("🗘", font, 48, "icons/refresh_large.png", 0, 0.1)
 
-        create_text_icon("⭥", font, 24, "icons/yrange_fix.png", 0, 0.1)
-        create_text_icon("⭥", font, 48, "icons/yrange_fix_large.png", 0, 0.1)
+        font = '/usr/share/fonts/truetype/noto/NotoSansMath-Regular.ttf'
+        create_text_icon("⤒𝟷", font, 24, "icons/yrange_fix.png", 0, 0)
+        create_text_icon("⤒𝟷", font, 48, "icons/yrange_fix_large.png", 0, 0)
+        create_text_icon("⤒∀", font, 24, "icons/yrange_global_fix.png", 0, 0.05)
+        create_text_icon("⤒∀", font, 48, "icons/yrange_global_fix_large.png", 0, 0.05)
 
         font = '/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf'
         create_text_icon("ℓᵧ", font, 24, "icons/log_yscale.png", 0, -0.1)

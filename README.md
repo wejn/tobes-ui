@@ -83,7 +83,8 @@ There are several icons on the toolbar:
 | ![cie1960UCS locus](icons/cie1960ucs_graph.png) | `6` | CIE1960UCS locus graph |
 | ![cie1976UCS locus](icons/cie1976ucs_graph.png) | `7` | CIE1976UCS locus graph |
 | ![tm30 graph](icons/tm30_graph.png) | `T` | TM30 graph |
-| ![fix y range](icons/yrange_fix.png) | `Y` | Only line+spectrum graphs: Fix Y-axis range |
+| ![fix y range](icons/yrange_fix.png) | `Y` | Only line+spectrum: Fix Y-axis range based on current graph |
+| ![global fix y range](icons/yrange_global_fix.png) | `G` | Only line+spectrum: Fix Y-axis range based on all graphs |
 | ![log y axis](icons/log_yscale.png) | `K` | Only line graph: Use logarithmic Y-axis |
 | ![power](icons/power.png) | `Esc`, `Ctrl+Q` | Quit the app |
 
