@@ -31,8 +31,8 @@ options:
                         Exposure time in milliseconds (0.1-5000) or 'auto' (default: auto)
   -q, --quick-graph     Enable quick (LINE) graph mode
   -t GRAPH_TYPE, --graph_type GRAPH_TYPE
-                        Graph type (LINE, SPECTRUM, CIE1931, CIE1960UCS, CIE1976UCS, TM30)
-                        (default SPECTRUM)
+                        Graph type (LINE, SPECTRUM, CIE1931, CIE1960UCS, CIE1976UCS, TM30,
+                        OVERLAY) (default SPECTRUM)
   -o, --oneshot         One shot mode (single good capture)
   -n, --no-refresh      Start without refresh
   -f FILE_TEMPLATE, --file_template FILE_TEMPLATE
@@ -66,6 +66,8 @@ The second invocation shows you replay of examples (no spectrometer needed!):
 
 ![screenshot of replay](pictures/replay.png)
 
+![screenshot of replay overlay log](pictures/replay-overlay-log.png)
+
 There are several icons on the toolbar:
 
 | Icon | Key | Explanation |
@@ -86,9 +88,10 @@ There are several icons on the toolbar:
 | ![cie1960UCS locus](icons/cie1960ucs_graph.png) | `6` | CIE1960UCS locus graph |
 | ![cie1976UCS locus](icons/cie1976ucs_graph.png) | `7` | CIE1976UCS locus graph |
 | ![tm30 graph](icons/tm30_graph.png) | `T` | TM30 graph |
+| ![overlay graph](icons/overlay_graph.png) | `V` | Overlay graph -- all spectra at once |
 | ![fix y range](icons/yrange_fix.png) | `Y` | Only line+spectrum: Fix Y-axis range based on current graph |
 | ![global fix y range](icons/yrange_global_fix.png) | `G` | Only line+spectrum: Fix Y-axis range based on all graphs |
-| ![log y axis](icons/log_yscale.png) | `K` | Only line graph: Use logarithmic Y-axis |
+| ![log y axis](icons/log_yscale.png) | `K` | Only line+overlay: Use logarithmic Y-axis |
 | ![power](icons/power.png) | `Esc`, `Ctrl+Q` | Quit the app |
 
 ## Exported data

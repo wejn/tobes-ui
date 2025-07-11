@@ -45,6 +45,10 @@ class GraphSelectTool(ToolToggleBase):
                 self.description = 'TM30 graph (key: t)'
                 self.default_keymap = ['t', 'T']
                 self.image = os.path.join(script_dir, "../icons/tm30_graph")
+            case GraphType.OVERLAY:
+                self.description = 'Overlay graph (key: v)'
+                self.default_keymap = ['v', 'V']
+                self.image = os.path.join(script_dir, "../icons/overlay_graph")
             case _:
                 raise ValueError(f'weird graph type: {graph_type}')
 
@@ -279,7 +283,7 @@ class FixYRangeGlobalTool(ToolToggleBase):
 
 class LogYScaleTool(ToolToggleBase):
     """Switch Y axis to log scale"""
-    description = 'Only line graph: Use logarithmic Y-axis (key: K)'
+    description = 'Only line+overlay: Use logarithmic Y-axis (key: K)'
     default_keymap = ['k', 'K']
 
     def __init__(self, *args, plot, **kwargs):

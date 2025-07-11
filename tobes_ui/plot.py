@@ -4,6 +4,7 @@ from datetime import datetime
 import queue
 import threading
 import time
+from typing import NamedTuple
 import warnings
 
 import colour
@@ -37,20 +38,43 @@ from .tools import (
 # pylint: disable=too-many-statements
 
 
+class YAxisValues(NamedTuple):
+    """Named tuple holding info about SpectralDistribution for Y axis (min, min positive, max)"""
+    minimum: float
+    minimum_positive: float
+    maximum: float
+
+    @classmethod
+    def from_spd(cls, spd):
+        """Get YAxisValues from a SpectralDistribution"""
+        minimum = min(spd.values())
+        minimum_positive = min(x for x in spd.values() if x > 0)
+        maximum = max(spd.values())
+        return cls(
+                minimum=minimum,
+                minimum_positive=minimum_positive,
+                maximum=maximum)
+
+    @classmethod
+    def from_list(cls, values):
+        """Get YAxisValues from a list of them (aggregate the min/pos/max)"""
+        minimum = min(x.minimum for x in values)
+        minimum_positive = min(x.minimum_positive for x in values)
+        maximum = max(x.maximum for x in values)
+        return cls(
+                minimum=minimum,
+                minimum_positive=minimum_positive,
+                maximum=maximum)
+
+
 class RefreshableSpectralPlot:
     """Refreshable plot (graph); basically main window of the app"""
     def __init__(self, initial_data, refresh_func=None, graph_type=GraphType.SPECTRUM,
                  refresh_type=RefreshType.DISABLED, file_template=None, history_size=50):
         self._history = []
-        self._history_max = []
+        self._history_yvals = []
         self._history_index = -1
-        self._fixed_y_global_lim = None
         self.max_history_size = history_size
-        # Load 'em all up
-        if initial_data:
-            for spectrum in initial_data:
-                self.data = spectrum
-
         self.running = False
         self.thread = None
         self.fig = None
@@ -71,8 +95,15 @@ class RefreshableSpectralPlot:
         self.dirty = False
         self.fix_y_range = False
         self.fix_y_range_global = False
-        self.fixed_y_lim = None
         self.log_y_scale = False
+        self._fixed_y_global = None
+        self._fixed_y = None
+
+        # Load 'em all up
+        if initial_data:
+            for spectrum in initial_data:
+                self.data = spectrum
+
 
     @property
     def name(self):
@@ -100,30 +131,30 @@ class RefreshableSpectralPlot:
         if new_data is None:
             return
 
-        new_max =  max(new_data.spd.values())
+        yvals = YAxisValues.from_spd(new_data.spd)
 
         self._history.append(new_data)
-        self._history_max.append(new_max)
+        self._history_yvals.append(yvals)
 
         if len(self._history) > self.max_history_size:
             self._history.pop(0)
-            self._history_max.pop(0)
+            self._history_yvals.pop(0)
 
         self._history_index = len(self._history) - 1
-        self._fixed_y_global_lim = (0, max(self._history_max))
+        self._fixed_y_global = YAxisValues.from_list(self._history_yvals)
 
     def remove_current_data(self):
         """Remove currently displayed data from history and view (if any)"""
         if not self.data:
             return
         self._history.pop(self._history_index)
-        self._history_max.pop(self._history_index)
+        self._history_yvals.pop(self._history_index)
         if self._history_index > len(self._history) - 1:
             self._history_index = len(self._history) - 1
-        if len(self._history_max) > 0:
-            self._fixed_y_global_lim = (0, max(self._history_max))
+        if len(self._history_yvals) > 0:
+            self._fixed_y_global = YAxisValues.from_list(self._history_yvals)
         else:
-            self._fixed_y_global_lim = None
+            self._fixed_y_global = None
         self.dirty = True
 
     WARNINGS_TO_IGNORE = [
@@ -305,37 +336,48 @@ class RefreshableSpectralPlot:
             self.error_text.remove()
             self.error_text = None
 
-    def _tweak_y_axis(self, spd):
-        if self.log_y_scale and self.graph_type == GraphType.LINE:
+    def _tweak_y_axis(self):
+        """Tweak the y axis appearance and range based on config"""
+        self.axes.autoscale(enable=True, axis='y')
+
+        if self.log_y_scale and self.graph_type in [GraphType.LINE, GraphType.OVERLAY]:
             self.axes.set_yscale('log')
+            logscale = True
         else:
+            self.axes.set_ylim(bottom=0)
             self.axes.set_yscale('linear')
+            logscale = False
 
-        if self.graph_type in [GraphType.LINE, GraphType.SPECTRUM]:
-            if self.fix_y_range_global:
-                current_lim = (0, self._fixed_y_global_lim[1] * 1.05)
-            elif self.fix_y_range:
-                if self.fixed_y_lim is None:
-                    self.fixed_y_lim = self.axes.get_ylim()
+        if self.fix_y_range and self._fixed_y is None:
+            self._fixed_y = self._history_yvals[self._history_index]
 
-                current_lim = self.fixed_y_lim
+        if self.fix_y_range_global:
+            ylim = self._fixed_y_global
+        elif self.fix_y_range:
+            ylim = self._fixed_y
+        else:
+            ylim = None
 
-            else:
-                self.fixed_y_lim = None
-                current_lim = None
-
-            if current_lim:
-                # log graph can't have min = 0
-                if self.log_y_scale and self.graph_type == GraphType.LINE:
-                    current_lim = self.fixed_y_lim
-                    if self.log_y_scale and current_lim[0] <= 0:
-                        all_values = np.array(list(spd.values))
-                        positive_values = all_values[all_values > 0]
-                        if positive_values.any():
-                            min_val = np.min(positive_values)
-                            current_lim = (min_val * 0.1, current_lim[1])
-
-                self.axes.set_ylim(current_lim)
+        top_margin = 1.05 # scaler, 1.05 = +5%
+        match self.graph_type:
+            case GraphType.LINE:
+                if ylim:
+                    if logscale:
+                        self.axes.set_ylim(ylim.minimum_positive, ylim.maximum * top_margin)
+                    else:
+                        self.axes.set_ylim(ylim.minimum, ylim.maximum * top_margin)
+            case GraphType.SPECTRUM:
+                # No logscale support (because the flame graph doesn't clip correctly)
+                if ylim:
+                    self.axes.set_ylim(ylim.minimum, ylim.maximum * top_margin)
+            case GraphType.OVERLAY:
+                ylim = self._fixed_y_global
+                if logscale:
+                    self.axes.set_ylim(ylim.minimum_positive, ylim.maximum * top_margin)
+                else:
+                    self.axes.set_ylim(ylim.minimum, ylim.maximum * top_margin)
+            case _:
+                pass
 
     def _graph_title(self, spd):
         """Title for the graph based on current name and Spectrum's name"""
@@ -395,8 +437,33 @@ class RefreshableSpectralPlot:
                 plt.ylabel("Spectral Distribution ($W/m^2$)")
                 plt.title(self._graph_title(spd))
 
-                self._tweak_y_axis(spd)
+                self._tweak_y_axis()
+            case GraphType.OVERLAY:
+                self.axes.set_aspect('auto')
+                self.fig.tight_layout()
+                plt.title('Overlay graph')
+                pos = 0
+                for graph in self._history:
+                    spd = graph.to_spectral_distribution()
+                    ref = " ⬅" if pos == self._history_index else ""
+                    self.axes.plot(list(spd.wavelengths),
+                                   list(spd.values),
+                                   label=f'{pos+1}: {graph.name or "(no name)"}{ref}')
+                    pos += 1
+                leg = plt.legend()
+                current_text = leg.get_texts()[self._history_index]
+                current_text.set_color('blue')
+                plt.xlabel("Wavelength $\\lambda$ (nm)")
+                plt.ylabel("Spectral Distribution ($W/m^2$)")
 
+                xstart = min(x.wavelength_range.start for x in self._history)
+                xstop = max(x.wavelength_range.stop for x in self._history)
+                self.axes.set_xlim(xstart, xstop)
+                self._tweak_y_axis()
+
+                self.fig.tight_layout()
+                self.fig.figure.subplots_adjust(
+                        hspace=CONSTANTS_COLOUR_STYLE.geometry.short / 2)
             case _:
                 # GraphType.LINE goes here, too
                 self.axes.set_aspect('auto')
@@ -408,18 +475,17 @@ class RefreshableSpectralPlot:
                 plt.xlabel("Wavelength $\\lambda$ (nm)")
                 plt.ylabel("Spectral Distribution ($W/m^2$)")
 
-                vals = list(spd.wavelengths)
-                self.axes.set_xlim((min(vals), max(vals)))
-                self.axes.set_ylim((0, max(list(spd.values)) * 1.05))
+                wl_range = self.data.wavelength_range
+                self.axes.set_xlim(wl_range.start, wl_range.stop)
 
-                self._tweak_y_axis(spd)
+                self._tweak_y_axis()
 
                 self.fig.tight_layout()
                 self.fig.figure.subplots_adjust(
                         hspace=CONSTANTS_COLOUR_STYLE.geometry.short / 2)
 
         # Re-setup cursor after clearing
-        if not self.error_text:
+        if self.graph_type in [GraphType.LINE, GraphType.SPECTRUM, GraphType.OVERLAY]:
             self._setup_cursor()
 
         # Restore cursor state if it was visible
@@ -471,6 +537,8 @@ class RefreshableSpectralPlot:
                               graph_type=GraphType.CIE1976UCS)
             tool_mgr.add_tool("tm30", GraphSelectTool, plot=self,
                               graph_type=GraphType.TM30)
+            tool_mgr.add_tool("overlay", GraphSelectTool, plot=self,
+                              graph_type=GraphType.OVERLAY)
 
             tool_mgr.add_tool("yrange_fix", FixYRangeTool, plot=self)
             tool_mgr.add_tool("yrange_global_fix", FixYRangeGlobalTool, plot=self)
@@ -495,6 +563,7 @@ class RefreshableSpectralPlot:
             tool_mgr.toolmanager_connect("tool_trigger_cie1960ucs", avoid_untoggle)
             tool_mgr.toolmanager_connect("tool_trigger_cie1976ucs", avoid_untoggle)
             tool_mgr.toolmanager_connect("tool_trigger_tm30", avoid_untoggle)
+            tool_mgr.toolmanager_connect("tool_trigger_overlay", avoid_untoggle)
 
             tool_mgr.add_tool("power", PowerTool, plot=self)
             tool_mgr.add_tool("plot_save", PlotSaveTool, plot=self,
@@ -524,6 +593,7 @@ class RefreshableSpectralPlot:
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("cie1960ucs"), "graph")
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("cie1976ucs"), "graph")
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("tm30"), "graph")
+            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("overlay"), "graph")
 
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("yrange_fix"), "axes")
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("yrange_global_fix"), "axes")

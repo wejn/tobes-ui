@@ -10,6 +10,7 @@ class GraphType(Enum):
     CIE1960UCS = 4
     CIE1976UCS = 5
     TM30 = 6
+    OVERLAY = 7
 
     def __str__(self):
         """Convert to readable string"""
