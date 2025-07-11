@@ -255,7 +255,7 @@ class Spectrometer:
         # Terminate streaming
         self.send_message(MessageType.STOP)
         if last_ok:
-            while (a := self.read_message()["message_type"]) != MessageType.STOP:
+            while self.read_message()["message_type"] != MessageType.STOP:
                 pass
         else:
             # When the last GET_DATA message wasn't OK, the system doesn't send

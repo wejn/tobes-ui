@@ -250,10 +250,12 @@ class RefreshableSpectralPlot:
                         self.refresh_type = RefreshType.NONE
 
                 case ExposureStatus.UNDER:
-                    self.data_refresh_issue = f'Under-exposed\nExp. time: {data.time:.01f}\n({now_str})'
+                    self.data_refresh_issue = ('Under-exposed\n' +
+                                               f'Exp. time: {data.time:.01f}\n({now_str})')
 
                 case ExposureStatus.OVER:
-                    self.data_refresh_issue = f'Over-exposed\nExp. time: {data.time:.01f}\n({now_str})'
+                    self.data_refresh_issue = ('Over-exposed\n' +
+                                               f'Exp. time: {data.time:.01f}\n({now_str})')
 
                 case _:
                     self.data_refresh_issue = f'Error:\n{data.status}\n({now_str})'
