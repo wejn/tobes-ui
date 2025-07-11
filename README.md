@@ -37,7 +37,8 @@ options:
   -n, --no-refresh      Start without refresh
   -f FILE_TEMPLATE, --file_template FILE_TEMPLATE
                         File template (without .ext) for data export (default:
-                        spectrum-{timestamp_full}{graph_type})
+                        'spectrum-{timestamp_full}{graph_type}'),
+                        '{name}-{timestamp_full}{graph_type}' might be also useful
   -d [DATA ...], --data [DATA ...]
                         JSON dump file(s) to load for viewing (disables data refresh)
   -s HISTORY_SIZE, --history-size HISTORY_SIZE

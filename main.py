@@ -85,10 +85,12 @@ if __name__ == "__main__":
         )
 
         default_template = 'spectrum-{timestamp_full}{graph_type}'
+        template_with_name = '{name}-{timestamp_full}{graph_type}'
         parser.add_argument(
             '-f', '--file_template',
             default=default_template,
-            help=f"File template (without .ext) for data export (default: {default_template})"
+            help=f"File template (without .ext) for data export (default: '{default_template}')," +
+                f" '{template_with_name}' might be also useful"
         )
 
         parser.add_argument(

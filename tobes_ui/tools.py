@@ -75,6 +75,7 @@ class PlotSaveTool(ToolBase):
             print("File template not defined, can't save")
         else:
             template_values = {
+                    'name': self.plot.data.name or 'spectrum',
                     'graph_type': '-' + str(self.plot.graph_type),
                     'timestamp': str(int(snap_time.timestamp())),
                     'timestamp_full': str(snap_time.timestamp()),
@@ -103,6 +104,7 @@ class RawSaveTool(ToolBase):
             print(self.plot.data.to_json())
         else:
             template_values = {
+                    'name': self.plot.data.name or 'spectrum',
                     'graph_type': '',
                     'timestamp': str(int(snap_time.timestamp())),
                     'timestamp_full': str(snap_time.timestamp()),
