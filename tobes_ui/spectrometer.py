@@ -235,6 +235,11 @@ class Spectrometer:
             LOGGER.debug("read %s", response)
 
             if response['message_type'] != MessageType.GET_DATA:
+                if response['message_type'] == MessageType.STOP:
+                    # FIXME: rootcause this, and don't quickfix
+                    LOGGER.info('quickfixing stall (STOP rcvd in get_data)')
+                    self.send_message(MessageType.GET_DATA)
+                    continue
                 LOGGER.info('unexpected message: %s', response)
                 continue
 
