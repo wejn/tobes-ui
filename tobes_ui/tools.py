@@ -1,6 +1,7 @@
 """Matplotlib toolbar tools for the UI"""
 
 import os
+from tkinter import simpledialog
 
 from matplotlib.backend_tools import ToolBase, ToolToggleBase
 
@@ -293,3 +294,29 @@ class LogYScaleTool(ToolToggleBase):
     def disable(self, event=None):
         self.plot.log_y_scale = False
         self.plot.dirty = True
+
+
+class NameTool(ToolBase):
+    """Name the current spectrum data"""
+    description = 'Name the current spectrum data (key: enter || A)'
+    default_keymap = ['enter', 'a', 'A']
+
+    def __init__(self, *args, plot, **kwargs):
+        self.plot = plot
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        self.image = os.path.join(script_dir, "../icons/name")
+        super().__init__(*args, **kwargs)
+
+    def trigger(self, *_args, **_kwargs):
+        if not self.plot.data:
+            return
+
+        widget = self.plot.fig.canvas.get_tk_widget()
+        result = simpledialog.askstring("Plot name", "Plot name:",
+                                        parent=widget.winfo_toplevel(),
+                                        initialvalue=self.plot.name)
+        if result is not None:
+            self.plot.name = result
+            self.plot.dirty = True
+
+        widget.focus_set()

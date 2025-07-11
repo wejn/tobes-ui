@@ -55,4 +55,7 @@ if __name__ == "__main__":
         create_text_icon("ℓᵧ", font, 24, "icons/log_yscale.png", 0, -0.1)
         create_text_icon("ℓᵧ", font, 48, "icons/log_yscale_large.png", 0, -0.1)
 
+        create_text_icon("a‸", font, 24, "icons/name.png", 0, -0.1)
+        create_text_icon("a‸", font, 48, "icons/name_large.png", 0, -0.1)
+
     main()

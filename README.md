@@ -69,6 +69,7 @@ There are several icons on the toolbar:
 
 | Icon | Key | Explanation |
 |:---|:---:|:---|
+| ![name](icons/name.png) | `Enter`, `A` | Name the current spectrum data |
 | ![save](icons/plot_save.png) | `S` | Saves rendered graph as png |
 | ![download](icons/raw_save.png) | `D` | Save raw data as json |
 | ![refresh](icons/refresh.png) | `R` | Keep refreshing data |
@@ -147,7 +148,8 @@ Sample exported data:
         0.004944,
         0.004859
     ],
-    "ts": 1751704901.025932
+    "ts": 1751704901.025932,
+    "name": "my fancy spectrum"
 }
 ```
 

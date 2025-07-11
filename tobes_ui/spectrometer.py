@@ -1,10 +1,12 @@
 """Class to talk to the Torch Bearer Spectrometer"""
 
+# pylint: disable=too-many-instance-attributes
+
+from dataclasses import dataclass
 from datetime import datetime
 import json
 import pprint
 import struct
-from typing import NamedTuple
 
 import colour
 from serial import Serial
@@ -18,15 +20,17 @@ from .protocol import (
 )
 
 
-class Spectrum(NamedTuple):
+@dataclass
+class Spectrum:
     """Wraps measured spectrum"""
     status: ExposureStatus
     exposure: ExposureMode
     time: float
     spd: dict[int, float]
-    wavelength_range: int
+    wavelength_range: tuple[int, int]
     spd_raw: list[float]
-    ts: datetime
+    ts: datetime # pylint: disable=invalid-name
+    name: str
 
     def to_json(self) -> str:
         """Convert Spectrum to json"""
@@ -36,11 +40,12 @@ class Spectrum(NamedTuple):
             "time": self.time,
             "spd": self.spd,
             "wavelength_range": [
-                self.wavelength_range.start,
-                self.wavelength_range.stop
+                self.wavelength_range[0],
+                self.wavelength_range[1]
             ],
             "spd_raw": self.spd_raw,
             "ts": self.ts.timestamp(),
+            "name": self.name,
         }, indent=4)
 
     def to_spectral_distribution(self):
@@ -56,6 +61,8 @@ class Spectrum(NamedTuple):
             data["wavelength_range"] = [min(wls), max(wls)]
         if "spd_raw" not in data:
             data["spd_raw"] = [v for k, v in data["spd"].items()]
+        if "name" not in data:
+            data["name"] = None
         return cls(
             status=data["status"],
             exposure=data["exposure"],
@@ -66,7 +73,8 @@ class Spectrum(NamedTuple):
                 data["wavelength_range"][1]
             ),
             spd_raw=data["spd_raw"],
-            ts=datetime.fromtimestamp(data["ts"])
+            ts=datetime.fromtimestamp(data["ts"]),
+            name=data["name"]
         )
 
     @classmethod
@@ -225,7 +233,8 @@ class Spectrometer:
                     },
                     wavelength_range=spec_range,
                     spd_raw=response["spectrum"],
-                    ts=datetime.now()
+                    ts=datetime.now(),
+                    name=None
             )
 
             if where_to:

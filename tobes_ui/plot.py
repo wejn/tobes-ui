@@ -29,7 +29,7 @@ from .types import GraphType, RefreshType
 from .tools import (
     RefreshTool, OneShotTool, HistoryStartTool, HistoryBackTool, HistoryForwardTool,
     HistoryEndTool, GraphSelectTool, FixYRangeGlobalTool, FixYRangeTool, LogYScaleTool,
-    PowerTool, PlotSaveTool, RawSaveTool)
+    PowerTool, PlotSaveTool, RawSaveTool, NameTool)
 
 # pylint: disable=broad-exception-caught
 # pylint: disable=too-many-instance-attributes
@@ -46,7 +46,6 @@ class RefreshableSpectralPlot:
         self._history_index = -1
         self._fixed_y_global_lim = None
         self.max_history_size = history_size
-        self.data = None
         # Load 'em all up
         if initial_data:
             for spectrum in initial_data:
@@ -74,6 +73,19 @@ class RefreshableSpectralPlot:
         self.fix_y_range_global = False
         self.fixed_y_lim = None
         self.log_y_scale = False
+
+    @property
+    def name(self):
+        """Name of current graph"""
+        if self.data:
+            return self.data.name
+        return None
+
+    @name.setter
+    def name(self, value):
+        """Setter for name"""
+        if self.data:
+            self.data.name = value
 
     @property
     def data(self):
@@ -311,6 +323,12 @@ class RefreshableSpectralPlot:
 
                 self.axes.set_ylim(current_lim)
 
+    def _graph_title(self, spd):
+        """Title for the graph based on current name and Spectrum's name"""
+        if self.data and self.data.name:
+            return f'{self.data.name} ({spd.name})'
+        return spd.name
+
     def _draw_graph(self):
         """Draw graph based on configuration"""
 
@@ -325,13 +343,13 @@ class RefreshableSpectralPlot:
         match self.graph_type:
             case GraphType.CIE1931:
                 plot_planckian_locus_in_chromaticity_diagram_CIE1931(
-                        {"X": xy_point}, title=spd.name, **kwargs)
+                        {"X": xy_point}, title=self._graph_title(spd), **kwargs)
             case GraphType.CIE1960UCS:
                 plot_planckian_locus_in_chromaticity_diagram_CIE1960UCS(
-                        {"X": xy_point}, title=spd.name, **kwargs)
+                        {"X": xy_point}, title=self._graph_title(spd), **kwargs)
             case GraphType.CIE1976UCS:
                 plot_planckian_locus_in_chromaticity_diagram_CIE1976UCS(
-                        {"X": xy_point}, title=spd.name, **kwargs)
+                        {"X": xy_point}, title=self._graph_title(spd), **kwargs)
             case GraphType.TM30:
                 cct = colour.temperature.xy_to_CCT(xy_point, method='daylight')
                 spec = colour_fidelity_index_ANSIIESTM3018(spd)
@@ -344,7 +362,7 @@ class RefreshableSpectralPlot:
                             bbox={"facecolor": 'white', "alpha": 0.9, "pad": 20})
 
                 else:
-                    plt.title(f"{spd.display_name}")
+                    plt.title(self._graph_title(spd))
                     spec_full = colour_fidelity_index_ANSIIESTM3018(spd, True)
                     kwargs.update({'hspace': CONSTANTS_COLOUR_STYLE.geometry.short / 2})
                     plot_colour_vector_graphic(spec_full, **kwargs)
@@ -361,7 +379,7 @@ class RefreshableSpectralPlot:
                 colour.plotting.plot_single_sd(spd, cmfs, **kwargs)
                 plt.xlabel("Wavelength $\\lambda$ (nm)")
                 plt.ylabel("Spectral Distribution ($W/m^2$)")
-                plt.title(f"{spd.display_name}")
+                plt.title(self._graph_title(spd))
 
                 self._tweak_y_axis(spd)
 
@@ -369,7 +387,7 @@ class RefreshableSpectralPlot:
                 # GraphType.LINE goes here, too
                 self.axes.set_aspect('auto')
                 self.fig.tight_layout()
-                plt.title(f"{spd.display_name}")
+                plt.title(self._graph_title(spd))
                 self.axes.plot(list(spd.wavelengths),
                              list(spd.values),
                              label='Spectral Distribution')
@@ -469,7 +487,10 @@ class RefreshableSpectralPlot:
                               file_template=self.file_template)
             tool_mgr.add_tool("raw_save", RawSaveTool, plot=self,
                               file_template=self.file_template)
+            tool_mgr.add_tool("name", NameTool, plot=self)
 
+
+            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("name"), "export")
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("plot_save"), "export")
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("raw_save"), "export")
             if not self.refresh_type == RefreshType.DISABLED:

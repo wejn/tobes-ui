@@ -7,6 +7,7 @@ import pprint
 import signal
 import sys
 
+import matplotlib
 from matplotlib.backend_tools import default_toolbar_tools
 
 from tobes_ui.plot import RefreshableSpectralPlot
@@ -185,6 +186,7 @@ if __name__ == "__main__":
         else:
             refresh = RefreshType.CONTINUOUS
 
+        matplotlib.use("TkAgg")
         app = RefreshableSpectralPlot(
                 data,
                 refresh_func=meter.stream_data if meter else None,
