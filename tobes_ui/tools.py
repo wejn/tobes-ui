@@ -302,6 +302,27 @@ class LogYScaleTool(ToolToggleBase):
         self.plot.dirty = True
 
 
+class VisXTool(ToolToggleBase):
+    """Constrain X axis to visible spectrum"""
+    description = 'Only line,spectrum,overlay: Constrain X-axis to visible spectrum (key: Z)'
+    default_keymap = ['z', 'Z']
+
+    def __init__(self, *args, plot, **kwargs):
+        self.plot = plot
+        self.default_toggled = self.plot.log_y_scale
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        self.image = os.path.join(script_dir, "../icons/visx")
+        super().__init__(*args, **kwargs)
+
+    def enable(self, event=None):
+        self.plot.vis_x = True
+        self.plot.dirty = True
+
+    def disable(self, event=None):
+        self.plot.vis_x = False
+        self.plot.dirty = True
+
+
 class NameTool(ToolBase):
     """Name the current spectrum data"""
     description = 'Name the current spectrum data (key: enter || A)'

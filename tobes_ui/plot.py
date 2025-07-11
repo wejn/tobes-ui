@@ -30,7 +30,7 @@ from .types import GraphType, RefreshType
 from .tools import (
     RefreshTool, OneShotTool, HistoryStartTool, HistoryBackTool, HistoryForwardTool,
     HistoryEndTool, GraphSelectTool, FixYRangeGlobalTool, FixYRangeTool, LogYScaleTool,
-    PowerTool, PlotSaveTool, RawSaveTool, NameTool, RemoveTool)
+    PowerTool, PlotSaveTool, RawSaveTool, NameTool, RemoveTool, VisXTool)
 
 # pylint: disable=broad-exception-caught
 # pylint: disable=too-many-instance-attributes
@@ -69,6 +69,8 @@ class YAxisValues(NamedTuple):
 
 class RefreshableSpectralPlot:
     """Refreshable plot (graph); basically main window of the app"""
+    VISIBLE_SPECTRUM = range(380, 750)
+
     def __init__(self, initial_data, refresh_func=None, graph_type=GraphType.SPECTRUM,
                  refresh_type=RefreshType.DISABLED, file_template=None, history_size=50):
         self._history = []
@@ -98,6 +100,7 @@ class RefreshableSpectralPlot:
         self.log_y_scale = False
         self._fixed_y_global = None
         self._fixed_y = None
+        self.vis_x = False
 
         # Load 'em all up
         if initial_data:
@@ -426,9 +429,10 @@ class RefreshableSpectralPlot:
                 self.axes.set_aspect('auto')
                 cmfs_data = {}
                 cmfs_source = colour.MSDS_CMFS["CIE 1931 2 Degree Standard Observer"]
+                use_range = self.VISIBLE_SPECTRUM if self.vis_x else self.data.wavelength_range
                 for wavelength in range(
-                    self.data.wavelength_range.start,
-                    self.data.wavelength_range.stop + 1
+                    use_range.start,
+                    use_range.stop + 1
                 ):
                     cmfs_data[wavelength] = cmfs_source[wavelength]
                 cmfs = colour.MultiSpectralDistributions(cmfs_data)
@@ -458,7 +462,10 @@ class RefreshableSpectralPlot:
 
                 xstart = min(x.wavelength_range.start for x in self._history)
                 xstop = max(x.wavelength_range.stop for x in self._history)
-                self.axes.set_xlim(xstart, xstop)
+                if self.vis_x:
+                    self.axes.set_xlim(self.VISIBLE_SPECTRUM.start, self.VISIBLE_SPECTRUM.stop + 1)
+                else:
+                    self.axes.set_xlim(xstart, xstop)
                 self._tweak_y_axis()
 
                 self.fig.tight_layout()
@@ -476,7 +483,10 @@ class RefreshableSpectralPlot:
                 plt.ylabel("Spectral Distribution ($W/m^2$)")
 
                 wl_range = self.data.wavelength_range
-                self.axes.set_xlim(wl_range.start, wl_range.stop)
+                if self.vis_x:
+                    self.axes.set_xlim(self.VISIBLE_SPECTRUM.start, self.VISIBLE_SPECTRUM.stop + 1)
+                else:
+                    self.axes.set_xlim(wl_range.start, wl_range.stop)
 
                 self._tweak_y_axis()
 
@@ -543,6 +553,7 @@ class RefreshableSpectralPlot:
             tool_mgr.add_tool("yrange_fix", FixYRangeTool, plot=self)
             tool_mgr.add_tool("yrange_global_fix", FixYRangeGlobalTool, plot=self)
             tool_mgr.add_tool("log_yscale", LogYScaleTool, plot=self)
+            tool_mgr.add_tool("visx", VisXTool, plot=self)
 
             def avoid_untoggle(event):
                 if isinstance(event.sender, ToolManager):
@@ -598,6 +609,7 @@ class RefreshableSpectralPlot:
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("yrange_fix"), "axes")
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("yrange_global_fix"), "axes")
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("log_yscale"), "axes")
+            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("visx"), "axes")
 
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("power"), "power")
 

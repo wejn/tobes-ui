@@ -92,6 +92,7 @@ There are several icons on the toolbar:
 | ![fix y range](icons/yrange_fix.png) | `Y` | Only line+spectrum: Fix Y-axis range based on current graph |
 | ![global fix y range](icons/yrange_global_fix.png) | `G` | Only line+spectrum: Fix Y-axis range based on all graphs |
 | ![log y axis](icons/log_yscale.png) | `K` | Only line+overlay: Use logarithmic Y-axis |
+| ![visible spectrum](icons/visx.png) | `Z` | Only line, spectrum, overlay: Limit X axis to visible spectrum (380..750 nm)|
 | ![power](icons/power.png) | `Esc`, `Ctrl+Q` | Quit the app |
 
 ## Exported data
