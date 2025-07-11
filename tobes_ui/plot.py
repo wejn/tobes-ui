@@ -250,13 +250,13 @@ class RefreshableSpectralPlot:
                         self.refresh_type = RefreshType.NONE
 
                 case ExposureStatus.UNDER:
-                    self.data_refresh_issue = f'under-exposed @ {data.time:.01f} ({now_str})'
+                    self.data_refresh_issue = f'Under-exposed\nExp. time: {data.time:.01f}\n({now_str})'
 
                 case ExposureStatus.OVER:
-                    self.data_refresh_issue = f'over-exposed @ {data.time:.01f} ({now_str})'
+                    self.data_refresh_issue = f'Over-exposed\nExp. time: {data.time:.01f}\n({now_str})'
 
                 case _:
-                    self.data_refresh_issue = f'error: {data.status} ({now_str})'
+                    self.data_refresh_issue = f'Error:\n{data.status}\n({now_str})'
 
         return self._should_refresh()
 
@@ -691,7 +691,10 @@ class RefreshableSpectralPlot:
         status = []
 
         if self.data_refresh_issue:
-            status.append(self.data_refresh_issue)
+            if self.refresh_type == RefreshType.CONTINUOUS:
+                self._make_overlay(f'Refresh problem: {self.data_refresh_issue}')
+            else:
+                pass # FIXME: Remove our overlay
 
         if self.data:
             status.append(f'exp: {self.data.time} ms')
