@@ -27,7 +27,7 @@ class Spectrum:
     exposure: ExposureMode
     time: float
     spd: dict[int, float]
-    wavelength_range: tuple[int, int]
+    wavelength_range: range
     spd_raw: list[float]
     ts: datetime # pylint: disable=invalid-name
     name: str
@@ -40,8 +40,8 @@ class Spectrum:
             "time": self.time,
             "spd": self.spd,
             "wavelength_range": [
-                self.wavelength_range[0],
-                self.wavelength_range[1]
+                self.wavelength_range.start,
+                self.wavelength_range.stop
             ],
             "spd_raw": self.spd_raw,
             "ts": self.ts.timestamp(),
