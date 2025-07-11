@@ -108,7 +108,6 @@ class RefreshableSpectralPlot:
             for spectrum in initial_data:
                 self.data = spectrum
 
-
     @property
     def name(self):
         """Name of current graph"""
@@ -287,6 +286,7 @@ class RefreshableSpectralPlot:
                 0.5, 0.5, text,
                 ha='center', va='center', fontsize=16, color='black',
                 bbox={"facecolor": 'white', "alpha": 0.9, "pad": 20})
+        self.fig.canvas.draw()
 
     def trigger_oneshot(self):
         """Trigger oneshot refresh of the data"""
@@ -506,12 +506,16 @@ class RefreshableSpectralPlot:
     def update_plot(self):
         """Update plot in main thread"""
         try:
-            self._clear_overlays()
-            self.axes.clear()
 
             if self.data:
+                if self.refresh_type != RefreshType.CONTINUOUS:
+                    self._make_overlay('Redrawing...')
+                    plt.pause(0.01)
+                self.axes.clear()
+                self._clear_overlays()
                 self._draw_graph()
             else:
+                self.axes.clear()
                 self.axes.set_axis_off()
                 if self._should_refresh():
                     self._make_overlay('Loading data...')
