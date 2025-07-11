@@ -11,6 +11,7 @@ import struct
 import colour
 from serial import Serial
 
+from .logger import LOGGER
 from .protocol import (
     ExposureMode,
     ExposureStatus,
@@ -102,6 +103,7 @@ class Spectrometer:
         if not self.port:
             raise ValueError("Already closed")
 
+        LOGGER.debug("sending %s %s", message_type, data)
         self.port.write(build_message(message_type, data))
 
     def read_message(self, message_type=None):
@@ -115,9 +117,13 @@ class Spectrometer:
             if messages:
                 message = messages[0]
 
+                LOGGER.debug("received type %s, want %s", message["message_type"], message_type)
+
                 if message_type and message["message_type"] != message_type:
+                    LOGGER.debug("throwing exc")
                     raise ValueError("Unexpected message type")
 
+                LOGGER.debug("returning %s", message["message_type"])
                 return message
 
     def cleanup(self):
@@ -209,6 +215,7 @@ class Spectrometer:
 
     def stream_data(self, where_to):
         """Stream spectral data to the where_to callback, until told to stop"""
+        LOGGER.debug("enter")
         if not self.wavelength_range:
             spec_range = self.get_range()
         else:
@@ -218,14 +225,17 @@ class Spectrometer:
             mode = self.get_exposure_mode()
             self.exposure_mode = mode
 
+        LOGGER.debug("requesting data")
         self.send_message(MessageType.GET_DATA)
 
         last_ok = False
         while True:
+            LOGGER.debug("reading")
             response = self.read_message()
+            LOGGER.debug("read %s", response)
 
             if response['message_type'] != MessageType.GET_DATA:
-                print('Got unexpected message:', response)
+                LOGGER.info('unexpected message: %s', response)
                 continue
 
             last_ok = response['exposure_status'] == ExposureStatus.NORMAL
@@ -246,6 +256,7 @@ class Spectrometer:
 
             if where_to:
                 cont = where_to(spectrum)
+                LOGGER.debug("callback says: %s", "continue" if cont else "stop")
                 if not cont:
                     break
             else:
@@ -253,13 +264,16 @@ class Spectrometer:
                 pprint.pprint(spectrum)
 
         # Terminate streaming
+        LOGGER.debug("about to stop %s", last_ok)
         self.send_message(MessageType.STOP)
         if last_ok:
-            while self.read_message()["message_type"] != MessageType.STOP:
+            while (msg := self.read_message()["message_type"]) != MessageType.STOP:
+                LOGGER.debug("wait-stop msg %s", msg)
                 pass
         else:
             # When the last GET_DATA message wasn't OK, the system doesn't send
             # ACK to the STOP message.
             pass
 
+        LOGGER.debug("done")
         return self

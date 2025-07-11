@@ -1,8 +1,10 @@
 """Protocol parser for TorchBearer Spectrometer"""
 
 from enum import Enum
+import logging
 import struct
 
+from .logger import LOGGER
 
 class MessageType(Enum):
     """Type of message (command) sent or received"""
@@ -66,6 +68,7 @@ def _calculate_checksum(message):
 
 def build_message(message_type, data):
     """Build message of given type with data as payload"""
+    LOGGER.debug('%s %s', message_type, data)
     message = b"\xCC\x01"
     message += int.to_bytes(9 + len(data), 3, "little")
     message += int.to_bytes(message_type.value, 1, "little")
@@ -151,4 +154,6 @@ def parse_messages(data, max_messages=1):
         if len(messages) >= max_messages:
             break
 
+    if messages:
+        LOGGER.debug('parsed %s', messages)
     return (data, messages)

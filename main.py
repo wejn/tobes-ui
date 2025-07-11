@@ -3,6 +3,7 @@
 import argparse
 import atexit
 import json
+import logging
 import pprint
 import signal
 import sys
@@ -14,6 +15,7 @@ from tobes_ui.plot import RefreshableSpectralPlot
 from tobes_ui.protocol import ExposureMode
 from tobes_ui.spectrometer import Spectrometer, Spectrum
 from tobes_ui.types import GraphType, RefreshType
+from tobes_ui.logger import LogLevel, configure_logging, LOGGER
 
 # pylint: disable=broad-exception-caught
 
@@ -108,6 +110,19 @@ if __name__ == "__main__":
             help='Size of the measurement history (default: 50)'
         )
 
+        def log_level(value):
+            try:
+                return LogLevel[value.upper()]
+            except KeyError as exc:
+                raise argparse.ArgumentTypeError(f"Invalid log level {value}") from exc
+
+        parser.add_argument(
+            '-l', '--log-level',
+            type=log_level,
+            default=LogLevel.WARN,
+            help='Logging level to configure: {", ".join(e.name for e in LogLevel} (default WARN)'
+        )
+
         return parser.parse_args()
 
     def _init_meter(meter, argv):
@@ -149,6 +164,9 @@ if __name__ == "__main__":
         """Zee main(), like in C"""
         argv = parse_args()
 
+        configure_logging(argv.log_level)
+        print(f'Logging for tobes-ui configured at: {argv.log_level}')
+
         if argv.input_device:
             try:
                 meter = Spectrometer(argv.input_device)
@@ -166,6 +184,13 @@ if __name__ == "__main__":
 
             signal.signal(signal.SIGINT, signal_handler)
             signal.signal(signal.SIGTERM, signal_handler)
+
+            def usr1_handler(_signum, _frame):
+                """USR1 signal handler -- enable debug logging"""
+                print('enabling debug logging...')
+                LOGGER.setLevel(logging.DEBUG)
+
+            signal.signal(signal.SIGUSR1, usr1_handler)
 
             _init_meter(meter, argv)
         else:
