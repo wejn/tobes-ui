@@ -4,7 +4,7 @@ from datetime import datetime
 import queue
 import threading
 import time
-from typing import NamedTuple
+from typing import Any, NamedTuple, Type
 import warnings
 
 import colour
@@ -23,6 +23,7 @@ from colour.quality import colour_fidelity_index_ANSIIESTM3018
 from matplotlib import pyplot as plt
 from matplotlib.backend_bases import KeyEvent
 from matplotlib.backend_managers import ToolManager
+from matplotlib.backend_tools import ToolBase
 import numpy as np
 
 from .protocol import ExposureStatus
@@ -526,36 +527,19 @@ class RefreshableSpectralPlot:
     def _add_toolbar_buttons(self):
         """Add custom buttons to the toolbar"""
         if self.fig and hasattr(self.fig.canvas, 'manager') and self.fig.canvas.manager.toolmanager:
-            tool_mgr = self.fig.canvas.manager.toolmanager
-            if not self.refresh_type == RefreshType.DISABLED:
-                tool_mgr.add_tool("refresh", RefreshTool, plot=self)
-                tool_mgr.add_tool("oneshot", OneShotTool, plot=self)
-
-            tool_mgr.add_tool("history_start", HistoryStartTool, plot=self)
-            tool_mgr.add_tool("history_back", HistoryBackTool, plot=self)
-            tool_mgr.add_tool("history_forward", HistoryForwardTool, plot=self)
-            tool_mgr.add_tool("history_end", HistoryEndTool, plot=self)
-            tool_mgr.add_tool("line", GraphSelectTool, plot=self,
-                              graph_type=GraphType.LINE)
-            tool_mgr.add_tool("spectrum", GraphSelectTool, plot=self,
-                              graph_type=GraphType.SPECTRUM)
-            tool_mgr.add_tool("cie1931", GraphSelectTool, plot=self,
-                              graph_type=GraphType.CIE1931)
-            tool_mgr.add_tool("cie1960ucs", GraphSelectTool, plot=self,
-                              graph_type=GraphType.CIE1960UCS)
-            tool_mgr.add_tool("cie1976ucs", GraphSelectTool, plot=self,
-                              graph_type=GraphType.CIE1976UCS)
-            tool_mgr.add_tool("tm30", GraphSelectTool, plot=self,
-                              graph_type=GraphType.TM30)
-            tool_mgr.add_tool("overlay", GraphSelectTool, plot=self,
-                              graph_type=GraphType.OVERLAY)
-
-            tool_mgr.add_tool("yrange_fix", FixYRangeTool, plot=self)
-            tool_mgr.add_tool("yrange_global_fix", FixYRangeGlobalTool, plot=self)
-            tool_mgr.add_tool("log_yscale", LogYScaleTool, plot=self)
-            tool_mgr.add_tool("visx", VisXTool, plot=self)
+            class ToolDesc(NamedTuple):
+                """Description of a single tool"""
+                name: str
+                group: str
+                cls: Type[ToolBase]
+                args: dict[str, Any] = {}
+                trigger: Any = None
 
             def avoid_untoggle(event):
+                """
+                Avoid the member of the radio group getting untoggled.
+                Changing to other is fine, though.
+                """
                 if isinstance(event.sender, ToolManager):
                     # coming from toolmanager, but key event (untoggle)
                     if isinstance(event.canvasevent, KeyEvent) and not event.tool.toggled:
@@ -568,50 +552,67 @@ class RefreshableSpectralPlot:
                         # not toggled
                         tool_mgr.trigger_tool(event.tool.name)
 
-            tool_mgr.toolmanager_connect("tool_trigger_line", avoid_untoggle)
-            tool_mgr.toolmanager_connect("tool_trigger_spectrum", avoid_untoggle)
-            tool_mgr.toolmanager_connect("tool_trigger_cie1931", avoid_untoggle)
-            tool_mgr.toolmanager_connect("tool_trigger_cie1960ucs", avoid_untoggle)
-            tool_mgr.toolmanager_connect("tool_trigger_cie1976ucs", avoid_untoggle)
-            tool_mgr.toolmanager_connect("tool_trigger_tm30", avoid_untoggle)
-            tool_mgr.toolmanager_connect("tool_trigger_overlay", avoid_untoggle)
+            # Tool order matters -- that's how they end up on the bar
+            all_tools = [
+                    ToolDesc('name', 'export', NameTool),
+                    ToolDesc('plot_save', 'export', PlotSaveTool,
+                             {'file_template': self.file_template}),
+                    ToolDesc('raw_save', 'export', RawSaveTool,
+                             {'file_template': self.file_template}),
+            ]
 
-            tool_mgr.add_tool("power", PowerTool, plot=self)
-            tool_mgr.add_tool("plot_save", PlotSaveTool, plot=self,
-                              file_template=self.file_template)
-            tool_mgr.add_tool("raw_save", RawSaveTool, plot=self,
-                              file_template=self.file_template)
-            tool_mgr.add_tool("name", NameTool, plot=self)
-            tool_mgr.add_tool("remove", RemoveTool, plot=self)
-
-
-            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("name"), "export")
-            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("plot_save"), "export")
-            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("raw_save"), "export")
             if not self.refresh_type == RefreshType.DISABLED:
-                self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("refresh"), "refresh")
-                self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("oneshot"), "refresh")
-            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("remove"), "refresh")
+                all_tools += [
+                    ToolDesc('refresh', 'refresh', RefreshTool),
+                    ToolDesc('oneshot', 'refresh', OneShotTool),
+                ]
 
-            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("history_start"), "nav")
-            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("history_back"), "nav")
-            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("history_forward"), "nav")
-            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("history_end"), "nav")
+            all_tools += [
+                ToolDesc('remove', 'refresh', RemoveTool),
 
-            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("line"), "graph")
-            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("spectrum"), "graph")
-            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("cie1931"), "graph")
-            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("cie1960ucs"), "graph")
-            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("cie1976ucs"), "graph")
-            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("tm30"), "graph")
-            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("overlay"), "graph")
+                ToolDesc('history_start', 'nav', HistoryStartTool),
+                ToolDesc('history_back', 'nav', HistoryBackTool),
+                ToolDesc('history_forward', 'nav', HistoryForwardTool),
+                ToolDesc('history_end', 'nav', HistoryEndTool),
 
-            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("yrange_fix"), "axes")
-            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("yrange_global_fix"), "axes")
-            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("log_yscale"), "axes")
-            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("visx"), "axes")
+                ToolDesc('line', 'graph', GraphSelectTool,
+                         {'graph_type': GraphType.LINE},
+                         avoid_untoggle),
+                ToolDesc('spectrum', 'graph', GraphSelectTool,
+                         {'graph_type': GraphType.SPECTRUM},
+                         avoid_untoggle),
+                ToolDesc('cie1931', 'graph', GraphSelectTool,
+                         {'graph_type': GraphType.CIE1931},
+                         avoid_untoggle),
+                ToolDesc('cie1960ucs', 'graph', GraphSelectTool,
+                         {'graph_type': GraphType.CIE1960UCS},
+                         avoid_untoggle),
+                ToolDesc('cie1976ucs', 'graph', GraphSelectTool,
+                         {'graph_type': GraphType.CIE1976UCS},
+                         avoid_untoggle),
+                ToolDesc('tm30', 'graph', GraphSelectTool,
+                         {'graph_type': GraphType.TM30},
+                         avoid_untoggle),
+                ToolDesc('overlay', 'graph', GraphSelectTool,
+                         {'graph_type': GraphType.OVERLAY},
+                         avoid_untoggle),
 
-            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("power"), "power")
+                ToolDesc('yrange_fix', 'axes', FixYRangeTool),
+                ToolDesc('yrange_global_fix', 'axes', FixYRangeGlobalTool),
+                ToolDesc('log_yscale', 'axes', LogYScaleTool),
+                ToolDesc('visx', 'axes', VisXTool),
+
+                ToolDesc('power', 'power', PowerTool),
+            ]
+
+            # Now do the dance...
+            tool_mgr = self.fig.canvas.manager.toolmanager
+            toolbar = self.fig.canvas.manager.toolbar
+            for tool in all_tools:
+                tool_mgr.add_tool(tool.name, tool.cls, plot=self, **tool.args)
+                toolbar.add_tool(tool_mgr.get_tool(tool.name), tool.group)
+                if tool.trigger:
+                    tool_mgr.toolmanager_connect(f"tool_trigger_{tool.name}", tool.trigger)
 
     def _setup_cursor(self):
         """Setup cursor tracking for easy reading of values on the graph"""
