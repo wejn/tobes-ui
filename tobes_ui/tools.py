@@ -22,31 +22,31 @@ class GraphSelectTool(ToolToggleBase):
         self.image = os.path.join(script_dir, "../icons/quick")
         match graph_type:
             case GraphType.LINE:
-                self.description = 'Line graph (key: Q, L)'
+                self.description = 'Line graph\n(keys: Q, L)'
                 self.default_keymap = ['Q', 'q', 'L', 'l']
                 self.image = os.path.join(script_dir, "../icons/line_graph")
             case GraphType.SPECTRUM:
-                self.description = 'Spectrum graph (key: C)'
+                self.description = 'Spectrum graph\n(key: C)'
                 self.default_keymap = ['C', 'c']
                 self.image = os.path.join(script_dir, "../icons/spectrum_graph")
             case GraphType.CIE1931:
-                self.description = 'CIE1931 locus graph (key: 3)'
+                self.description = 'CIE1931 locus graph\n(key: 3)'
                 self.default_keymap = ['3']
                 self.image = os.path.join(script_dir, "../icons/cie1931_graph")
             case GraphType.CIE1960UCS:
-                self.description = 'CIE1960UCS locus graph (key: 6)'
+                self.description = 'CIE1960UCS locus graph\n(key: 6)'
                 self.default_keymap = ['6']
                 self.image = os.path.join(script_dir, "../icons/cie1960ucs_graph")
             case GraphType.CIE1976UCS:
-                self.description = 'CIE1976UCS locus graph (key: 7)'
+                self.description = 'CIE1976UCS locus graph\n(key: 7)'
                 self.default_keymap = ['7']
                 self.image = os.path.join(script_dir, "../icons/cie1976ucs_graph")
             case GraphType.TM30:
-                self.description = 'TM30 graph (key: t)'
+                self.description = 'TM30 graph\n(key: T)'
                 self.default_keymap = ['t', 'T']
                 self.image = os.path.join(script_dir, "../icons/tm30_graph")
             case GraphType.OVERLAY:
-                self.description = 'Overlay graph (key: v)'
+                self.description = 'Overlay graph\n(key: V)'
                 self.default_keymap = ['v', 'V']
                 self.image = os.path.join(script_dir, "../icons/overlay_graph")
             case _:
@@ -63,7 +63,7 @@ class GraphSelectTool(ToolToggleBase):
 
 class PlotSaveTool(ToolBase):
     """Plot data save button for the toolbar"""
-    description = 'Save plot data as png (key: S)'
+    description = 'Save plot data as png\n(key: S)'
     default_keymap = ['S', 's']
 
     def __init__(self, *args, plot, file_template, **kwargs):
@@ -92,7 +92,7 @@ class PlotSaveTool(ToolBase):
 
 class RawSaveTool(ToolBase):
     """Raw data save button for the toolbar"""
-    description = 'Save raw data as json (key: D)'
+    description = 'Save raw data as json\n(key: D)'
     default_keymap = ['D', 'd']
 
     def __init__(self, *args, plot, file_template, **kwargs):
@@ -122,7 +122,7 @@ class RawSaveTool(ToolBase):
 
 class OneShotTool(ToolBase):
     """One Shot button for the toolbar"""
-    description = 'One good acquisition (key: 1 || O)'
+    description = 'One good acquisition\n(keys: 1, O)'
     default_keymap = ['1', 'O', 'o']
 
     def __init__(self, *args, plot, **kwargs):
@@ -142,7 +142,7 @@ class OneShotTool(ToolBase):
 
 class PowerTool(ToolBase):
     """Quit button for the toolbar"""
-    description = 'Quit application (key: Esc)'
+    description = 'Quit application\n(keys: Esc, Ctrl+Q)'
     default_keymap = ['escape', 'ctrl+q', 'ctrl+Q']
 
     def __init__(self, *args, plot, **kwargs):
@@ -157,7 +157,7 @@ class PowerTool(ToolBase):
 
 class RefreshTool(ToolToggleBase):
     """Refresh data toggle for the toolbar"""
-    description = 'Keep refreshing data (key: R)'
+    description = 'Keep refreshing data\n(key: R)'
     default_keymap = ['r', 'R']
 
     def __init__(self, *args, plot, **kwargs):
@@ -178,7 +178,7 @@ class RefreshTool(ToolToggleBase):
 
 class HistoryBackTool(ToolBase):
     """Go back in history"""
-    description = 'Go back in history (key: ← || P)'
+    description = 'Go back in history\n(keys: ←, P)'
     default_keymap = ['left', 'p', 'P']
 
     def __init__(self, *args, plot, **kwargs):
@@ -193,7 +193,7 @@ class HistoryBackTool(ToolBase):
 
 class HistoryForwardTool(ToolBase):
     """Go forward in history"""
-    description = 'Go forward in history (key: → || N)'
+    description = 'Go forward in history\n(keys: →, N)'
     default_keymap = ['right', 'n', 'N']
 
     def __init__(self, *args, plot, **kwargs):
@@ -208,7 +208,7 @@ class HistoryForwardTool(ToolBase):
 
 class HistoryStartTool(ToolBase):
     """Go to start of history"""
-    description = 'Go to start of history (key: home || H)'
+    description = 'Go to start of history\n(keys: Home, H)'
     default_keymap = ['home', 'h', 'H']
 
     def __init__(self, *args, plot, **kwargs):
@@ -223,7 +223,7 @@ class HistoryStartTool(ToolBase):
 
 class HistoryEndTool(ToolBase):
     """Go to end of history"""
-    description = 'Go to end of history (key: end || E)'
+    description = 'Go to end of history\n(keys: end, E)'
     default_keymap = ['end', 'e', 'E']
 
     def __init__(self, *args, plot, **kwargs):
@@ -238,7 +238,8 @@ class HistoryEndTool(ToolBase):
 
 class FixYRangeTool(ToolToggleBase):
     """Fix Y range of the plot"""
-    description = 'Only line+spectrum: Fix Y-axis range based on current graph (key: Y)'
+    description = ('Fix Y-axis range based on current graph\n' +
+        '[only applies to line and spectrum graphs]\n(key: Y)')
     default_keymap = ['y', 'Y']
     radio_group = 'yrange_fixes'
 
@@ -261,7 +262,8 @@ class FixYRangeTool(ToolToggleBase):
 
 class FixYRangeGlobalTool(ToolToggleBase):
     """Fix Y range of the plot based on all graphs in history"""
-    description = 'Only line+spectrum: Fix Y-axis range based on all graphs (key: G)'
+    description = ('Fix Y-axis range based on all graphs\n' +
+                   '[only applies to line and spectrum graphs]\n(key: G)')
     default_keymap = ['g', 'G']
     radio_group = 'yrange_fixes'
 
@@ -283,7 +285,8 @@ class FixYRangeGlobalTool(ToolToggleBase):
 
 class LogYScaleTool(ToolToggleBase):
     """Switch Y axis to log scale"""
-    description = 'Only line+overlay: Use logarithmic Y-axis (key: K)'
+    description = ('Use logarithmic Y-axis\n' +
+                   '[only applies to line and overlay graphs]\n(key: K)')
     default_keymap = ['k', 'K']
 
     def __init__(self, *args, plot, **kwargs):
@@ -304,7 +307,8 @@ class LogYScaleTool(ToolToggleBase):
 
 class VisXTool(ToolToggleBase):
     """Constrain X axis to visible spectrum"""
-    description = 'Only line,spectrum,overlay: Constrain X-axis to visible spectrum (key: Z)'
+    description = ('Constrain X-axis to visible spectrum\n' +
+                   '[only applies to line, spectrum, or overlay graphs]\n(key: Z)')
     default_keymap = ['z', 'Z']
 
     def __init__(self, *args, plot, **kwargs):
@@ -325,7 +329,7 @@ class VisXTool(ToolToggleBase):
 
 class NameTool(ToolBase):
     """Name the current spectrum data"""
-    description = 'Name the current spectrum data (key: enter || A)'
+    description = 'Name the current spectrum data\n(key: Enter, A)'
     default_keymap = ['enter', 'a', 'A']
 
     def __init__(self, *args, plot, **kwargs):
@@ -351,7 +355,7 @@ class NameTool(ToolBase):
 
 class RemoveTool(ToolBase):
     """Remove the current spectrum data"""
-    description = 'Remove the current spectrum data (key: delete || X)'
+    description = 'Remove the current spectrum data\n(key: delete, X)'
     default_keymap = ['delete', 'x', 'X']
 
     def __init__(self, *args, plot, **kwargs):
