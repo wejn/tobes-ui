@@ -74,6 +74,7 @@ There are several icons on the toolbar:
 | ![download](icons/raw_save.png) | `D` | Save raw data as json |
 | ![refresh](icons/refresh.png) | `R` | Keep refreshing data |
 | ![oneshot](icons/oneshot.png) | `1`, `O` | One good acquisition |
+| ![remove](icons/remove.png) | `Delete`, `X` | Remove the current spectrum data _(from UI)_ |
 | ![history start](icons/hist_start.png) | `Home`, `H` | Go to start of history |
 | ![history back](icons/hist_back.png) | `←`, `P` | Go to previous sample |
 | ![history forward](icons/hist_forward.png) | `→`, `N` | Go to next sample |

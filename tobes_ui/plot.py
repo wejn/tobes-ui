@@ -29,7 +29,7 @@ from .types import GraphType, RefreshType
 from .tools import (
     RefreshTool, OneShotTool, HistoryStartTool, HistoryBackTool, HistoryForwardTool,
     HistoryEndTool, GraphSelectTool, FixYRangeGlobalTool, FixYRangeTool, LogYScaleTool,
-    PowerTool, PlotSaveTool, RawSaveTool, NameTool)
+    PowerTool, PlotSaveTool, RawSaveTool, NameTool, RemoveTool)
 
 # pylint: disable=broad-exception-caught
 # pylint: disable=too-many-instance-attributes
@@ -111,6 +111,20 @@ class RefreshableSpectralPlot:
 
         self._history_index = len(self._history) - 1
         self._fixed_y_global_lim = (0, max(self._history_max))
+
+    def remove_current_data(self):
+        """Remove currently displayed data from history and view (if any)"""
+        if not self.data:
+            return
+        self._history.pop(self._history_index)
+        self._history_max.pop(self._history_index)
+        if self._history_index > len(self._history) - 1:
+            self._history_index = len(self._history) - 1
+        if len(self._history_max) > 0:
+            self._fixed_y_global_lim = (0, max(self._history_max))
+        else:
+            self._fixed_y_global_lim = None
+        self.dirty = True
 
     WARNINGS_TO_IGNORE = [
             "Treat the new Tool classes introduced in v1.5 as experimental",
@@ -488,6 +502,7 @@ class RefreshableSpectralPlot:
             tool_mgr.add_tool("raw_save", RawSaveTool, plot=self,
                               file_template=self.file_template)
             tool_mgr.add_tool("name", NameTool, plot=self)
+            tool_mgr.add_tool("remove", RemoveTool, plot=self)
 
 
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("name"), "export")
@@ -496,6 +511,7 @@ class RefreshableSpectralPlot:
             if not self.refresh_type == RefreshType.DISABLED:
                 self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("refresh"), "refresh")
                 self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("oneshot"), "refresh")
+            self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("remove"), "refresh")
 
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("history_start"), "nav")
             self.fig.canvas.manager.toolbar.add_tool(tool_mgr.get_tool("history_back"), "nav")

@@ -320,3 +320,18 @@ class NameTool(ToolBase):
             self.plot.dirty = True
 
         widget.focus_set()
+
+
+class RemoveTool(ToolBase):
+    """Remove the current spectrum data"""
+    description = 'Remove the current spectrum data (key: delete || X)'
+    default_keymap = ['delete', 'x', 'X']
+
+    def __init__(self, *args, plot, **kwargs):
+        self.plot = plot
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        self.image = os.path.join(script_dir, "../icons/remove")
+        super().__init__(*args, **kwargs)
+
+    def trigger(self, *_args, **_kwargs):
+        self.plot.remove_current_data()

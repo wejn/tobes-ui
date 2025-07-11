@@ -7,7 +7,7 @@ import os
 
 from PIL import Image, ImageDraw, ImageFont
 
-def create_text_icon(text, font, size, output_path, tunex=0, tuney=0):
+def create_text_icon(text, font, size, output_path, tunex=0, tuney=0, fill='black'):
     """Create icon from text"""
 
     if os.path.isfile(output_path):
@@ -25,7 +25,7 @@ def create_text_icon(text, font, size, output_path, tunex=0, tuney=0):
         font = ImageFont.load_default()
 
     center = (size // 2 + tunex * size, size // 2 + tuney * size)
-    draw.text(center, text, font=font, fill="black", anchor="mm")
+    draw.text(center, text, font=font, fill=fill, anchor="mm")
 
     img.save(output_path)
 
@@ -57,5 +57,9 @@ if __name__ == "__main__":
 
         create_text_icon("a‸", font, 24, "icons/name.png", 0, -0.1)
         create_text_icon("a‸", font, 48, "icons/name_large.png", 0, -0.1)
+
+        font = '/usr/share/fonts/opentype/freefont/FreeSerif.otf'
+        create_text_icon("❌", font, 24, "icons/remove.png", 0, 0, 'darkred')
+        create_text_icon("❌", font, 48, "icons/remove_large.png", 0, 0, 'darkred')
 
     main()
