@@ -376,6 +376,10 @@ class RefreshableSpectralPlot:
                 plt.xlabel("Wavelength $\\lambda$ (nm)")
                 plt.ylabel("Spectral Distribution ($W/m^2$)")
 
+                vals = list(spd.wavelengths)
+                self.axes.set_xlim((min(vals), max(vals)))
+                self.axes.set_ylim((0, max(list(spd.values)) * 1.05))
+
                 self._tweak_y_axis(spd)
 
                 self.fig.tight_layout()
