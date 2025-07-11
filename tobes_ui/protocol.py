@@ -127,7 +127,7 @@ def _parse_message(message_type, data):
     return message
 
 
-def parse_messages(data):
+def parse_messages(data, max_messages=1):
     """Parse messages from datastream, return remainder and list of messages"""
     messages = []
 
@@ -148,5 +148,7 @@ def parse_messages(data):
 
         messages.append(_parse_message(MessageType(data[5]), data[6 : 6 + length - 9]))
         data = data[length:]
+        if len(messages) >= max_messages:
+            break
 
     return (data, messages)

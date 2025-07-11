@@ -110,7 +110,7 @@ class Spectrometer:
             raise ValueError("Already closed")
 
         while True:
-            (self.buffer, messages) = parse_messages(self.buffer + self.port.read())
+            (self.buffer, messages) = parse_messages(self.buffer + self.port.read(), 1)
 
             if messages:
                 message = messages[0]
@@ -220,8 +220,15 @@ class Spectrometer:
 
         self.send_message(MessageType.GET_DATA)
 
+        last_ok = False
         while True:
             response = self.read_message()
+
+            if response['message_type'] != MessageType.GET_DATA:
+                print('Got unexpected message:', response)
+                continue
+
+            last_ok = response['exposure_status'] == ExposureStatus.NORMAL
 
             spectrum=Spectrum(
                     status=response['exposure_status'],
@@ -247,7 +254,12 @@ class Spectrometer:
 
         # Terminate streaming
         self.send_message(MessageType.STOP)
-        while self.read_message()["message_type"] != MessageType.STOP:
+        if last_ok:
+            while (a := self.read_message()["message_type"]) != MessageType.STOP:
+                pass
+        else:
+            # When the last GET_DATA message wasn't OK, the system doesn't send
+            # ACK to the STOP message.
             pass
 
         return self
