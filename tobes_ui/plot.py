@@ -93,7 +93,6 @@ class RefreshableSpectralPlot:
         self.data_refresh_issue = None
         self.graph_type = graph_type
         self.file_template = file_template
-        self.error_text = None
         self.overlay_text = None
         self.dirty = False
         self.fix_y_range = False
@@ -338,9 +337,6 @@ class RefreshableSpectralPlot:
         if self.overlay_text:
             self.overlay_text.remove()
             self.overlay_text = None
-        if self.error_text:
-            self.error_text.remove()
-            self.error_text = None
 
     def _tweak_y_axis(self):
         """Tweak the y axis appearance and range based on config"""
@@ -417,7 +413,7 @@ class RefreshableSpectralPlot:
                 spec = colour_fidelity_index_ANSIIESTM3018(spd)
                 if cct < 1000 or cct > 10000 or spec < 50:
                     self.axes.axis('off')
-                    self.error_text = self.fig.text(
+                    self.axes.text(
                             0.5, 0.5,
                             f'$R_f$={spec:.2f} (need $\\geq 50$), CCT={cct:.0f} (need 1-10K)',
                             ha='center', va='center', fontsize=16, color='red',
