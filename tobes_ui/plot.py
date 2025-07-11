@@ -265,7 +265,7 @@ class RefreshableSpectralPlot:
         """Background thread that generates new data throuh refresh func"""
         while self.running:
             try:
-                time.sleep(1)
+                time.sleep(0.1)
                 if not self._should_refresh():
                     continue
 
@@ -692,7 +692,8 @@ class RefreshableSpectralPlot:
             if self.refresh_type == RefreshType.CONTINUOUS:
                 self._make_overlay(f'Refresh problem: {self.data_refresh_issue}')
             else:
-                pass # FIXME: Remove our overlay
+                self.data_refresh_issue = None
+                self._clear_overlays() # FIXME: Remove our overlay properly
 
         if self.data:
             status.append(f'exp: {self.data.time} ms')
