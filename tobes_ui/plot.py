@@ -266,7 +266,8 @@ class RefreshableSpectralPlot:
         plt.show(block=False)
         self._add_toolbar_buttons()
 
-        plt.pause(0.1)
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
 
         # Start background data generation
         self.running = True
@@ -302,7 +303,8 @@ class RefreshableSpectralPlot:
                     else:
                         self.update_status()
                         self.expire_overlay()
-                    plt.pause(0.1)
+                    self.fig.canvas.flush_events()
+                    time.sleep(.1)
                 except Exception as ex:
                     # Catch any matplotlib/Tkinter exceptions during shutdown
                     if self.running:  # Only print if we're not shutting down
