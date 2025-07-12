@@ -1,6 +1,6 @@
 """The main plot window for the application"""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import queue
 import threading
 import time
@@ -24,6 +24,7 @@ from matplotlib import pyplot as plt
 from matplotlib.backend_bases import KeyEvent
 from matplotlib.backend_managers import ToolManager
 from matplotlib.backend_tools import ToolBase
+import matplotlib.text
 import numpy as np
 
 from .protocol import ExposureStatus
@@ -71,7 +72,15 @@ class YAxisValues(NamedTuple):
 class RefreshableSpectralPlot:
     """Refreshable plot (graph); basically main window of the app"""
     VISIBLE_SPECTRUM = range(380, 750)
-    YLABEL = "Spectral Power Distribution ($W\cdot{}m^{-2}\cdot{}nm^{-1}$)"
+    YLABEL = "Spectral Power Distribution ($W\\cdot{}m^{-2}\\cdot{}nm^{-1}$)"
+
+
+    class GraphOverlay(NamedTuple):
+        """Textual overlay message on the graph"""
+        text: matplotlib.text.Text
+        tag: str = None
+        ttl: datetime = None
+
 
     def __init__(self, initial_data, refresh_func=None, graph_type=GraphType.SPECTRUM,
                  refresh_type=RefreshType.DISABLED, file_template=None, history_size=50):
@@ -94,7 +103,7 @@ class RefreshableSpectralPlot:
         self.data_refresh_issue = None
         self.graph_type = graph_type
         self.file_template = file_template
-        self.overlay_text = None
+        self._overlay = None
         self.dirty = False
         self.fix_y_range = False
         self.fix_y_range_global = False
@@ -179,7 +188,7 @@ class RefreshableSpectralPlot:
 
         self.fig, self.axes = plt.subplots()
         self.axes.set_axis_off()
-        self._make_overlay('Initializing...')
+        self.make_overlay('Initializing...')
 
         self.update_status()
         self.fig.canvas.mpl_connect('close_event', self._on_close)
@@ -223,6 +232,7 @@ class RefreshableSpectralPlot:
                         self.update_plot()
                     else:
                         self.update_status()
+                        self.expire_overlay()
                     plt.pause(0.01)
                 except Exception as ex:
                     # Catch any matplotlib/Tkinter exceptions during shutdown
@@ -281,20 +291,24 @@ class RefreshableSpectralPlot:
                 if self.running:
                     break
 
-    def _make_overlay(self, text):
-        if self.overlay_text:
-            self.overlay_text.remove()
-        self.overlay_text = self.fig.text(
-                0.5, 0.5, text,
-                ha='center', va='center', fontsize=16, color='black',
-                bbox={"facecolor": 'white', "alpha": 0.9, "pad": 20})
+    def make_overlay(self, text, tag=None, ttl=None):
+        """Make graph overlay with given tag and time to live"""
+        if self._overlay:
+            self._overlay.text.remove()
+        self._overlay = self.GraphOverlay(
+                text=self.fig.text(
+                    0.5, 0.5, text,
+                    ha='center', va='center', fontsize=16, color='black',
+                    bbox={"facecolor": 'white', "alpha": 0.9, "pad": 20}),
+                tag=tag or '__unnamed__',
+                ttl=datetime.now() + timedelta(seconds=ttl) if ttl else None)
         self.fig.canvas.draw()
 
     def trigger_oneshot(self):
         """Trigger oneshot refresh of the data"""
         if self.refresh_type != RefreshType.DISABLED:
             self.refresh_type = RefreshType.ONESHOT
-            self._make_overlay('One-shot refreshing...')
+            self.make_overlay('One-shot refreshing...')
 
     def history_back(self):
         """Go one step back in history"""
@@ -333,11 +347,19 @@ class RefreshableSpectralPlot:
         self.graph_type = graph_type
         self.dirty = True
 
-    def _clear_overlays(self):
-        """Remove existing overlay messages"""
-        if self.overlay_text:
-            self.overlay_text.remove()
-            self.overlay_text = None
+    def clear_overlay(self, tag=None):
+        """Remove existing overlay message (only if matches tag)"""
+        if self._overlay:
+            if not tag or (tag and tag == self._overlay.tag):
+                self._overlay.text.remove()
+                self._overlay = None
+
+    def expire_overlay(self):
+        """Remove existing overlay message if expired"""
+        if self._overlay:
+            if self._overlay.ttl and datetime.now() >= self._overlay.ttl:
+                self._overlay.text.remove()
+                self._overlay = None
 
     def _tweak_y_axis(self):
         """Tweak the y axis appearance and range based on config"""
@@ -508,18 +530,18 @@ class RefreshableSpectralPlot:
 
             if self.data:
                 if self.refresh_type != RefreshType.CONTINUOUS:
-                    self._make_overlay('Redrawing...')
+                    self.make_overlay('Redrawing...')
                     plt.pause(0.01)
                 self.axes.clear()
-                self._clear_overlays()
+                self.clear_overlay()
                 self._draw_graph()
             else:
                 self.axes.clear()
                 self.axes.set_axis_off()
                 if self._should_refresh():
-                    self._make_overlay('Loading data...')
+                    self.make_overlay('Loading data...')
                 else:
-                    self._make_overlay('No data.')
+                    self.make_overlay('No data.')
 
             self.update_status()
             self.fig.canvas.draw()
@@ -691,10 +713,11 @@ class RefreshableSpectralPlot:
 
         if self.data_refresh_issue:
             if self.refresh_type == RefreshType.CONTINUOUS:
-                self._make_overlay(f'Refresh problem: {self.data_refresh_issue}')
+                self.make_overlay(f'Refresh problem: {self.data_refresh_issue}',
+                                  tag='refresh_issue')
             else:
                 self.data_refresh_issue = None
-                self._clear_overlays() # FIXME: Remove our overlay properly
+                self.clear_overlay('refresh_issue')
 
         if self.data:
             status.append(f'exp: {self.data.time} ms')

@@ -88,6 +88,7 @@ class PlotSaveTool(ToolBase):
             filename = self.file_template.format(**template_values) + '.png'
             self.plot.fig.savefig(filename, format='png')
             print('Plot saved as:', filename)
+            self.plot.make_overlay(f'Plot saved as:\n{filename}', tag='plot_save', ttl=3)
 
 
 class RawSaveTool(ToolBase):
@@ -118,6 +119,7 @@ class RawSaveTool(ToolBase):
             with open(filename, 'w', encoding='utf-8') as file:
                 file.write(self.plot.data.to_json())
             print('Raw data saved as:', filename)
+            self.plot.make_overlay(f'Raw data saved as:\n{filename}', tag='raw_save', ttl=3)
 
 
 class OneShotTool(ToolBase):
