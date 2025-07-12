@@ -687,6 +687,10 @@ class RefreshableSpectralPlot:
                 x_range = self.axes.get_xlim()
                 x_mid = (x_range[0] + x_range[1]) / 2
                 text_offset = (-100, 20) if closest_wl > x_mid else (20, 20)
+                y_range = self.axes.get_ylim()
+                y_mid = (y_range[0] + y_range[1]) / 2
+                if closest_val > y_mid:
+                    text_offset = (text_offset[0], -1 * text_offset[1])
 
                 # Update cursor position
                 self.cursor_dot.set_data([closest_wl], [closest_val])
