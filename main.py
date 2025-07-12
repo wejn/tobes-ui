@@ -190,7 +190,9 @@ if __name__ == "__main__":
                 print('enabling debug logging...')
                 LOGGER.setLevel(logging.DEBUG)
 
-            signal.signal(signal.SIGUSR1, usr1_handler)
+            if 'SIGUSR1' in dir(signal):
+                # Doesn't work on windows
+                signal.signal(signal.SIGUSR1, usr1_handler)
 
             _init_meter(meter, argv)
         else:
