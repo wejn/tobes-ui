@@ -71,6 +71,7 @@ class YAxisValues(NamedTuple):
 class RefreshableSpectralPlot:
     """Refreshable plot (graph); basically main window of the app"""
     VISIBLE_SPECTRUM = range(380, 750)
+    YLABEL = "Spectral Power Distribution ($W\cdot{}m^{-2}\cdot{}nm^{-1}$)"
 
     def __init__(self, initial_data, refresh_func=None, graph_type=GraphType.SPECTRUM,
                  refresh_type=RefreshType.DISABLED, file_template=None, history_size=50):
@@ -437,7 +438,7 @@ class RefreshableSpectralPlot:
                 cmfs = colour.MultiSpectralDistributions(cmfs_data)
                 colour.plotting.plot_single_sd(spd, cmfs, **kwargs)
                 plt.xlabel("Wavelength $\\lambda$ (nm)")
-                plt.ylabel("Spectral Distribution ($W/m^2$)")
+                plt.ylabel(self.YLABEL)
                 plt.title(self._graph_title(spd))
 
                 self._tweak_y_axis()
@@ -457,7 +458,7 @@ class RefreshableSpectralPlot:
                 current_text = leg.get_texts()[self._history_index]
                 current_text.set_color('blue')
                 plt.xlabel("Wavelength $\\lambda$ (nm)")
-                plt.ylabel("Spectral Distribution ($W/m^2$)")
+                plt.ylabel(self.YLABEL)
 
                 xstart = min(x.wavelength_range.start for x in self._history)
                 xstop = max(x.wavelength_range.stop for x in self._history)
@@ -479,7 +480,7 @@ class RefreshableSpectralPlot:
                              list(spd.values),
                              label='Spectral Distribution')
                 plt.xlabel("Wavelength $\\lambda$ (nm)")
-                plt.ylabel("Spectral Distribution ($W/m^2$)")
+                plt.ylabel(self.YLABEL)
 
                 wl_range = self.data.wavelength_range
                 if self.vis_x:
