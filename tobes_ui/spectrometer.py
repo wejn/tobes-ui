@@ -274,7 +274,6 @@ class Spectrometer:
         if last_ok:
             while (msg := self.read_message()["message_type"]) != MessageType.STOP:
                 LOGGER.debug("wait-stop msg %s", msg)
-                pass
         else:
             # When the last GET_DATA message wasn't OK, the system doesn't send
             # ACK to the STOP message.

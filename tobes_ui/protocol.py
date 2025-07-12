@@ -1,7 +1,6 @@
 """Protocol parser for TorchBearer Spectrometer"""
 
 from enum import Enum
-import logging
 import struct
 
 from .logger import LOGGER
