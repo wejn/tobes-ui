@@ -211,8 +211,7 @@ if __name__ == "__main__":
             for filename in argv.data:
                 try:
                     data.append(Spectrum.from_file(filename))
-                except (OSError, json.decoder.JSONDecodeError) as exc:
-                    LOGGER.debug("exception", exc_info=True)
+                except (OSError, ValueError, json.decoder.JSONDecodeError) as exc:
                     print(f"File '{filename}' couldn't be parsed, skipping: {exc}")
 
         if not argv.input_device:

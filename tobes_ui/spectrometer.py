@@ -33,6 +33,15 @@ class Spectrum:
     ts: datetime # pylint: disable=invalid-name
     name: str
 
+    REQUIRED_KEYS = [
+            'status',
+            'exposure',
+            'time',
+            'spd',
+            'wavelength_range',
+            'ts',
+    ]
+
     def to_json(self) -> str:
         """Convert Spectrum to json"""
         return json.dumps({
@@ -57,6 +66,10 @@ class Spectrum:
     def from_json(cls, json_str: str) -> "Spectrum":
         """Convert json string to Spectrum"""
         data = json.loads(json_str)
+        if not set(cls.REQUIRED_KEYS).issubset(set(data.keys())):
+            raise ValueError('missing some required keys,' +
+                             f' want: {set(cls.REQUIRED_KEYS)},' +
+                             f' have: {set(data.keys())}')
         if "wavelength_range" not in data:
             wls = {int(k) for k,v in data["spd"].items()}
             data["wavelength_range"] = [min(wls), max(wls)]
