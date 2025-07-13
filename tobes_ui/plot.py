@@ -532,7 +532,8 @@ class RefreshableSpectralPlot:
         # Restore cursor state if it was visible
         if self._cursor_visible and self._last_mouse_pos:
             self._update_cursor_position(self._last_mouse_pos[0], self._last_mouse_pos[1])
-            self._cursor.set_visible()
+            if self._cursor:
+                self._cursor.set_visible()
 
         # Plop on the sensitivities overlay
         if self.spectrum_overlay:
