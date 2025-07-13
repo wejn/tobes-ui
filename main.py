@@ -123,6 +123,13 @@ if __name__ == "__main__":
             help='Logging level to configure: {", ".join(e.name for e in LogLevel} (default WARN)'
         )
 
+        parser.add_argument(
+            '--log-file',
+            type=str,
+            default=None,
+            help='Logfile to write to (defaults to none (=console))'
+        )
+
         return parser.parse_args()
 
     def _init_meter(meter, argv):
@@ -164,7 +171,7 @@ if __name__ == "__main__":
         """Zee main(), like in C"""
         argv = parse_args()
 
-        configure_logging(argv.log_level)
+        configure_logging(argv.log_level, argv.log_file)
         print(f'Logging for tobes-ui configured at: {argv.log_level}')
 
         if argv.input_device:

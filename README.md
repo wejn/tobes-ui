@@ -17,7 +17,7 @@ and improved (beyond recognition?).
 ```
 $ python3 main.py -h
 usage: main.py [-h] [-e EXPOSURE] [-q | -t GRAPH_TYPE] [-o | -n] [-f FILE_TEMPLATE]
-               [-d [DATA ...]] [-s HISTORY_SIZE]
+               [-d [DATA ...]] [-s HISTORY_SIZE] [-l LOG_LEVEL] [--log-file LOG_FILE]
                [input_device]
 
 TorchBearer spectrometer tool
@@ -43,6 +43,10 @@ options:
                         JSON dump file(s) to load for viewing (disables data refresh)
   -s HISTORY_SIZE, --history-size HISTORY_SIZE
                         Size of the measurement history (default: 50)
+  -l LOG_LEVEL, --log-level LOG_LEVEL
+                        Logging level to configure: {", ".join(e.name for e in LogLevel}
+                        (default WARN)
+  --log-file LOG_FILE   Logfile to write to (defaults to none (=console))
 ```
 
 My typical use is:

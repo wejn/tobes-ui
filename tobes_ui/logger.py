@@ -18,9 +18,13 @@ class LogLevel(Enum):
         """Convert to readable string"""
         return str(self.name).lower()
 
-def configure_logging(loglevel: LogLevel):
+def configure_logging(loglevel: LogLevel, file: str = None):
     """Configure logging for tobes_ui to given loglevel"""
     fmt = ('%(asctime)s.%(msecs)03d [%(levelname)s] %(name)s %(module)s' +
            ' %(funcName)s: %(message)s')
-    logging.basicConfig(level=logging.ERROR, format=fmt, datefmt='%Y-%m-%d %H:%M:%S')
+    if file:
+        logging.basicConfig(filename=file,
+                            level=logging.ERROR, format=fmt, datefmt='%Y-%m-%d %H:%M:%S')
+    else:
+        logging.basicConfig(level=logging.ERROR, format=fmt, datefmt='%Y-%m-%d %H:%M:%S')
     LOGGER.setLevel(loglevel.value)
