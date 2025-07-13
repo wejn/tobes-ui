@@ -604,6 +604,7 @@ class RefreshableSpectralPlot:
                 plot_planckian_locus_in_chromaticity_diagram_CIE1976UCS(
                         {"X": xy_point}, title=self._graph_title(spd), **kwargs)
             case GraphType.TM30:
+                xy_point = XYZ_to_xy(sd_to_XYZ(spd))
                 cct = colour.temperature.xy_to_CCT(xy_point, method='daylight')
                 spec = colour_fidelity_index_ANSIIESTM3018(spd)
                 if cct < 1000 or cct > 10000 or spec < 50:
