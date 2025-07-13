@@ -522,6 +522,8 @@ class RefreshableSpectralPlot:
             if not tag or (tag and tag == self._overlay.tag):
                 self._overlay.text.remove()
                 self._overlay = None
+                if self.fig and self.fig.canvas:
+                    self.fig.canvas.draw_idle()
 
     def expire_overlay(self):
         """Remove existing overlay message if expired"""
@@ -529,6 +531,8 @@ class RefreshableSpectralPlot:
             if self._overlay.ttl and datetime.now() >= self._overlay.ttl:
                 self._overlay.text.remove()
                 self._overlay = None
+                if self.fig and self.fig.canvas:
+                    self.fig.canvas.draw_idle()
 
     def _tweak_y_axis(self):
         """Tweak the y axis appearance and range based on config"""
@@ -687,8 +691,7 @@ class RefreshableSpectralPlot:
                         hspace=CONSTANTS_COLOUR_STYLE.geometry.short / 2)
 
         # Re-setup cursor after clearing
-        if self.graph_type in [GraphType.LINE, GraphType.SPECTRUM, GraphType.OVERLAY]:
-            self._setup_cursor(legend)
+        self._setup_cursor(legend)
 
         # Restore cursor state if it was visible
         if self._cursor_visible and self._last_mouse_pos:
@@ -836,6 +839,8 @@ class RefreshableSpectralPlot:
         try:
             if x_pos is not None and self._cursor:
                 self._cursor.update(x_pos, y_pos)
+                if self.fig and self.fig.canvas:
+                    self.fig.canvas.draw_idle()
         except Exception:
             LOGGER.debug("exception", exc_info=True)
             # Ignore cursor update errors during shutdown
