@@ -71,7 +71,7 @@ class YAxisValues(NamedTuple):
 
 
 class SingleGraphCursor:
-    """Cursor on a single-plot graph"""
+    """Cursor on a single-plot graph (line, spectrum)"""
     def __init__(self, axes, data):
         self._axes = axes
         self._visible = False
@@ -85,12 +85,13 @@ class SingleGraphCursor:
                 bbox={
                     'boxstyle': "round",
                     'fc': "white",
-                    'alpha': 0.8
-                    },
+                    'alpha': 0.8,
+                },
                 arrowprops={
                     'arrowstyle': "->",
-                    'connectionstyle': "arc3,rad=0"
-                    },
+                    'connectionstyle': "arc3,rad=0",
+                    'visible': False,
+                },
                 visible=False)
         spd = data.to_spectral_distribution()
         self._wavelengths = np.array(spd.wavelengths)
@@ -107,11 +108,11 @@ class SingleGraphCursor:
         # Determine text position based on cursor location
         x_range = self._axes.get_xlim()
         x_mid = (x_range[0] + x_range[1]) / 2
-        text_offset = (-100, 20) if closest_wl > x_mid else (20, 20)
+        text_offset = (-78, 10) if closest_wl > x_mid else (10, 10)
         y_range = self._axes.get_ylim()
         y_mid = (y_range[0] + y_range[1]) / 2
         if closest_val > y_mid:
-            text_offset = (text_offset[0], -1 * text_offset[1])
+            text_offset = (text_offset[0], -25)
 
         # Update cursor position
         self._dot.set_data([closest_wl], [closest_val])
@@ -123,7 +124,8 @@ class SingleGraphCursor:
         self._annot.set_text(f'λ: {closest_wl:.1f}nm\nValue: {closest_val:.4f}')
         self._annot.set_position(text_offset)
 
-    def _set_visible(self, visible):
+    def set_visible(self, visible=True):
+        """Set visibility of the cursor"""
         self._visible = visible
         if self._dot:
             self._dot.set_visible(visible)
@@ -132,13 +134,73 @@ class SingleGraphCursor:
         if self._annot:
             self._annot.set_visible(visible)
 
-    def show(self):
-        """Show the cursor"""
-        self._set_visible(True)
 
-    def hide(self):
-        """Hide the cursor"""
-        self._set_visible(False)
+class OverlayGraphCursor:
+    """Cursor on the overlay graph"""
+    def __init__(self, axes, data):
+        self._axes = axes
+        self._visible = False
+        self._dot = self._axes.plot([], [], 'ro', markersize=6, alpha=0.8, visible=False)[0]
+        self._dot.set_color('white')
+        self._dot2 = self._axes.plot([], [], 'ro', markersize=4, alpha=0.8, visible=False)[0]
+        self._dot2.set_color('black')
+        self._axvline = self._axes.axvline(x=0, color='k', linestyle='--', linewidth=1, visible=False)
+        self._annot = self._axes.annotate(
+                '', xy=(0, 0), xytext=(20, 20),
+                textcoords="offset points",
+                bbox={
+                    'boxstyle': "round",
+                    'fc': "white",
+                    'alpha': 0.8,
+                },
+                arrowprops={
+                    'arrowstyle': "->",
+                    'connectionstyle': "arc3,rad=0",
+                    'visible': False,
+                },
+                visible=False)
+        spd = data.to_spectral_distribution()
+        self._wavelengths = np.array(spd.wavelengths)
+        self._values = np.array(spd.values)
+
+    def update(self, x_pos, _y_pos):
+        """Update the cursor based on position"""
+        # Find closest wavelength
+        # Find the closest point
+        idx = np.argmin(np.abs(self._wavelengths - x_pos))
+        closest_wl = self._wavelengths[idx]
+        closest_val = self._values[idx]
+
+        # Determine text position based on cursor location
+        x_range = self._axes.get_xlim()
+        x_mid = (x_range[0] + x_range[1]) / 2
+        text_offset = (-78, 10) if closest_wl > x_mid else (10, 10)
+        y_range = self._axes.get_ylim()
+        y_mid = (y_range[0] + y_range[1]) / 2
+        if closest_val > y_mid:
+            text_offset = (text_offset[0], -25)
+
+        # Update cursor position
+        self._dot.set_data([closest_wl], [closest_val])
+        self._dot2.set_data([closest_wl], [closest_val])
+        self._axvline.set_xdata([closest_wl, closest_wl])
+
+        # Update text annotation
+        self._annot.xy = (closest_wl, closest_val)
+        self._annot.set_text(f'λ: {closest_wl:.1f}nm\nValue: {closest_val:.4f}')
+        self._annot.set_position(text_offset)
+
+    def set_visible(self, visible=True):
+        """Set visibility of the cursor"""
+        self._visible = visible
+        if self._dot:
+            self._dot.set_visible(visible)
+        if self._dot2:
+            self._dot2.set_visible(visible)
+        if self._axvline:
+            self._axvline.set_visible(visible)
+        if self._annot:
+            self._annot.set_visible(visible)
 
 
 class RefreshableSpectralPlot:
@@ -599,7 +661,7 @@ class RefreshableSpectralPlot:
         # Restore cursor state if it was visible
         if self._cursor_visible and self._last_mouse_pos:
             self._update_cursor_position(self._last_mouse_pos[0], self._last_mouse_pos[1])
-            self._cursor.show()
+            self._cursor.set_visible()
 
     def update_plot(self):
         """Update plot in main thread"""
@@ -720,10 +782,13 @@ class RefreshableSpectralPlot:
     def _setup_cursor(self):
         """Setup cursor tracking for easy reading of values on the graph"""
         try:
-            if self.graph_type in [GraphType.LINE, GraphType.SPECTRUM, GraphType.OVERLAY]:
-                self._cursor = SingleGraphCursor(self.axes, self.data)
-            else:
-                self._cursor = None
+            match self.graph_type:
+                case GraphType.LINE | GraphType.SPECTRUM:
+                    self._cursor = SingleGraphCursor(self.axes, self.data)
+                case GraphType.OVERLAY:
+                    self._cursor = OverlayGraphCursor(self.axes, self.data)
+                case _:
+                    self._cursor = None
 
             # Connect mouse motion event
             self.fig.canvas.mpl_connect('motion_notify_event', self._on_mouse_move)
@@ -782,9 +847,12 @@ class RefreshableSpectralPlot:
         """Show cursor when entering axes"""
         try:
             if self._cursor:
-                self._cursor.show()
+                self._cursor.set_visible()
             self._cursor_visible = True
             self.update_status()
+
+            if self.fig and self.fig.canvas:
+                self.fig.canvas.draw_idle()
         except Exception:
             LOGGER.debug("exception", exc_info=True)
 
@@ -792,13 +860,13 @@ class RefreshableSpectralPlot:
         """Hide cursor when leaving axes"""
         try:
             if self._cursor:
-                self._cursor.hide()
+                self._cursor.set_visible(False)
             self._cursor_visible = False
+
+            self.update_status()
 
             if self.fig and self.fig.canvas:
                 self.fig.canvas.draw_idle()
-
-            self.update_status()
         except Exception:
             LOGGER.debug("exception", exc_info=True)
 
