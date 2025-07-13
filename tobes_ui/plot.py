@@ -25,6 +25,7 @@ from matplotlib.backend_bases import KeyEvent
 from matplotlib.backend_managers import ToolManager
 from matplotlib.backend_tools import ToolBase
 import matplotlib.text
+import numpy as np
 
 from .cursors import SingleGraphCursor, OverlayGraphCursor
 from .logger import LOGGER
@@ -33,7 +34,7 @@ from .types import GraphType, RefreshType
 from .tools import (
     RefreshTool, OneShotTool, HistoryStartTool, HistoryBackTool, HistoryForwardTool,
     HistoryEndTool, GraphSelectTool, FixYRangeGlobalTool, FixYRangeTool, LogYScaleTool,
-    PowerTool, PlotSaveTool, RawSaveTool, NameTool, RemoveTool, VisXTool)
+    PowerTool, PlotSaveTool, RawSaveTool, NameTool, RemoveTool, VisXTool, SpectrumOverlayTool)
 
 # pylint: disable=broad-exception-caught
 # pylint: disable=too-many-instance-attributes
@@ -110,6 +111,7 @@ class RefreshableSpectralPlot:
         self._fixed_y_global = None
         self._fixed_y = None
         self.vis_x = False
+        self.spectrum_overlay = False
 
         # Load 'em all up
         if initial_data:
@@ -532,6 +534,10 @@ class RefreshableSpectralPlot:
             self._update_cursor_position(self._last_mouse_pos[0], self._last_mouse_pos[1])
             self._cursor.set_visible()
 
+        # Plop on the sensitivities overlay
+        if self.spectrum_overlay:
+            self._setup_spectrum_overlay()
+
     def update_plot(self):
         """Update plot in main thread"""
         try:
@@ -635,6 +641,7 @@ class RefreshableSpectralPlot:
                 ToolDesc('yrange_global_fix', 'axes', FixYRangeGlobalTool),
                 ToolDesc('log_yscale', 'axes', LogYScaleTool),
                 ToolDesc('visx', 'axes', VisXTool),
+                ToolDesc('spec_ovl', 'axes', SpectrumOverlayTool),
 
                 ToolDesc('power', 'power', PowerTool),
             ]
@@ -647,6 +654,47 @@ class RefreshableSpectralPlot:
                 toolbar.add_tool(tool_mgr.get_tool(tool.name), tool.group)
                 if tool.trigger:
                     tool_mgr.toolmanager_connect(f"tool_trigger_{tool.name}", tool.trigger)
+
+    COLOR_RANGES = {
+            # https://en.wikipedia.org/wiki/Visible_spectrum
+            range(380, 450): ('violet', '#7f00ff'),
+            range(450, 485): ('blue', '#0000ff'),
+            range(485, 500): ('cyan', '#00ffff'),
+            range(500, 565): ('green', '#00ff00'),
+            range(565, 590): ('yellow', '#ffff00'),
+            range(590, 625): ('orange', '#ffa500'),
+            range(625, 751): ('red', '#ff0000'), # +1 at the end
+    }
+
+    def _setup_spectrum_overlay(self):
+        """Setup spectrum overlay (colors + photosensitivities)"""
+
+        match self.graph_type:
+            case GraphType.LINE | GraphType.OVERLAY:
+                for rng, (label, color) in self.COLOR_RANGES.items():
+                    self.axes.axvspan(rng.start, rng.stop, color=color, alpha=0.1,
+                                      label=color, lw=None)
+
+                photopic_sd = colour.colorimetry.SDS_LEFS_PHOTOPIC['CIE 1924 Photopic Standard Observer']
+                scotopic_sd = colour.colorimetry.SDS_LEFS_SCOTOPIC['CIE 1951 Scotopic Standard Observer']
+                def melanopic_response(wl):
+                    return np.exp(-0.5 * ((wl - 480) / 40)**2)  # 40nm stddev ~ broad response
+
+                (xmin, xmax) = self.axes.get_xlim()
+                (ymin, ymax) = self.axes.get_ylim()
+                ymax = ymax * 0.999
+                wls = np.arange(xmin, xmax + 1, 1)
+                photopic = np.array([photopic_sd[w] for w in wls])
+                scotopic = np.array([scotopic_sd[w] for w in wls])
+                melanopic = melanopic_response(wls)
+                photopic_norm = (photopic/np.max(photopic)) * (ymax-ymin) + ymin
+                scotopic_norm = (scotopic/np.max(scotopic)) * (ymax-ymin) + ymin
+                melanopic_norm = (melanopic/np.max(melanopic)) * (ymax - ymin) + ymin
+                self.axes.plot(wls, photopic_norm, 'k:', label='photopic', alpha=0.1)
+                self.axes.plot(wls, scotopic_norm, 'k-.', label='scotopic', alpha=0.1)
+                self.axes.plot(wls, melanopic_norm, 'k--', label='melanopic', alpha=0.1)
+            case _:
+                pass
 
     def _setup_cursor(self, legend=None):
         """Setup cursor tracking for easy reading of values on the graph"""

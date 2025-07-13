@@ -368,3 +368,25 @@ class RemoveTool(ToolBase):
 
     def trigger(self, *_args, **_kwargs):
         self.plot.remove_current_data()
+
+
+class SpectrumOverlayTool(ToolToggleBase):
+    """Show spectrum + sensitivities overlay"""
+    description = ('Show spectrum + photosensitivities overlay\n' +
+                   '[only applies to line or overlay graphs]\n(key: |)')
+    default_keymap = ['|']
+
+    def __init__(self, *args, plot, **kwargs):
+        self.plot = plot
+        self.default_toggled = self.plot.log_y_scale
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        self.image = os.path.join(script_dir, "../icons/spec_ovl")
+        super().__init__(*args, **kwargs)
+
+    def enable(self, event=None):
+        self.plot.spectrum_overlay = True
+        self.plot.dirty = True
+
+    def disable(self, event=None):
+        self.plot.spectrum_overlay = False
+        self.plot.dirty = True
