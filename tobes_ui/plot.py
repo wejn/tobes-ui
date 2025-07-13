@@ -25,7 +25,6 @@ from matplotlib.backend_bases import KeyEvent
 from matplotlib.backend_managers import ToolManager
 from matplotlib.backend_tools import ToolBase
 import matplotlib.text
-import numpy as np
 
 from .logger import LOGGER
 from .protocol import ExposureStatus
@@ -93,17 +92,14 @@ class SingleGraphCursor:
                     'visible': False,
                 },
                 visible=False)
-        spd = data.to_spectral_distribution()
-        self._wavelengths = np.array(spd.wavelengths)
-        self._values = np.array(spd.values)
+        self._spd = data.to_spectral_distribution()
 
     def update(self, x_pos, _y_pos):
         """Update the cursor based on position"""
         # Find closest wavelength
         # Find the closest point
-        idx = np.argmin(np.abs(self._wavelengths - x_pos))
-        closest_wl = self._wavelengths[idx]
-        closest_val = self._values[idx]
+        closest_wl = int(x_pos)
+        closest_val = self._spd[closest_wl]
 
         # Determine text position based on cursor location
         x_range = self._axes.get_xlim()
@@ -137,14 +133,15 @@ class SingleGraphCursor:
 
 class OverlayGraphCursor:
     """Cursor on the overlay graph"""
-    def __init__(self, axes, data):
+    def __init__(self, axes, all_data, index, legend):
         self._axes = axes
         self._visible = False
         self._dot = self._axes.plot([], [], 'ro', markersize=6, alpha=0.8, visible=False)[0]
         self._dot.set_color('white')
         self._dot2 = self._axes.plot([], [], 'ro', markersize=4, alpha=0.8, visible=False)[0]
         self._dot2.set_color('black')
-        self._axvline = self._axes.axvline(x=0, color='k', linestyle='--', linewidth=1, visible=False)
+        self._axvline = self._axes.axvline(
+                x=0, color='k', linestyle='--', linewidth=1, visible=False)
         self._annot = self._axes.annotate(
                 '', xy=(0, 0), xytext=(20, 20),
                 textcoords="offset points",
@@ -159,17 +156,31 @@ class OverlayGraphCursor:
                     'visible': False,
                 },
                 visible=False)
-        spd = data.to_spectral_distribution()
-        self._wavelengths = np.array(spd.wavelengths)
-        self._values = np.array(spd.values)
+        self._spd = all_data[index].to_spectral_distribution()
+        self._all_data = all_data
+        self._index = index
+        self._legend = legend
+
+        self._spds = []
+        self._labels = []
+        for idx, graph in enumerate(all_data):
+            self._spds.append(graph.to_spectral_distribution())
+            self._labels.append(f'{idx+1:>3}: {graph.name or "(no name)"}')
+
+        # left-align to max length
+        maxlabel = max(len(x) for x in self._labels)
+        self._labels = [f'{x:<{maxlabel}}' for x in self._labels]
+
+        # max value
+        self._maxval = max(max(spd.values) for spd in self._spds)
+        self._maxval_size = len(str(int(self._maxval)))
 
     def update(self, x_pos, _y_pos):
         """Update the cursor based on position"""
         # Find closest wavelength
         # Find the closest point
-        idx = np.argmin(np.abs(self._wavelengths - x_pos))
-        closest_wl = self._wavelengths[idx]
-        closest_val = self._values[idx]
+        closest_wl = int(x_pos)
+        closest_val = self._spd[closest_wl]
 
         # Determine text position based on cursor location
         x_range = self._axes.get_xlim()
@@ -189,6 +200,28 @@ class OverlayGraphCursor:
         self._annot.xy = (closest_wl, closest_val)
         self._annot.set_text(f'λ: {closest_wl:.1f}nm\nValue: {closest_val:.4f}')
         self._annot.set_position(text_offset)
+
+        # Update legend
+        texts = self._legend.get_texts()
+        mvs = self._maxval_size + 6 # 4 decimals, dot, sign
+        if self._legend:
+            for idx, spd in enumerate(self._spds):
+                if self._index == idx:
+                    # Reference
+                    addon = f' {spd[closest_wl]:> {mvs}.4f} (   ref   )'
+                else:
+                    if closest_val == 0.0:
+                        # Uncomparable (reference is zero)
+                        addon = f' {spd[closest_wl]:> {mvs}.4f} (   n/a   )'
+                    else:
+                        perc = (self._spds[idx][closest_wl] / closest_val - 1) * 100.0
+                        if -1000.0 < perc < 1000.0:
+                            # Reasonable range -> straight %
+                            addon = f' {spd[closest_wl]:> {mvs}.4f} ({perc:>+8.1f}%)'
+                        else:
+                            # Huge difference -> sci notation %
+                            addon = f' {spd[closest_wl]:> {mvs}.4f} ({perc:>+8.1e}%)'
+                texts[idx].set_text(self._labels[idx] + addon)
 
     def set_visible(self, visible=True):
         """Set visibility of the cursor"""
@@ -556,6 +589,7 @@ class RefreshableSpectralPlot:
                 'show': False,
                 'axes': self.axes,
         }
+        legend = None
         match self.graph_type:
             case GraphType.CIE1931:
                 xy_point = XYZ_to_xy(sd_to_XYZ(spd))
@@ -606,16 +640,13 @@ class RefreshableSpectralPlot:
                 self.axes.set_aspect('auto')
                 self.fig.tight_layout()
                 plt.title('Overlay graph')
-                pos = 0
-                for graph in self._history:
+                for idx, graph in enumerate(self._history):
                     spd = graph.to_spectral_distribution()
-                    ref = " ⬅" if pos == self._history_index else ""
                     self.axes.plot(list(spd.wavelengths),
                                    list(spd.values),
-                                   label=f'{pos+1}: {graph.name or "(no name)"}{ref}')
-                    pos += 1
-                leg = plt.legend()
-                current_text = leg.get_texts()[self._history_index]
+                                   label=f'{idx+1:>3}: {graph.name or "(no name)"}')
+                legend = plt.legend(prop={'family': 'monospace'})
+                current_text = legend.get_texts()[self._history_index]
                 current_text.set_color('blue')
                 plt.xlabel("Wavelength $\\lambda$ (nm)")
                 plt.ylabel(self.YLABEL)
@@ -656,7 +687,7 @@ class RefreshableSpectralPlot:
 
         # Re-setup cursor after clearing
         if self.graph_type in [GraphType.LINE, GraphType.SPECTRUM, GraphType.OVERLAY]:
-            self._setup_cursor()
+            self._setup_cursor(legend)
 
         # Restore cursor state if it was visible
         if self._cursor_visible and self._last_mouse_pos:
@@ -779,14 +810,15 @@ class RefreshableSpectralPlot:
                 if tool.trigger:
                     tool_mgr.toolmanager_connect(f"tool_trigger_{tool.name}", tool.trigger)
 
-    def _setup_cursor(self):
+    def _setup_cursor(self, legend=None):
         """Setup cursor tracking for easy reading of values on the graph"""
         try:
             match self.graph_type:
                 case GraphType.LINE | GraphType.SPECTRUM:
                     self._cursor = SingleGraphCursor(self.axes, self.data)
                 case GraphType.OVERLAY:
-                    self._cursor = OverlayGraphCursor(self.axes, self.data)
+                    self._cursor = OverlayGraphCursor(self.axes, self._history.copy(),
+                                                      self._history_index, legend)
                 case _:
                     self._cursor = None
 
