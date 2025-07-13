@@ -178,6 +178,7 @@ if __name__ == "__main__":
             try:
                 meter = Spectrometer(argv.input_device)
             except Exception as spec_ex:
+                LOGGER.debug("exception", exc_info=True)
                 print(f"Couldn't init spectrometer: {spec_ex}")
                 sys.exit(1)
 
@@ -211,6 +212,7 @@ if __name__ == "__main__":
                 try:
                     data.append(Spectrum.from_file(filename))
                 except (OSError, json.decoder.JSONDecodeError) as exc:
+                    LOGGER.debug("exception", exc_info=True)
                     print(f"File '{filename}' couldn't be parsed, skipping: {exc}")
 
         if not argv.input_device:

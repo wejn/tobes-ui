@@ -27,6 +27,7 @@ from matplotlib.backend_tools import ToolBase
 import matplotlib.text
 import numpy as np
 
+from .logger import LOGGER
 from .protocol import ExposureStatus
 from .types import GraphType, RefreshType
 from .tools import (
@@ -306,6 +307,7 @@ class RefreshableSpectralPlot:
                     self.fig.canvas.flush_events()
                     time.sleep(.1)
                 except Exception as ex:
+                    LOGGER.debug("exception", exc_info=True)
                     # Catch any matplotlib/Tkinter exceptions during shutdown
                     if self.running:  # Only print if we're not shutting down
                         print(f"Matplotlib error: {ex}")
@@ -358,6 +360,7 @@ class RefreshableSpectralPlot:
                     self.refresh_type = RefreshType.DISABLED
                     self.dirty = True
             except Exception:
+                LOGGER.debug("exception", exc_info=True)
                 # If we can't get new data, just continue
                 if self.running:
                     break
@@ -620,6 +623,7 @@ class RefreshableSpectralPlot:
             self.update_status()
             self.fig.canvas.draw()
         except Exception as ex:
+            LOGGER.debug("exception", exc_info=True)
             if self.running:  # Only print if we're not shutting down
                 print(f"Plot update error: {ex}")
 
@@ -726,8 +730,8 @@ class RefreshableSpectralPlot:
             self.fig.canvas.mpl_connect('axes_enter_event', self._on_axes_enter)
             self.fig.canvas.mpl_connect('axes_leave_event', self._on_axes_leave)
         except Exception:
+            LOGGER.debug("exception", exc_info=True)
             # Ignore cursor setup errors during shutdown
-            pass
 
     def _update_cursor_position(self, x_pos, y_pos):
         """Update cursor position and visibility"""
@@ -735,8 +739,8 @@ class RefreshableSpectralPlot:
             if x_pos is not None and self._cursor:
                 self._cursor.update(x_pos, y_pos)
         except Exception:
+            LOGGER.debug("exception", exc_info=True)
             # Ignore cursor update errors during shutdown
-            pass
 
     def update_status(self):
         """Set toolbar message"""
@@ -771,8 +775,8 @@ class RefreshableSpectralPlot:
                 if self.fig and self.fig.canvas:
                     self.fig.canvas.draw_idle()
         except Exception:
+            LOGGER.debug("exception", exc_info=True)
             # Ignore mouse events during shutdown
-            pass
 
     def _on_axes_enter(self, _event):
         """Show cursor when entering axes"""
@@ -782,7 +786,7 @@ class RefreshableSpectralPlot:
             self._cursor_visible = True
             self.update_status()
         except Exception:
-            pass
+            LOGGER.debug("exception", exc_info=True)
 
     def _on_axes_leave(self, _event):
         """Hide cursor when leaving axes"""
@@ -796,7 +800,7 @@ class RefreshableSpectralPlot:
 
             self.update_status()
         except Exception:
-            pass
+            LOGGER.debug("exception", exc_info=True)
 
     def _on_close(self, _event):
         """Handle window being closed"""
@@ -814,4 +818,5 @@ class RefreshableSpectralPlot:
                 plt.close(self.fig)
                 self.fig = None
         except Exception:
-            pass  # Ignore errors during figure cleanup
+            LOGGER.debug("exception", exc_info=True)
+            # Ignore errors during figure cleanup

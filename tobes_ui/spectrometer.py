@@ -96,6 +96,7 @@ class Spectrometer:
             self.exposure_mode = None
             self.device_id = None
         except Exception as ex:
+            LOGGER.debug("exception", exc_info=True)
             raise ValueError(f"Couldn't open serial: {ex}") from ex
 
     def send_message(self, message_type, data=b""):
@@ -135,7 +136,7 @@ class Spectrometer:
             self.buffer = b""
             self.wavelength_range = None
         except Exception: # pylint: disable=broad-exception-caught
-            pass  # Ignore errors during cleanup
+            LOGGER.debug("exception", exc_info=True)
 
     def get_device_id(self):
         """Get device identifier (serial)"""
