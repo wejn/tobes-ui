@@ -38,7 +38,6 @@ class Spectrum:
             'exposure',
             'time',
             'spd',
-            'wavelength_range',
             'ts',
     ]
 
