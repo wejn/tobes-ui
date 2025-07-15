@@ -382,8 +382,7 @@ class ClearTool(ToolBase):
         super().__init__(*args, **kwargs)
     
     def trigger(self, *_args, **_kwargs):
-        while self.plot.data:
-            self.plot.remove_current_data()
+        self.plot.remove_all_data()
 
 
 class SpectrumOverlayTool(ToolToggleBase):

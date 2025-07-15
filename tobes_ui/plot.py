@@ -157,6 +157,14 @@ class RefreshableSpectralPlot:
         self._history_index = len(self._history) - 1
         self._fixed_y_global = YAxisValues.from_list(self._history_yvals)
 
+    def remove_all_data(self):
+        """Remove all data from history and view"""
+        self._history = []
+        self._history_yvals = []
+        self._history_index = -1
+        self._fixed_y_global = None
+        self.dirty = True
+
     def remove_current_data(self):
         """Remove currently displayed data from history and view (if any)"""
         if not self.data:
