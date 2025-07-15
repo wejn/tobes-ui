@@ -370,6 +370,22 @@ class RemoveTool(ToolBase):
         self.plot.remove_current_data()
 
 
+class ClearTool(ToolBase):
+    """Clear all spectrum data"""
+    description = 'Clear all spectrum data\n(key: -)'
+    default_keymap = ['-', '_']
+
+    def __init__(self, *args, plot, **kwargs):
+        self.plot = plot
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        self.image = os.path.join(script_dir, "../icons/clear")
+        super().__init__(*args, **kwargs)
+    
+    def trigger(self, *_args, **_kwargs):
+        while self.plot.data:
+            self.plot.remove_current_data()
+
+
 class SpectrumOverlayTool(ToolToggleBase):
     """Show spectrum + sensitivities overlay"""
     description = ('Show spectrum + photosensitivities overlay\n' +

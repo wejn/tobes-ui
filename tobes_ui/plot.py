@@ -34,7 +34,8 @@ from .types import GraphType, RefreshType
 from .tools import (
     RefreshTool, OneShotTool, HistoryStartTool, HistoryBackTool, HistoryForwardTool,
     HistoryEndTool, GraphSelectTool, FixYRangeGlobalTool, FixYRangeTool, LogYScaleTool,
-    PowerTool, PlotSaveTool, RawSaveTool, NameTool, RemoveTool, VisXTool, SpectrumOverlayTool)
+    PowerTool, PlotSaveTool, RawSaveTool, NameTool, RemoveTool, ClearTool, VisXTool,
+    SpectrumOverlayTool)
 
 # pylint: disable=broad-exception-caught
 # pylint: disable=too-many-instance-attributes
@@ -610,6 +611,7 @@ class RefreshableSpectralPlot:
 
             all_tools += [
                 ToolDesc('remove', 'refresh', RemoveTool),
+                ToolDesc('clear', 'refresh', ClearTool),
 
                 ToolDesc('history_start', 'nav', HistoryStartTool),
                 ToolDesc('history_back', 'nav', HistoryBackTool),
