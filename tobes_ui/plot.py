@@ -682,14 +682,17 @@ class RefreshableSpectralPlot:
 
         match self.graph_type:
             case GraphType.LINE | GraphType.OVERLAY:
-                for rng, (label, color) in self.COLOR_RANGES.items():
+                for rng, (_label, color) in self.COLOR_RANGES.items():
                     self.axes.axvspan(rng.start, rng.stop, color=color, alpha=0.1,
                                       label=color, lw=None)
 
-                photopic_sd = colour.colorimetry.SDS_LEFS_PHOTOPIC['CIE 1924 Photopic Standard Observer']
-                scotopic_sd = colour.colorimetry.SDS_LEFS_SCOTOPIC['CIE 1951 Scotopic Standard Observer']
-                def melanopic_response(wl):
-                    return np.exp(-0.5 * ((wl - 480) / 40)**2)  # 40nm stddev ~ broad response
+                photopic_sd = colour.colorimetry.SDS_LEFS_PHOTOPIC[
+                        'CIE 1924 Photopic Standard Observer']
+                scotopic_sd = colour.colorimetry.SDS_LEFS_SCOTOPIC[
+                        'CIE 1951 Scotopic Standard Observer']
+                def melanopic_response(wavelength):
+                    # 40nm stddev ~ broad response
+                    return np.exp(-0.5 * ((wavelength - 480) / 40)**2)
 
                 (xmin, xmax) = self.axes.get_xlim()
                 (ymin, ymax) = self.axes.get_ylim()
