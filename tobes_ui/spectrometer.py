@@ -29,9 +29,12 @@ class Spectrum:
     time: float
     spd: dict[int, float]
     wavelength_range: range
+    wavelengths_raw: list[float]
     spd_raw: list[float]
     ts: datetime # pylint: disable=invalid-name
     name: str
+    y_axis: str
+    device: str
 
     REQUIRED_KEYS = [
             'status',
@@ -52,9 +55,12 @@ class Spectrum:
                 self.wavelength_range.start,
                 self.wavelength_range.stop
             ],
+            "wavelengths_raw": self.wavelengths_raw,
             "spd_raw": self.spd_raw,
             "ts": self.ts.timestamp(),
             "name": self.name,
+            "y_axis": self.y_axis,
+            "device": self.device,
         }, indent=4)
 
     def to_spectral_distribution(self):
@@ -72,10 +78,16 @@ class Spectrum:
         if "wavelength_range" not in data:
             wls = {int(k) for k,v in data["spd"].items()}
             data["wavelength_range"] = [min(wls), max(wls)]
+        if "wavelengths_raw" not in data:
+            data["wavelengths_raw"] = [k for k, v in data["spd"].items()]
         if "spd_raw" not in data:
             data["spd_raw"] = [v for k, v in data["spd"].items()]
         if "name" not in data:
             data["name"] = None
+        if "y_axis" not in data:
+            data["y_axis"] = 'counts'
+        if "device" not in data:
+            data["device"] = None
         return cls(
             status=data["status"],
             exposure=data["exposure"],
@@ -85,9 +97,12 @@ class Spectrum:
                 data["wavelength_range"][0],
                 data["wavelength_range"][1]
             ),
+            wavelengths_raw=data["wavelengths_raw"],
             spd_raw=data["spd_raw"],
             ts=datetime.fromtimestamp(data["ts"]),
-            name=data["name"]
+            name=data["name"],
+            y_axis=data["y_axis"],
+            device=data["device"]
         )
 
     @classmethod
@@ -236,7 +251,14 @@ class Spectrometer:
 
         if not self.exposure_mode:
             mode = self.get_exposure_mode()
-            self.exposure_mode = mode
+        else:
+            mode = self.exposure_mode
+
+        if not self.device_id:
+            device_id = self.get_device_id()
+        else:
+            device_id = self.device_id
+        device = device_id.split('-')[0]
 
         LOGGER.debug("requesting data")
         self.send_message(MessageType.GET_DATA)
@@ -260,16 +282,19 @@ class Spectrometer:
 
             spectrum=Spectrum(
                     status=response['exposure_status'],
-                    exposure=self.exposure_mode,
+                    exposure=mode,
                     time=response["exposure_time"],
                     spd={
                         spec_range.start + index: value
                         for index, value in enumerate(response["spectrum"])
                     },
                     wavelength_range=spec_range,
+                    wavelengths_raw=list(range(spec_range.start, spec_range.stop + 1)),
                     spd_raw=response["spectrum"],
                     ts=datetime.now(),
-                    name=None
+                    name=None,
+                    device=device,
+                    y_axis="$W\\cdot{}m^{-2}\\cdot{}nm^{-1}$"
             )
 
             if where_to:

@@ -137,6 +137,13 @@ Sample exported data:
         340,
         1000
     ],
+    "wavelengths_raw": [
+        340,
+        341,
+        "...",
+        999,
+        1000
+    ],
     "spd_raw": [
         0.0,
         0.0,
@@ -161,9 +168,27 @@ Sample exported data:
         0.004859
     ],
     "ts": 1751704901.025932,
-    "name": "my fancy spectrum"
+    "name": "my fancy spectrum",
+    "y_axis": "$W\\cdot{}m^{-2}\\cdot{}nm^{-1}$",
+    "device": "Y21B7W10034CCPD"
 }
 ```
+
+Meaning of the keys:
+
+| Key | Type | Default | Meaning |
+| --- | ---- | ------- | ------- |
+| status | enum | **required** | Status of the exposure (normal, over, under) |
+| exposure | enum | **required** | Type of the exposure (manual, automatic) |
+| time | float | **required** | Time (ms) of the exposure |
+| spd | dict[int, float] | **required** | Dictionary of wavelength: intensity |
+| wavelength_range | range | from spd | Range of `spd` |
+| wavelengths_raw | list[float] | None | Raw wavelengths (device-specific) |
+| spd_raw | list[float] | None | Raw intensities (device-specific) |
+| ts | unix ts | **required** | Time when the measurement took place |
+| name | str | None | Human name for the measurement |
+| y_axis | str | `"counts"` | Unit for the Y axis |
+| device | str | None | Identifier of the device that took the measurement |
 
 ## License
 
