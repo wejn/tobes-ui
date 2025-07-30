@@ -1333,5 +1333,7 @@
         0.14844
     ],
     "ts": 1752082886.741752,
-    "name": "early sunset"
+    "name": "early sunset",
+    "y_axis": "$W\\cdot{}m^{-2}\\cdot{}nm^{-1}$",
+    "device": "Y21B7W10034CCPD"
 }

@@ -1333,5 +1333,7 @@
         0.0
     ],
     "ts": 1752087690.131506,
-    "name": "lcd screen"
+    "name": "lcd screen",
+    "y_axis": "$W\\cdot{}m^{-2}\\cdot{}nm^{-1}$",
+    "device": "Y21B7W10034CCPD"
 }

@@ -1333,5 +1333,7 @@
         2.839
     ],
     "ts": 1751813318.909601,
-    "name": "halogen light"
+    "name": "halogen light",
+    "y_axis": "$W\\cdot{}m^{-2}\\cdot{}nm^{-1}$",
+    "device": "Y21B7W10034CCPD"
 }
