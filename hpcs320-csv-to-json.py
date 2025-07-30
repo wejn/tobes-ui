@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Converts Hopoocolor (HPCS-320) CSV to Tobes JSON"""
+# pylint: disable=invalid-name
 
 import argparse
 import csv
@@ -7,12 +8,11 @@ from datetime import datetime
 from pathlib import Path
 import sys
 
-from tobes_ui.logger import LogLevel, configure_logging, LOGGER
 from tobes_ui.protocol import ExposureMode, ExposureStatus
 from tobes_ui.spectrometer import Spectrum
 
-
 def parse_args():
+    """Parse argv"""
     parser = argparse.ArgumentParser(description="Convert Hopoocolor (HPCS-320) CSV to Tobes JSON")
 
     parser.add_argument("input_csv", help="Path to the input CSV file.")
@@ -24,8 +24,8 @@ def parse_args():
 
     return parser.parse_args()
 
-
 def main():
+    """Main"""
     args = parse_args()
 
     input_path = Path(args.input_csv)
@@ -42,7 +42,7 @@ def main():
     time_ = None
 
     try:
-        with open(input_path, newline='') as csvfile:
+        with open(input_path, newline='', encoding='utf-8') as csvfile:
             reader = csv.reader(csvfile)
             for ln in reader:
                 if not ln:
@@ -77,7 +77,7 @@ def main():
             print(f"Error: Couldn't parse timestamp: {exc}", file=sys.stderr)
             sys.exit(2)
     else:
-        print(f"Error: Not enough data for timestamp in the input file", file=sys.stderr)
+        print("Error: Not enough data for timestamp in the input file", file=sys.stderr)
         sys.exit(2)
 
     wl_raw = list(spd.keys())
