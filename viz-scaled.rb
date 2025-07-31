@@ -76,26 +76,25 @@ for file in ARGV
     end
 end
 
-scaler = 
-    if options[:max]
-        # rescale to max
-        entries.map(&:max).max
-    elsif options[:wavelength]
-        non_conforming = entries.find_all { |x| x.val_at_wl.nil? }
-        unless non_conforming.empty?
-            STDERR.puts "Can't align on #{options[:wavelength]} because these files don't contain it:"
-            STDERR.puts non_conforming.map(&:file).join(', ')
-            exit 1
-        end
-
-        # rescale to val_at_wl
-        entries.map(&:val_at_wl).max
-    else
-        1.0
+if options[:wavelength]
+    non_conforming = entries.find_all { |x| x.val_at_wl.nil? }
+    unless non_conforming.empty?
+        STDERR.puts "Can't align on #{options[:wavelength]} because these files don't contain it:"
+        STDERR.puts non_conforming.map(&:file).join(', ')
+        exit 1
     end
+end
 
+global_scaler = entries.map(&:max).max
 entries.each do |e|
-    e.data["spd"] = e.data['spd'].map { |k,v| [k, v * (scaler / e.max)] }.to_h
+    scaler = if options[:max]
+                 global_scaler / e.max
+             elsif options[:wavelength]
+                 global_scaler / e.val_at_wl
+             else
+                 1.0
+             end
+    e.data["spd"] = e.data['spd'].map { |k,v| [k, v * (scaler)] }.to_h
     e.data.delete('wavelengths_raw')
     e.data.delete('spd_raw')
     e.data["axis"] = 'counts'
