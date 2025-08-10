@@ -34,7 +34,7 @@ def spd_with_auto_exposure(spectrometer, min_time, max_time, min_step=1000,
     data = None
 
     def is_overexposed(intensities):
-        return len([1 for v in intensities if v == spectrometer.max_intensity]) > 0
+        return len([1 for v in intensities if v > spectrometer.max_intensity * 0.9]) > 0
 
     while data is None or high - low > min_step:
         mid = (low + high) / 2.0
