@@ -7,6 +7,7 @@
 import argparse
 from datetime import datetime
 import sys
+import textwrap
 
 import numpy as np
 from scipy.interpolate import interp1d
@@ -164,6 +165,12 @@ if __name__ == "__main__":
             help="Plot the captured spectrum"
         )
 
+        parser.add_argument(
+            '-C', '--calibrate',
+            action='store_true',
+            help="Calibrate the spectrometer"
+        )
+
         return parser.parse_args()
 
     def main():
@@ -179,8 +186,78 @@ if __name__ == "__main__":
             print("No spectrometer available")
             sys.exit(1)
 
-        print(spectrometer)
-        print(spectrometer.integration_time_micros_limits)
+        print("model:", spectrometer)
+        print("int limits:", spectrometer.integration_time_micros_limits)
+        print("pixels:", spectrometer.pixels)
+
+        if argv.calibrate:
+            if spectrometer.pixels != 2048:
+                print(f"Sorry, I don't know how do deal with devices with {spectrometer.pixels} pixels.")
+                sys.exit(1)
+
+            print(textwrap.dedent("""
+
+            =--------------=
+            Calibration mode
+            =--------------=
+
+            """))
+            try:
+                input("Safely cover the slit, then press enter to begin.")
+            except KeyboardInterrupt:
+                sys.exit(1)
+
+            wl = spectrometer.wavelengths()
+            i = []
+            for _ in range(3):
+                i.append(np.array(spectrometer.intensities(correct_dark_counts=False, correct_nonlinearity=False)))
+
+            i = np.mean(np.array(i), axis=0)
+
+
+            # According to docs: 0-17 optical black, 18-19 not usable, 20-2047 active
+            dark_pixels = i[0:18]
+            usable = i[20:]
+
+            dark_q25 = np.percentile(dark_pixels, 25)
+            dark_q75 = np.percentile(dark_pixels, 75)
+            iqr = dark_q75 - dark_q25
+            weird_indexes = np.where((dark_pixels < dark_q25 - 1.5*iqr) | (dark_pixels > dark_q75+1.5*iqr))[0]
+            if len(weird_indexes) > 0:
+                print("Weird black pixel indexes detected!")
+                print("indexes:", weird_indexes)
+                print("vals:", [dark_pixels[i] for i in weird_indexes])
+                print("dark avg:", np.mean(dark_pixels), "sd:", np.std(dark_pixels))
+                print("usable avg:", np.mean(usable), "sd:", np.std(usable))
+                corr_dark = np.delete(dark_pixels, weird_indexes)
+                print("corrected dark avg:", np.mean(corr_dark), "sd:", np.std(corr_dark))
+                try:
+                    input(f"Enter to blacklist the {weird_indexes}, ^C to keep them.")
+                except KeyboardInterrupt:
+                    weird_indexes = []
+                    print("")
+
+            if len(weird_indexes) > 0:
+                print("Dark pixels to blacklist:", weird_indexes)
+            else:
+                print("No dark pixels to blacklist.")
+
+            final_dark = [dark_pixels[i] for i in range(0,18) if i not in weird_indexes]
+            print(textwrap.dedent(f"""
+
+            Final dark pixels: avg: {np.mean(final_dark)}, sd: {np.std(final_dark)}
+            Final usable pixels: avg: {np.mean(usable)}, sd: {np.std(usable)}
+            """))
+
+            try:
+                input("Open the slit, press Enter.")
+            except KeyboardInterrupt:
+                sys.exit(1)
+
+            # FIXME: now wavelength calibration
+
+
+            sys.exit(1)
 
         min_exp, max_exp = argv.exposure
         exp, wavelengths, intensities = spd_with_auto_exposure(
