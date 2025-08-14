@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Converts Hopoocolor (HPCS-320) CSV to Tobes JSON"""
+"""Converts Hopoocolor (HPCS-3[23]0) CSV to Tobes JSON"""
 # pylint: disable=invalid-name
 
 import argparse
@@ -40,6 +40,7 @@ def main():
     name = None
     date = None
     time_ = None
+    last_wl = None # last wavelength encountered
 
     try:
         with open(input_path, newline='', encoding='utf-8') as csvfile:
@@ -63,7 +64,12 @@ def main():
                         pass
                 elif first.isdigit():
                     try:
-                        spd[int(first)] = float(ln[1])
+                        wl = int(first)
+                        if last_wl is not None and wl < last_wl:
+                            # flicker section?
+                            continue
+                        spd[wl] = float(ln[1])
+                        last_wl = wl
                     except (ValueError, IndexError):
                         pass
     except OSError as exc:
