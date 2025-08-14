@@ -195,6 +195,13 @@ if __name__ == "__main__":
                 print(f"Sorry, I don't know how do deal with devices with {spectrometer.pixels} pixels.")
                 sys.exit(1)
 
+            if not spectrometer.serial_number.startswith("FLMS"):
+                print(f"Warning: not guaranteed to correctly deal with devices with non-FLMS serial.")
+                # XXX: Theoretically you can use this for USB2k+ too.
+                # Because I assume certain layout for pixels below, and it should be the same for both.
+                # Btw, spectrometer.f.spectrometer.get_electric_dark_pixel_indices() is a lie.
+                # (says range(6,21) for USB2k+ and Flame, but their layout is different)
+
             print(textwrap.dedent("""
 
             =--------------=
@@ -254,8 +261,14 @@ if __name__ == "__main__":
             except KeyboardInterrupt:
                 sys.exit(1)
 
-            # FIXME: now wavelength calibration
+            # read wavelength calibration: [a3, a2, a1, a0] for polynomial a3*x^3 + a2*x^2 + a1*x + a0
+            def read_wlc(spec):
+                return [float(spec.f.eeprom.eeprom_read_slot(i).split(b'\x00')[0]) for i in range(1,5)][::-1]
 
+            wlc = read_wlc(spectrometer)
+            print(wlc)
+
+            # FIXME: now wavelength calibration
 
             sys.exit(1)
 
