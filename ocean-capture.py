@@ -277,6 +277,9 @@ if __name__ == "__main__":
                 spectrometer, min_exp * 1000, max_exp * 1000,
                 correct_nonlinearity=argv.correct_nonlinearity,
                 correct_dark_counts=argv.correct_dark_counts)
+        # Only take non-dark pixels (FIXME: this is a hotfix):
+        wavelengths = wavelengths[20:]
+        intensities = intensities[20:]
         overexp = [k for (k,v) in zip(wavelengths, intensities) if v == spectrometer.max_intensity]
         match len(overexp):
             case 0:
