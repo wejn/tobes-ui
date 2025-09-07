@@ -1,5 +1,7 @@
 """Generator for strong_lines.*"""
 
+# pip install requests requests_cache beautifulsoup4 --break-system-packages
+
 # pylint: disable=duplicate-code
 
 import os
@@ -7,7 +9,13 @@ import re
 
 from bs4 import BeautifulSoup
 import requests
+import requests_cache
 from jinja2 import Environment, FileSystemLoader
+
+cache_dir = os.path.expanduser("~/.cache/tobes-ui")
+os.makedirs(cache_dir, exist_ok=True)
+cache_path = os.path.join(cache_dir, "strong_lines_request_cache")
+requests_cache.install_cache(cache_path, expire_after=7*24*3600)
 
 ELEMENT_URLS = {
     "Ar": "https://physics.nist.gov/PhysRefData/Handbook/Tables/argontable2_a.htm",

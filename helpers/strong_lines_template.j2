@@ -20,6 +20,11 @@ class StrongLines:
     lines: list[StrongLine]
     persistent_lines: list[StrongLine]  # lines with 'P' flag
 
+    def for_range(self, rng, only_persistent):
+        """Return list of lines for given range."""
+        src = self.persistent_lines if only_persistent else self.lines
+        return [x for x in src if rng.start <= x.wavelength <= rng.stop]
+
 STRONG_LINES = {
 {% for element, lines in full_data.items() %}
     "{{ element }}": StrongLines(
