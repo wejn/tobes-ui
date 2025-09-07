@@ -40,7 +40,7 @@ def parse_pre_block(text):
             flags = list(match.group(2)) if match.group(2) else []
             flags = ''.join([x for x in flags if x != ","])
             wavelength_aa = match.group(3)
-            data.append([intensity, wavelength_aa, flags])
+            data.append([intensity, re.sub(r'(\d+)(\d)\.(\d+)', r'\1.\2\3', wavelength_aa), flags])
     return data
 
 def extract_element_data_from_pre(url):
