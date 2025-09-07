@@ -29,7 +29,7 @@ class Flag(Enum):
 
 _FLAG_MAP = {flag.code: flag for flag in Flag}
 
-@dataclass
+@dataclass(frozen=True)
 class StrongLine:
     """Represents one strong line for given element."""
     element: str
@@ -40,7 +40,7 @@ class StrongLine:
     def flags(self):
         return [_FLAG_MAP[f] for f in list(self.raw_flags)]
 
-@dataclass
+@dataclass(frozen=True)
 class StrongLines:
     """Represents collection of strong lines for given element."""
     element: str
