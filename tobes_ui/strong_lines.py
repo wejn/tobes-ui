@@ -18,9 +18,10 @@ class StrongLines:
     """Represents collection of strong lines for given element."""
     element: str
     lines: list[StrongLine]
-    persistent_lines: list[StrongLine] # lines with 'P' flag
+    persistent_lines: list[StrongLine]  # lines with 'P' flag
 
 STRONG_LINES = {
+
     "Ar": StrongLines(
         element="Ar",
         lines=[
@@ -371,7 +372,7 @@ STRONG_LINES = {
             StrongLine(element="Ar", wavelength=9122.967, intensity=1000, flags="P"),
             StrongLine(element="Ar", wavelength=9657.786, intensity=700, flags="P"),
         ]
-     ),
+    ),
     "C": StrongLines(
         element="C",
         lines=[
@@ -467,6 +468,7 @@ STRONG_LINES = {
             StrongLine(element="C", wavelength=3918.978, intensity=300, flags="P"),
             StrongLine(element="C", wavelength=3920.693, intensity=400, flags="P"),
             StrongLine(element="C", wavelength=4267.003, intensity=400, flags="P"),
+            StrongLine(element="C", wavelength=4267.258, intensity=500, flags="Pc"),
             StrongLine(element="C", wavelength=6578.05, intensity=400, flags="P"),
             StrongLine(element="C", wavelength=7231.32, intensity=400, flags="P"),
             StrongLine(element="C", wavelength=7236.42, intensity=500, flags="P"),
@@ -475,7 +477,7 @@ STRONG_LINES = {
             StrongLine(element="C", wavelength=11753.32, intensity=140, flags="P"),
             StrongLine(element="C", wavelength=11754.76, intensity=110, flags="P"),
         ]
-     ),
+    ),
     "H": StrongLines(
         element="H",
         lines=[
@@ -524,8 +526,9 @@ STRONG_LINES = {
             StrongLine(element="H", wavelength=6562.7248, intensity=30, flags="P"),
             StrongLine(element="H", wavelength=6562.8518, intensity=180, flags="P"),
             StrongLine(element="H", wavelength=12818.07, intensity=20, flags="P"),
+            StrongLine(element="H", wavelength=18751.01, intensity=40, flags="Pc"),
         ]
-     ),
+    ),
     "He": StrongLines(
         element="He",
         lines=[
@@ -684,6 +687,9 @@ STRONG_LINES = {
             StrongLine(element="He", wavelength=3888.6046, intensity=60, flags="P"),
             StrongLine(element="He", wavelength=3888.6456, intensity=200, flags="P"),
             StrongLine(element="He", wavelength=3888.6489, intensity=300, flags="P"),
+            StrongLine(element="He", wavelength=4685.3769, intensity=4, flags="Pc"),
+            StrongLine(element="He", wavelength=4685.4072, intensity=3, flags="Pc"),
+            StrongLine(element="He", wavelength=4685.8041, intensity=12, flags="Pc"),
             StrongLine(element="He", wavelength=5875.6148, intensity=500, flags="P"),
             StrongLine(element="He", wavelength=5875.6404, intensity=250, flags="P"),
             StrongLine(element="He", wavelength=5875.9663, intensity=120, flags="P"),
@@ -696,7 +702,7 @@ STRONG_LINES = {
             StrongLine(element="He", wavelength=10830.3398, intensity=1000, flags="P"),
             StrongLine(element="He", wavelength=20581.287, intensity=500, flags="P"),
         ]
-     ),
+    ),
     "Hg": StrongLines(
         element="Hg",
         lines=[
@@ -769,18 +775,21 @@ STRONG_LINES = {
             StrongLine(element="Hg", wavelength=1942.273, intensity=1000, flags="P"),
             StrongLine(element="Hg", wavelength=2052.828, intensity=400, flags="P"),
             StrongLine(element="Hg", wavelength=2262.223, intensity=400, flags="P"),
+            StrongLine(element="Hg", wavelength=2536.517, intensity=1000, flags="Pc"),
             StrongLine(element="Hg", wavelength=2847.675, intensity=400, flags="P"),
             StrongLine(element="Hg", wavelength=2967.280, intensity=250, flags="P"),
             StrongLine(element="Hg", wavelength=3650.153, intensity=600, flags="P"),
+            StrongLine(element="Hg", wavelength=3983.931, intensity=1000, flags="Pc"),
             StrongLine(element="Hg", wavelength=4046.563, intensity=400, flags="P"),
             StrongLine(element="Hg", wavelength=4358.328, intensity=1000, flags="P"),
             StrongLine(element="Hg", wavelength=5425.253, intensity=80, flags="P"),
             StrongLine(element="Hg", wavelength=5460.735, intensity=500, flags="P"),
             StrongLine(element="Hg", wavelength=5677.105, intensity=200, flags="P"),
+            StrongLine(element="Hg", wavelength=6149.475, intensity=250, flags="Pc"),
             StrongLine(element="Hg", wavelength=7944.555, intensity=250, flags="P"),
             StrongLine(element="Hg", wavelength=10139.76, intensity=200, flags="P"),
         ]
-     ),
+    ),
     "Kr": StrongLines(
         element="Kr",
         lines=[
@@ -1076,7 +1085,7 @@ STRONG_LINES = {
             StrongLine(element="Kr", wavelength=16890.441, intensity=400, flags="P"),
             StrongLine(element="Kr", wavelength=18167.315, intensity=400, flags="P"),
         ]
-     ),
+    ),
     "N": StrongLines(
         element="N",
         lines=[
@@ -1169,7 +1178,10 @@ STRONG_LINES = {
             StrongLine(element="N", wavelength=775.967, intensity=200, flags="P"),
             StrongLine(element="N", wavelength=915.613, intensity=50, flags="P"),
             StrongLine(element="N", wavelength=915.963, intensity=50, flags="P"),
+            StrongLine(element="N", wavelength=916.019, intensity=60, flags="Pd"),
+            StrongLine(element="N", wavelength=916.708, intensity=200, flags="Pd"),
             StrongLine(element="N", wavelength=1083.994, intensity=25, flags="P"),
+            StrongLine(element="N", wavelength=1084.580, intensity=60, flags="Pd"),
             StrongLine(element="N", wavelength=1085.550, intensity=15, flags="P"),
             StrongLine(element="N", wavelength=1085.710, intensity=100, flags="P"),
             StrongLine(element="N", wavelength=1199.550, intensity=1000, flags="P"),
@@ -1193,7 +1205,7 @@ STRONG_LINES = {
             StrongLine(element="N", wavelength=12469.62, intensity=200, flags="P"),
             StrongLine(element="N", wavelength=13581.33, intensity=200, flags="P"),
         ]
-     ),
+    ),
     "Ne": StrongLines(
         element="Ne",
         lines=[
@@ -1689,7 +1701,7 @@ STRONG_LINES = {
             StrongLine(element="Ne", wavelength=11177.5240, intensity=500, flags="P"),
             StrongLine(element="Ne", wavelength=11522.7459, intensity=300, flags="P"),
         ]
-     ),
+    ),
     "O": StrongLines(
         element="O",
         lines=[
@@ -1819,7 +1831,7 @@ STRONG_LINES = {
             StrongLine(element="O", wavelength=13163.89, intensity=250, flags="P"),
             StrongLine(element="O", wavelength=13164.85, intensity=250, flags="P"),
         ]
-     ),
+    ),
     "Xe": StrongLines(
         element="Xe",
         lines=[
@@ -2154,5 +2166,5 @@ STRONG_LINES = {
             StrongLine(element="Xe", wavelength=31069.23, intensity=600, flags="P"),
             StrongLine(element="Xe", wavelength=35070.26, intensity=500, flags="P"),
         ]
-     ),
+    ),
 }
