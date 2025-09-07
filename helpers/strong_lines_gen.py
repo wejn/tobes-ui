@@ -81,16 +81,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# Flags:
-# b - band head
-# c - complex
-# d - line consists of two unresolved lines
-# h - hazy
-# l - shaded to longer wavelengths
-# P - a persistent line
-# r - easily reversed
-# s - shaded to shorter wavelengths
-# u - unresolved shoulder on strong line
-# w - wide
-# * - peaks so close that separate intensity measurement was infeasible

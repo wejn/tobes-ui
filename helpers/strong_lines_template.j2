@@ -4,6 +4,30 @@
 # pylint: disable=too-many-lines
 
 from dataclasses import dataclass
+from enum import Enum
+
+class Flag(Enum):
+    BAND_HEAD = ('b', 'band head')
+    COMPLEX = ('c', 'complex')
+    TWO_UNRES_LINES = ('d', 'line consists of two unresolved lines')
+    HAZY = ('h', 'hazy')
+    SHADED_LONGER = ('l', 'shaded to longer wavelengths')
+    PERSISTENT = ('P', 'a persistent line')
+    EASILY_REVERSED = ('r', 'easily reversed')
+    SHADED_SHORTER = ('s', 'shaded to shorter wavelengths')
+    UNRESOLVED = ('u', 'unresolved shoulder on strong line')
+    WIDE = ('w', 'wide')
+    TOO_CLOSE = ('*', 'peaks so close that separate intensity measurement was infeasible')
+
+    def __init__(self, code: str, description: str):
+        self.code = code
+        self.description = description
+
+    def __str__(self):
+        """Convert to readable string"""
+        return f'{self.code} ({self.description})'
+
+_FLAG_MAP = {flag.code: flag for flag in Flag}
 
 @dataclass
 class StrongLine:
@@ -11,7 +35,10 @@ class StrongLine:
     element: str
     wavelength: float
     intensity: int
-    flags: str
+    raw_flags: str
+
+    def flags(self):
+        return [_FLAG_MAP[f] for f in list(self.raw_flags)]
 
 @dataclass
 class StrongLines:
@@ -20,10 +47,22 @@ class StrongLines:
     lines: list[StrongLine]
     persistent_lines: list[StrongLine]  # lines with 'P' flag
 
-    def for_range(self, rng, only_persistent):
-        """Return list of lines for given range."""
+    def for_wavelength_range(self, wave_rng, only_persistent=False):
+        """Return list of lines for given wavelength range."""
         src = self.persistent_lines if only_persistent else self.lines
-        return [x for x in src if rng.start <= x.wavelength <= rng.stop]
+        return [x for x in src if wave_rng.start <= x.wavelength <= wave_rng.stop]
+
+    def for_intensity_range(self, intensity_rng, only_persistent=False):
+        """Return list of lines for given intensity range."""
+        src = self.persistent_lines if only_persistent else self.lines
+        return [x for x in src if intensity_rng.start <= x.intensity <= intensity_rng.stop]
+
+    def for_wavelength_and_intensity_range(self, wave_rng, int_rng, only_persistent=False):
+        """Return list of lines for given intensity range."""
+        src = self.persistent_lines if only_persistent else self.lines
+        return [x for x in src if (
+            wave_rng.start <= x.wavelength <= wave_rng.stop and
+            int_rng.start <= x.intensity <= int_rng.stop)]
 
 STRONG_LINES = {
 {% for element, lines in full_data.items() %}
@@ -31,12 +70,12 @@ STRONG_LINES = {
         element="{{ element }}",
         lines=[
         {%- for entry in lines %}
-            StrongLine(element="{{ element }}", wavelength={{ entry[1] }}, intensity={{ entry[0] }}, flags="{{ entry[2] }}"),
+            StrongLine(element="{{ element }}", wavelength={{ entry[1] }}, intensity={{ entry[0] }}, raw_flags="{{ entry[2] }}"),
         {%- endfor %}
         ],
         persistent_lines=[
         {%- for entry in lines if 'P' in entry[2] %}
-            StrongLine(element="{{ element }}", wavelength={{ entry[1] }}, intensity={{ entry[0] }}, flags="{{ entry[2] }}"),
+            StrongLine(element="{{ element }}", wavelength={{ entry[1] }}, intensity={{ entry[0] }}, raw_flags="{{ entry[2] }}"),
         {%- endfor %}
         ]
     ),
