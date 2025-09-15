@@ -18,7 +18,6 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
-from tobes_ui.strong_lines import STRONG_LINES
 from tobes_ui.calibration.common import (ClampedSpinbox, ToolTip, TracedStringVar)
 from tobes_ui.calibration.strong_lines_control import StrongLinesControl
 
@@ -38,18 +37,23 @@ class FooBarControl(ttk.LabelFrame):
 
 
 class IntegrationControl(FooBarControl):
+    # FIXME: auto (min..max), fixed (value)
     pass
 
 class AveragingControl(FooBarControl):
+    # FIXME: num samples, avg / max
     pass
 
 class PeaksDetectionControl(FooBarControl):
+    # FIXME: prominence %, distance (pixels), window length
     pass
 
 class ReferenceMatchControl(FooBarControl):
+    # wavelength delta (1..10?)
     pass
 
 class XAxisControl(FooBarControl):
+    # use: (old cali, new cali, fixed (min..max))
     pass
 
 
