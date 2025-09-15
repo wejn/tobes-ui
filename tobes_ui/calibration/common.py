@@ -53,6 +53,23 @@ class ToolTip:
         )
         label.pack()
 
+        # Adjust position if it goes off the screen
+
+        self.tooltip.update_idletasks()
+
+        screen_width = self.tooltip.winfo_screenwidth()
+        screen_height = self.tooltip.winfo_screenheight()
+        tooltip_width = self.tooltip.winfo_width()
+        tooltip_height = self.tooltip.winfo_height()
+
+        if x + tooltip_width > screen_width:
+            x = max(0, screen_width - tooltip_width)
+        if y + tooltip_height > screen_height:
+            y = max(0, screen_height - tooltip_height)
+
+        self.tooltip.wm_geometry(f"+{x}+{y}")
+
+
     def hide_tooltip(self, _event=None):
         """Cancel schedule and hide tooltip if visible."""
         if self.after_id:
