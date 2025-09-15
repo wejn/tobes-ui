@@ -10,4 +10,4 @@ examples:
 	python3 main.py -d examples/*.json
 
 lint:
-	pylint *.py helpers/*.py tobes_ui/*.py
+	pylint *.py helpers/*.py tobes_ui/*.py tobes_ui/*/*.py
