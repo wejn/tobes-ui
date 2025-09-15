@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 class Flag(Enum):
+    """Flags for strong line."""
     BAND_HEAD = ('b', 'band head')
     COMPLEX = ('c', 'complex')
     TWO_UNRES_LINES = ('d', 'line consists of two unresolved lines')
@@ -38,6 +39,7 @@ class StrongLine:
     raw_flags: str
 
     def flags(self):
+        """Get humanized flags for raw_flags."""
         return [_FLAG_MAP[f] for f in list(self.raw_flags)]
 
 @dataclass(frozen=True)
