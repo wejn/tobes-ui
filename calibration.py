@@ -14,7 +14,11 @@ from tkinter import ttk
 import numpy as np
 from scipy.interpolate import interp1d
 import seabreeze.spectrometers as sb
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.figure import Figure
 
 from tobes_ui.strong_lines import STRONG_LINES
 
@@ -276,6 +280,36 @@ class StrongLinesControl(ttk.LabelFrame):
             self._on_change(self._strong_lines)
 
 
+class FooBarControl(ttk.LabelFrame):
+    """Control panel template."""
+
+    def __init__(self, parent, on_change=None, **kwargs):
+        super().__init__(parent, text=f'{self.__class__.__name__}', pad=5, **kwargs)
+
+        self._setup_gui()
+
+    def _setup_gui(self):
+        # FIXME: Implement
+        label = ttk.Label(self, text="Some control\n(natural width)") # FIXME: rm
+        label.pack()
+
+
+class IntegrationControl(FooBarControl):
+    pass
+
+class AveragingControl(FooBarControl):
+    pass
+
+class PeaksDetectionControl(FooBarControl):
+    pass
+
+class ReferenceMatchControl(FooBarControl):
+    pass
+
+class XAxisControl(FooBarControl):
+    pass
+
+
 class CalibrationGUI:
     """GUI for Ocean spectrometer wavelength calibration."""
 
@@ -435,10 +469,61 @@ class CalibrationGUI:
     def _setup_right_frame(self, parent):
         right_frame = ttk.Frame(parent)
 
-        label = ttk.Label(right_frame, text="Right Panel\n(natural width)") # FIXME: rm
-        label.pack()
+        controls_frame = ttk.Frame(right_frame)
+        controls_frame.pack(fill=tk.X, padx=5, pady=5)
+
+        controls = []
+
+        controls.append(IntegrationControl(controls_frame))
+        controls.append(AveragingControl(controls_frame))
+        controls.append(PeaksDetectionControl(controls_frame))
+        controls.append(ReferenceMatchControl(controls_frame))
+        controls.append(XAxisControl(controls_frame))
+
+        for col, control in enumerate(controls):
+            control.grid(column=col, row=0, sticky="news", padx=5, pady=5)
+            control.columnconfigure(col, weight=1)
+
+        def on_resize(event):
+            row = 0
+            col = 0
+
+            width = 0
+
+            for control in controls:
+                if width + control.winfo_reqwidth() + 10 > event.width:
+                    row += 1
+                    col = 0
+                    width = 0
+                control.grid(column=col, row=row, sticky="news", padx=5, pady=5)
+                control.columnconfigure(col, weight=1)
+                col += 1
+                width += control.winfo_reqwidth() + 10
+
+        controls_frame.bind('<Configure>', on_resize)
+
+        plot = self._setup_plot(right_frame)
+        plot.pack(fill="both", expand=True)
+        # FIXME: maybe store plot?
 
         return right_frame
+
+    def _setup_plot(self, parent):
+        fig = Figure(figsize=(8,6), dpi=100) # FIXME: orly?
+        ax = fig.add_subplot(111)
+
+        data = ax.plot([], [], 'b-', linewidth=1)
+        ax.set_xlabel('Wavelength (nm)')
+        ax.set_ylabel('Counts')
+        ax.set_title('Spectral Data')
+        ax.grid(True, alpha=0.3)
+
+        # FIXME: maybe objectify? to hold state...
+
+        canvas = FigureCanvasTkAgg(fig, parent)
+        canvas.draw()
+
+        return canvas.get_tk_widget()
 
     def _update_status(self, message):
         if self._status_label:
