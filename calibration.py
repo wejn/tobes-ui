@@ -6,7 +6,6 @@ from datetime import datetime
 import queue
 import pprint
 import sys
-import textwrap
 import tkinter as tk
 from tkinter import ttk
 
@@ -15,7 +14,6 @@ import numpy as np
 from scipy.interpolate import interp1d
 import seabreeze.spectrometers as sb
 import matplotlib
-matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
@@ -286,6 +284,8 @@ class CalibrationGUI:
 if __name__ == "__main__":
     def main():
         """Zee main(), like in C"""
+        matplotlib.use('TkAgg')
+
         try:
             #spectrometer = sb.Spectrometer.from_first_available() # FIXME
             spectrometer = None

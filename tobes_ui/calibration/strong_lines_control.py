@@ -1,11 +1,14 @@
 """Strong lines control UI."""
 
+# pylint: disable=too-many-ancestors,too-many-instance-attributes
+
 import tkinter as tk
 from tkinter import ttk
 
-from from tobes_ui.calibration.common import (ClampedSpinbox, ToolTip)
+from tobes_ui.strong_lines import STRONG_LINES
+from tobes_ui.calibration.common import (ClampedSpinbox, ToolTip)
 
-class StrongLinesControl(ttk.LabelFrame):  # pylint: disable=too-many-ancestors
+class StrongLinesControl(ttk.LabelFrame):
     """Control panel for strong lines."""
 
     def __init__(self, parent, max_cols=5, on_change=None, **kwargs):
@@ -68,8 +71,8 @@ class StrongLinesControl(ttk.LabelFrame):  # pylint: disable=too-many-ancestors
         """Change callback, for individual elements (or all when None)."""
         min_int = self._intensity.get()
         pers_only = self._persistent_only.get()
-        def sl_find(e):
-            return STRONG_LINES[e].for_intensity_range(range(min_int,1000), pers_only)
+        def sl_find(elem):
+            return STRONG_LINES[elem].for_intensity_range(range(min_int,1000), pers_only)
 
         if element is not None:
             if self._vars[element].get():
