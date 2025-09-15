@@ -18,43 +18,14 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
-from tobes_ui.calibration.common import (ClampedSpinbox, ToolTip, TracedStringVar)
+from tobes_ui.calibration.common import (
+        CalibrationControlPanel, ClampedSpinbox, ToolTip, TracedStringVar)
 from tobes_ui.calibration.strong_lines_control import StrongLinesControl
-
-
-class FooBarControl(ttk.LabelFrame):
-    """Control panel template."""
-
-    def __init__(self, parent, on_change=None, **kwargs):
-        super().__init__(parent, text=f'{self.__class__.__name__}', pad=5, **kwargs)
-
-        self._setup_gui()
-
-    def _setup_gui(self):
-        # FIXME: Implement
-        label = ttk.Label(self, text="Some control\n(natural width)") # FIXME: rm
-        label.pack()
-
-
-class IntegrationControl(FooBarControl):
-    # FIXME: auto (min..max), fixed (value)
-    pass
-
-class AveragingControl(FooBarControl):
-    # FIXME: num samples, avg / max
-    pass
-
-class PeaksDetectionControl(FooBarControl):
-    # FIXME: prominence %, distance (pixels), window length
-    pass
-
-class ReferenceMatchControl(FooBarControl):
-    # wavelength delta (1..10?)
-    pass
-
-class XAxisControl(FooBarControl):
-    # use: (old cali, new cali, fixed (min..max))
-    pass
+from tobes_ui.calibration.integration_control import IntegrationControl
+from tobes_ui.calibration.sampling_control import SamplingControl
+from tobes_ui.calibration.peak_detection_control import PeakDetectionControl
+from tobes_ui.calibration.reference_match_control import ReferenceMatchControl
+from tobes_ui.calibration.x_axis_control import XAxisControl
 
 
 class CalibrationGUI:
@@ -222,9 +193,9 @@ class CalibrationGUI:
         controls = []
 
         controls.append(IntegrationControl(controls_frame))
-        controls.append(AveragingControl(controls_frame))
-        controls.append(PeaksDetectionControl(controls_frame))
+        controls.append(SamplingControl(controls_frame))
         controls.append(ReferenceMatchControl(controls_frame))
+        controls.append(PeakDetectionControl(controls_frame))
         controls.append(XAxisControl(controls_frame))
 
         for col, control in enumerate(controls):
@@ -236,6 +207,10 @@ class CalibrationGUI:
             col = 0
 
             width = 0
+
+            # FIXME: issue with this is that when you start new row, the width can stretch
+            # (because when the cell on the next row is wider, it ends up stretching the
+            # cell in all rows -- preceding and following)
 
             for control in controls:
                 if width + control.winfo_reqwidth() + 10 > event.width:

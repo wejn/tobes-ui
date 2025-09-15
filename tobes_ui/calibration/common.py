@@ -2,6 +2,8 @@
 
 # pylint: disable=invalid-name
 
+import abc
+
 import tkinter as tk
 from tkinter import ttk
 
@@ -182,3 +184,33 @@ class ClampedSpinbox(ttk.Frame):  # pylint: disable=too-many-ancestors
         """Set value programmatically (clamped)."""
         value = max(self.min_val, min(self.max_val, int(value)))
         self._value_var.set(str(value))
+
+
+class CalibrationControlPanel(ttk.LabelFrame, abc.ABC):  # pylint: disable=too-many-ancestors
+    """Control panel template."""
+
+    def __init__(self, parent, text=None, on_change=None, **kwargs):
+        super().__init__(parent, text=text or f'{self.__class__.__name__}', pad=5, **kwargs)
+
+        self.on_change = on_change
+        self._data = {}
+        self._setup_gui()
+
+    @abc.abstractmethod
+    def _setup_gui(self):
+        """Setup GUI elements for the control."""
+
+    @property
+    def on_change(self):
+        """Get on_change callback."""
+        return self._on_change
+
+    @on_change.setter
+    def on_change(self, proc):
+        """Set on_change callback."""
+        self._on_change = proc
+
+    @property
+    def controls_state(self):
+        """Getter for the state that on_change emits."""
+        return self._data
