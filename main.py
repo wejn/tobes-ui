@@ -12,8 +12,7 @@ import matplotlib
 from matplotlib.backend_tools import default_toolbar_tools
 
 from tobes_ui.plot import RefreshableSpectralPlot
-from tobes_ui.protocol import ExposureMode
-from tobes_ui.spectrometer import Spectrometer, Spectrum
+from tobes_ui.spectrometer import ExposureMode, Spectrometer, Spectrum
 from tobes_ui.types import GraphType, RefreshType
 from tobes_ui.logger import LogLevel, configure_logging, LOGGER
 

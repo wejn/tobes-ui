@@ -8,8 +8,7 @@ from datetime import datetime
 from pathlib import Path
 import sys
 
-from tobes_ui.protocol import ExposureMode, ExposureStatus
-from tobes_ui.spectrometer import Spectrum
+from tobes_ui.spectrometer import ExposureMode, ExposureStatus, Spectrum
 
 def parse_args():
     """Parse argv"""

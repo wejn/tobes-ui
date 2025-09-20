@@ -29,7 +29,7 @@ import numpy as np
 
 from .cursors import SingleGraphCursor, OverlayGraphCursor
 from .logger import LOGGER
-from .protocol import ExposureStatus
+from .spectrometer import ExposureStatus
 from .types import GraphType, RefreshType
 from .tools import (
     RefreshTool, OneShotTool, HistoryStartTool, HistoryBackTool, HistoryForwardTool,

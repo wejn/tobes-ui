@@ -15,8 +15,7 @@ import seabreeze.spectrometers as sb
 import matplotlib.pyplot as plt
 
 from tobes_ui.logger import LogLevel, configure_logging, LOGGER
-from tobes_ui.protocol import ExposureMode, ExposureStatus
-from tobes_ui.spectrometer import Spectrum
+from tobes_ui.spectrometer import ExposureMode, ExposureStatus, Spectrum
 
 def spd_with_auto_exposure(spectrometer, min_time, max_time, min_step=1000,
                            correct_dark_counts=False,
