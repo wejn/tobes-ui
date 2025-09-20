@@ -133,26 +133,26 @@ if __name__ == "__main__":
 
     def _init_meter(meter, argv):
         basic_info = meter.get_basic_info()
-        if not basic_info['device_id'].startswith('Y'):
-            print(f'Warning: only tested on Y21B*, this is {basic_info["device_id"]}')
+        if not basic_info.device_id.startswith('Y'):
+            print(f'Warning: only tested on Y21B*, this is {basic_info.device_id}')
 
         def is_ok(result):
             """Bool to string with extra nonsense on top, pylint"""
             return "success" if result else "failure"
         if argv.exposure == 'auto':
-            if basic_info['exposure_mode'] != ExposureMode.AUTOMATIC:
+            if basic_info.exposure_mode != ExposureMode.AUTOMATIC:
                 print('Setting auto mode:',
                       is_ok(meter.set_exposure_mode(ExposureMode.AUTOMATIC)))
             else:
                 print('Spectrometer already in auto mode.')
         else:
-            if basic_info['exposure_mode'] != ExposureMode.MANUAL:
+            if basic_info.exposure_mode != ExposureMode.MANUAL:
                 print('Setting manual mode:',
                       is_ok(meter.set_exposure_mode(ExposureMode.MANUAL)))
             else:
                 print('Spectrometer already in manual mode.')
             exposure_time_us = int(argv.exposure * 1000)
-            if basic_info['exposure_value'] != exposure_time_us:
+            if basic_info.time != exposure_time_us:
                 print('Setting exposure value:',
                       is_ok(meter.set_exposure_value(exposure_time_us)))
             else:

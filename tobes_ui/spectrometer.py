@@ -15,6 +15,15 @@ from serial import Serial
 from .logger import LOGGER
 
 
+@dataclass
+class BasicInfo:
+    device_type: 'Spectrometer'
+    device_id: str
+    wavelength_range: range
+    exposure_mode: 'ExposureMode'
+    time: float
+
+
 class ExposureMode(Enum):
     """Type of exposure mode"""
     MANUAL = 0x00
@@ -144,7 +153,7 @@ class Spectrum:
 
 
 class Spectrometer:
-    """Handles the spectrometer (wraps the `protocol`)"""
+    """Handles the Torch Bearer Spectrometer"""
 
     def __init__(self, path):
         try:
@@ -260,17 +269,17 @@ class Spectrometer:
         response = self.read_message(MessageType.GET_EXPOSURE_VALUE)
         return response['exposure_time_us']
 
-    def get_basic_info(self):
+    def get_basic_info(self) -> BasicInfo:
         """Get basic info about the device"""
         if not self.port:
             raise ValueError("Already closed")
 
-        return {
-                'device_id': self.get_device_id(),
-                'range': self.get_range(),
-                'exposure_mode': self.get_exposure_mode(),
-                'exposure_value': self.get_exposure_value(),
-                }
+        return BasicInfo(
+                device_type=self.__class__,
+                device_id=self.get_device_id(),
+                wavelength_range=self.get_range(),
+                exposure_mode=self.get_exposure_mode(),
+                time=self.get_exposure_value())
 
     def stream_data(self, where_to):
         """Stream spectral data to the where_to callback, until told to stop"""
