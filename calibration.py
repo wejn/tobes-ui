@@ -70,13 +70,13 @@ class CalibrationGUI:
         paned_window.add(right_frame)
 
         # resize left to min(left minwidth, 30%)
-        def pw_on_resize(_event):
+        def _pw_on_resize(_event):
             total_width = paned_window.winfo_width()
             paned_window.paneconfig(left_frame, minsize=left_frame.winfo_reqwidth())
             paned_window.paneconfig(right_frame, minsize=right_frame.winfo_reqwidth())
             paned_window.sash_place(0, min(left_frame.winfo_reqwidth(), int(total_width * 0.3)), 0)
             # FIXME: ^^ probably doesn't work as I would expect...
-        paned_window.bind('<Configure>', pw_on_resize)
+        paned_window.bind('<Configure>', _pw_on_resize)
 
     def _setup_left_frame(self, parent):
         left_frame = ttk.Frame(parent)
@@ -202,7 +202,7 @@ class CalibrationGUI:
             control.grid(column=col, row=0, sticky="news", padx=5, pady=5)
             control.columnconfigure(col, weight=1)
 
-        def on_resize(event):
+        def _cf_on_resize(event):
             row = 0
             col = 0
 
@@ -222,7 +222,7 @@ class CalibrationGUI:
                 col += 1
                 width += control.winfo_reqwidth() + 10
 
-        controls_frame.bind('<Configure>', on_resize)
+        controls_frame.bind('<Configure>', _cf_on_resize)
 
         plot = self._setup_plot(right_frame)
         plot.pack(fill="both", expand=True)
