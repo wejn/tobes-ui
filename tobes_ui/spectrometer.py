@@ -2,6 +2,7 @@
 
 # pylint: disable=too-many-instance-attributes
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -152,7 +153,29 @@ class Spectrum:
             return cls.from_json(file.read())
 
 
-class Spectrometer:
+class Spectrometer(ABC):
+    """Abstract base class for spectrometers."""
+
+    @abstractmethod
+    def get_basic_info(self) -> BasicInfo:
+        """Get basic info about the device"""
+
+    @abstractmethod
+    def stream_data(self, where_to):
+        """Stream spectral data to the where_to callback, until told to stop"""
+
+    @abstractmethod
+    def cleanup(self):
+        """Cleanup function to ensure proper shutdown"""
+
+    @classmethod
+    def create(cls, input_device: str) -> 'Spectrometer':
+        """Factory method for Spectrometers"""
+        # For now there's just one impl
+        return TorchBearerSpectrometer(input_device)
+
+
+class TorchBearerSpectrometer(Spectrometer):
     """Handles the Torch Bearer Spectrometer"""
 
     def __init__(self, path):

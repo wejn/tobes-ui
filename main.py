@@ -175,7 +175,7 @@ if __name__ == "__main__":
 
         if argv.input_device:
             try:
-                meter = Spectrometer(argv.input_device)
+                meter = Spectrometer.create(argv.input_device)
             except Exception as spec_ex:
                 LOGGER.debug("exception", exc_info=True)
                 print(f"Couldn't init spectrometer: {spec_ex}")
