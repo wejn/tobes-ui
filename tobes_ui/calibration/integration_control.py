@@ -47,7 +47,9 @@ class IntegrationControl(CalibrationControlPanel):  # pylint: disable=too-many-a
         self._integration_time_label = ttk.Label(manual_widgets_frame,
                                                  textvariable=self._integration_time_var)
         self._integration_time_label.pack(side=tk.RIGHT, padx=(5,0))
-        ToolTip(self._integration_time_label, "Current integration period [ms]")
+        ToolTip(self._integration_time_label,
+                "Current integration period [ms].\nClick to copy to manual.")
+        self._integration_time_label.bind("<Button-1>", self._on_integration_time_click)
 
         # --- Layout ---
         auto_radio.grid(row=0, column=0, sticky='w', padx=5, pady=2)
@@ -74,6 +76,14 @@ class IntegrationControl(CalibrationControlPanel):  # pylint: disable=too-many-a
 
         self._initialized = True
         _toggle_enabled_state()  # Set initial state & trigger first callback
+
+    def _on_integration_time_click(self, _event):
+        """Handle click on current integration time label."""
+        current_time_str = self._integration_time_var.get()
+        if current_time_str.isdigit():
+            current_time = int(current_time_str)
+            self._mode.set('manual')
+            self._manual_value_spinbox.set(current_time)
 
     def _change_cb(self, *_args):
         """Callback for when any control value changes."""
