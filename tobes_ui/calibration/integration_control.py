@@ -16,6 +16,7 @@ class IntegrationControl(CalibrationControlPanel):  # pylint: disable=too-many-a
         """Setup GUI elements for the control."""
         self._initialized = False
         self._mode = tk.StringVar(value='auto')
+        self._integration_time_var = tk.StringVar(value='n/a')  # FIXME: plug this in
 
         # --- Widgets ---
         auto_radio = ttk.Radiobutton(self, text="Auto", variable=self._mode, value='auto')
@@ -43,11 +44,16 @@ class IntegrationControl(CalibrationControlPanel):  # pylint: disable=too-many-a
         self._manual_value_spinbox.pack(side=tk.LEFT)
         ToolTip(self._manual_value_spinbox, "Integration period [ms]")
 
+        self._integration_time_label = ttk.Label(manual_widgets_frame,
+                                                 textvariable=self._integration_time_var)
+        self._integration_time_label.pack(side=tk.RIGHT, padx=(5,0))
+        ToolTip(self._integration_time_label, "Current integration period [ms]")
+
         # --- Layout ---
         auto_radio.grid(row=0, column=0, sticky='w', padx=5, pady=2)
         auto_widgets_frame.grid(row=0, column=1, sticky='w', padx=5, pady=2)
         manual_radio.grid(row=1, column=0, sticky='w', padx=5, pady=2)
-        manual_widgets_frame.grid(row=1, column=1, sticky='w', padx=5, pady=2)
+        manual_widgets_frame.grid(row=1, column=1, sticky='we', padx=5, pady=2)
 
         # --- Enable/disable logic ---
         def _toggle_enabled_state(*_args):
