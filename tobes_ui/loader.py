@@ -39,7 +39,7 @@ class Loader(ABC):
             if type_ in Loader._loader_types:
                 LOGGER.debug("Trying loader type=%s with id=%s", type_, file_id)
                 try:
-                    spectrum = Loader._loader_types[type_](file_id)
+                    spectrum = Loader._loader_types[type_].load(file_id)
                     LOGGER.debug("Success: %s", spectrum)
                     return spectrum
                 except Exception as ex:  # pylint: disable=broad-exception-caught

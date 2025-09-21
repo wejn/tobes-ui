@@ -1,5 +1,7 @@
 """Nice UI for TorchBearer Spectrometer"""
 
+# pylint: disable=too-many-statements,too-many-branches
+
 import argparse
 import atexit
 import json
@@ -112,11 +114,12 @@ if __name__ == "__main__":
                 f" '{template_with_name}' might be also useful"
         )
 
+        loaders= ", ".join(Loader.loader_types())
         parser.add_argument(
             '-d', '--data',
             default=None,
             nargs='*',
-            help='JSON dump file(s) to load for viewing (disables data refresh)'
+            help=f'File(s) to load for viewing (disables data refresh); loaders: {loaders}'
         )
 
         parser.add_argument(
