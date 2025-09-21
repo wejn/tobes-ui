@@ -21,6 +21,10 @@ lintmod:
 	fi
 
 push:
+	@if [ ! -z "$$(git status --porcelain)" ]; then \
+		echo "Not clean, won't push"; \
+		false; \
+	fi
 	rm -rf dist/ tobes_ui.egg-info/
 	python -m build
 	twine upload dist/*
