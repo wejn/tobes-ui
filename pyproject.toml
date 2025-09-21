@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tobes-ui"
+version = '0.1.4'
+description = "Totally Bearable Spectrometer UI"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "GPL-3.0"
+authors = [
+  {name = "Michal Jirků", email = "box@wejn.org"},
+]
+dependencies = [
+  "colour-science",
+  "matplotlib",
+  "pyserial",
+]
+
+[project.optional-dependencies]
+ocean = ["seabreeze"]
+
+[project.gui-scripts]
+tobes-ui = "tobes_ui.main:main"
+
+[project.urls]
+Homepage = "https://github.com/wejn/tobes-ui"
+
+[tool.setuptools.packages.find]
+where = ["."]
+exclude = ["scratch*", "helpers*"]
+
+[tool.setuptools.data-files]
+"assets" = ["*.png", "icons/*.png", "pictures/*.png"]
+
+[tool.setuptools]
+include-package-data = true

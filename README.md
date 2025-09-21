@@ -1,4 +1,4 @@
-# tobes-ui: Torch Bearer Spectrometer UI
+# tobes-ui: **To**tally **Be**arable **S**pectrometer UI
 
 This is a UI for [Torch Bearer](https://www.torchbearer.tech/)
 Spectrometer (`Y21B7W10034CCPD`) that is available on Amazon
@@ -7,7 +7,13 @@ and AliExpress ([TB Store](https://www.aliexpress.com/store/1104401209)).
 Forked from [ZoidTechnology/Torch-Bearer-Tools](https://github.com/ZoidTechnology/Torch-Bearer-Tools)[^1]
 and improved (beyond recognition?).
 
-## Requirements
+It also supports importing `csv` from Hopoocolor HPCS-320, HPCS-330 spectrometers.
+
+## Install
+
+- `pipx install tobes-ui`
+
+or:
 
 - Python 3.10
 - `pip install colour-science matplotlib pyserial`
@@ -15,7 +21,7 @@ and improved (beyond recognition?).
 ## Usage
 
 ```
-$ python3 main.py -h
+$ python3 -m tobes_ui.main -h
 usage: main.py [-h] [-b] [-L] [-e EXPOSURE] [-q | -t GRAPH_TYPE] [-o | -n]
                [-f FILE_TEMPLATE] [-d [DATA ...]] [-s HISTORY_SIZE] [-l LOG_LEVEL]
                [--log-file LOG_FILE]
@@ -61,10 +67,12 @@ My typical use is:
 
 ``` sh
 # To gather new data
-python3 main.py /dev/ttyUSB0 -e auto -o
+python3 -m tobes_ui.main /dev/ttyUSB0 -e auto -o
+# or: tobes-ui /dev/...
 
 # To "replay" existing samples:
-python3 main.py -d examples/*.json
+python3 -m tobes_ui.main -d examples/*.json
+# or: tobes-ui -d ...
 ```
 
 The first invocation gives one-shot spectrum on auto exposure (from `/dev/ttyUSB0`):
