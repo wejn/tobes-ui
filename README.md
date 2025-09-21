@@ -16,8 +16,9 @@ and improved (beyond recognition?).
 
 ```
 $ python3 main.py -h
-usage: main.py [-h] [-b] [-e EXPOSURE] [-q | -t GRAPH_TYPE] [-o | -n] [-f FILE_TEMPLATE]
-               [-d [DATA ...]] [-s HISTORY_SIZE] [-l LOG_LEVEL] [--log-file LOG_FILE]
+usage: main.py [-h] [-b] [-L] [-e EXPOSURE] [-q | -t GRAPH_TYPE] [-o | -n]
+               [-f FILE_TEMPLATE] [-d [DATA ...]] [-s HISTORY_SIZE] [-l LOG_LEVEL]
+               [--log-file LOG_FILE]
                [input_device]
 
 TorchBearer spectrometer tool
@@ -29,6 +30,7 @@ positional arguments:
 options:
   -h, --help            show this help message and exit
   -b, --backends        List all spectrometer backends
+  -L, --loaders         List all file loaders
   -e EXPOSURE, --exposure EXPOSURE
                         Exposure time in milliseconds (0.1-5000) or 'auto' (default: auto)
   -q, --quick-graph     Enable quick (LINE) graph mode
@@ -42,13 +44,17 @@ options:
                         'spectrum-{timestamp_full}{graph_type}'),
                         '{name}-{timestamp_full}{graph_type}' might be also useful
   -d [DATA ...], --data [DATA ...]
-                        JSON dump file(s) to load for viewing (disables data refresh)
+                        File(s) to load for viewing (disables data refresh); loaders: hpcs,
+                        json
   -s HISTORY_SIZE, --history-size HISTORY_SIZE
                         Size of the measurement history (default: 50)
   -l LOG_LEVEL, --log-level LOG_LEVEL
                         Logging level to configure: {", ".join(e.name for e in LogLevel}
                         (default WARN)
   --log-file LOG_FILE   Logfile to write to (defaults to none (=console))
+usage: main.py [-h] [-b] [-e EXPOSURE] [-q | -t GRAPH_TYPE] [-o | -n] [-f FILE_TEMPLATE]
+               [-d [DATA ...]] [-s HISTORY_SIZE] [-l LOG_LEVEL] [--log-file LOG_FILE]
+               [input_device]
 ```
 
 My typical use is:
