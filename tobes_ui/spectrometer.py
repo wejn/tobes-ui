@@ -140,9 +140,30 @@ class Spectrometer(ABC):
     _registry = []
     _spectrometer_types = {}
 
+    @property
     @abstractmethod
-    def get_basic_info(self) -> BasicInfo:
+    def basic_info(self) -> BasicInfo:
         """Get basic info about the device"""
+
+    @property
+    @abstractmethod
+    def exposure_mode(self):
+        """Get device exposure mode"""
+
+    @exposure_mode.setter
+    @abstractmethod
+    def exposure_mode(self, mode: ExposureMode):
+        """Set device exposure mode"""
+
+    @property
+    @abstractmethod
+    def exposure_time(self):
+        """Get device exposure time in microseconds"""
+
+    @exposure_time.setter
+    @abstractmethod
+    def exposure_time(self, exposure_time_us: int):
+        """Set device exposure time in microseconds"""
 
     @abstractmethod
     def stream_data(self, where_to):

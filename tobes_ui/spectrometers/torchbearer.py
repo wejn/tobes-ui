@@ -17,12 +17,20 @@ class TBExposureMode(Enum):
     MANUAL = 0x00
     AUTOMATIC = 0x01
 
+    def __str__(self):
+        """Convert to readable string"""
+        return str(self.name)
+
 
 class TBExposureStatus(Enum):
     """Status of exposure"""
     NORMAL = 0x00
     OVER = 0x01
     UNDER = 0x02
+
+    def __str__(self):
+        """Convert to readable string"""
+        return str(self.name)
 
 
 class MessageType(Enum):
@@ -48,14 +56,14 @@ class TorchBearerSpectrometer(Spectrometer, registered_types = ['tb', 'torchbear
         try:
             self.port = Serial(path, 115200, timeout=0.1)
             self.buffer = b""
-            self.wavelength_range = None
-            self.exposure_mode = None
-            self.device_id = None
+            self._wavelength_range = None
+            self._exposure_mode = None
+            self._device_id = None
         except Exception as ex:
             LOGGER.debug("exception", exc_info=True)
             raise ValueError(f"Couldn't open serial: {ex}") from ex
 
-    def send_message(self, message_type, data=b""):
+    def _send_message(self, message_type, data=b""):
         """Send message of given type and payload to the device"""
         if not self.port:
             raise ValueError("Already closed")
@@ -63,7 +71,7 @@ class TorchBearerSpectrometer(Spectrometer, registered_types = ['tb', 'torchbear
         LOGGER.debug("sending %s %s", message_type, data)
         self.port.write(self._build_message(message_type, data))
 
-    def read_message(self, message_type=None):
+    def _read_message(self, message_type=None):
         """Read message, possibly guarding the type"""
         if not self.port:
             raise ValueError("Already closed")
@@ -86,123 +94,130 @@ class TorchBearerSpectrometer(Spectrometer, registered_types = ['tb', 'torchbear
     def cleanup(self):
         """Cleanup function to ensure proper shutdown"""
         try:
-            self.send_message(MessageType.STOP)
+            self._send_message(MessageType.STOP)
             self.port.close()
             self.port = None
             self.buffer = b""
-            self.wavelength_range = None
+            self._wavelength_range = None
         except Exception: # pylint: disable=broad-exception-caught
             LOGGER.debug("exception", exc_info=True)
 
-    def get_device_id(self):
+    @property
+    def device_id(self):
         """Get device identifier (serial)"""
         if not self.port:
             raise ValueError("Already closed")
 
-        self.send_message(MessageType.GET_DEVICE_ID, b"\x18")
-        response = self.read_message(MessageType.GET_DEVICE_ID)
-        self.device_id = response['device_id']
-        return response['device_id']
+        if self._device_id:
+            return self._device_id
 
-    def get_range(self) -> range:
+        self._send_message(MessageType.GET_DEVICE_ID, b"\x18")
+        response = self._read_message(MessageType.GET_DEVICE_ID)
+        self._device_id = response['device_id']
+        return self._device_id
+
+    @property
+    def wavelength_range(self) -> range:
         """Get device spectral range (min, max) in nm"""
         if not self.port:
             raise ValueError("Already closed")
 
-        self.send_message(MessageType.GET_RANGE)
-        response = self.read_message(MessageType.GET_RANGE)
+        if self._wavelength_range:
+            return self._wavelength_range
 
-        self.wavelength_range = range(
+        self._send_message(MessageType.GET_RANGE)
+        response = self._read_message(MessageType.GET_RANGE)
+
+        self._wavelength_range = range(
                 response["start_wavelength"],
                 response["end_wavelength"])
 
-        return self.wavelength_range
+        return self._wavelength_range
 
-    def set_exposure_mode(self, mode: ExposureMode):
-        """Set device exposure mode"""
-        if not self.port:
-            raise ValueError("Already closed")
-
-        self.send_message(MessageType.SET_EXPOSURE_MODE, struct.pack("<B", mode.value))
-        response = self.read_message(MessageType.SET_EXPOSURE_MODE)
-        if response['success']:
-            self.exposure_mode = mode
-        return response['success']
-
-    def get_exposure_mode(self):
+    @property
+    def exposure_mode(self):
         """Get device exposure mode"""
         if not self.port:
             raise ValueError("Already closed")
 
-        self.send_message(MessageType.GET_EXPOSURE_MODE)
-        response = self.read_message(MessageType.GET_EXPOSURE_MODE)
-        self.exposure_mode = response['exposure_mode']
-        return response["exposure_mode"]
+        if self._exposure_mode:
+            return self._exposure_mode
 
-    def set_exposure_value(self, exposure_time_us: int):
-        """Set device exposure mode in microseconds"""
+        self._send_message(MessageType.GET_EXPOSURE_MODE)
+        response = self._read_message(MessageType.GET_EXPOSURE_MODE)
+        self._exposure_mode = response['exposure_mode']
+        return self._exposure_mode
+
+    @exposure_mode.setter
+    def exposure_mode(self, mode: ExposureMode):
+        """Set device exposure mode"""
         if not self.port:
             raise ValueError("Already closed")
 
-        self.send_message(MessageType.SET_EXPOSURE_VALUE,
-                          struct.pack("<I", exposure_time_us))
-        response = self.read_message(MessageType.SET_EXPOSURE_VALUE)
+        self._send_message(MessageType.SET_EXPOSURE_MODE, struct.pack("<B", mode.value))
+        response = self._read_message(MessageType.SET_EXPOSURE_MODE)
+        if response['success']:
+            self._exposure_mode = mode
         return response['success']
 
-    def get_exposure_value(self):
-        """Get device exposure mode in microseconds"""
+    @property
+    def exposure_time(self):
+        """Get device exposure time in microseconds"""
         if not self.port:
             raise ValueError("Already closed")
 
-        self.send_message(MessageType.GET_EXPOSURE_VALUE)
-        response = self.read_message(MessageType.GET_EXPOSURE_VALUE)
+        self._send_message(MessageType.GET_EXPOSURE_VALUE)
+        response = self._read_message(MessageType.GET_EXPOSURE_VALUE)
         return response['exposure_time_us']
 
-    def get_basic_info(self) -> BasicInfo:
+    @exposure_time.setter
+    def exposure_time(self, exposure_time_us: int):
+        """Set device exposure time in microseconds"""
+        if not self.port:
+            raise ValueError("Already closed")
+
+        self._send_message(MessageType.SET_EXPOSURE_VALUE,
+                          struct.pack("<I", exposure_time_us))
+        response = self._read_message(MessageType.SET_EXPOSURE_VALUE)
+        return response['success']
+
+    @property
+    def basic_info(self) -> BasicInfo:
         """Get basic info about the device"""
         if not self.port:
             raise ValueError("Already closed")
 
         return BasicInfo(
                 device_type=self.__class__,
-                device_id=self.get_device_id(),
-                wavelength_range=self.get_range(),
-                exposure_mode=self.get_exposure_mode(),
-                time=self.get_exposure_value())
+                device_id=self.device_id,
+                wavelength_range=self.wavelength_range,
+                exposure_mode=self.exposure_mode,
+                time=self.exposure_time)
 
     def stream_data(self, where_to):
         """Stream spectral data to the where_to callback, until told to stop"""
         LOGGER.debug("enter")
-        if not self.wavelength_range:
-            spec_range = self.get_range()
-        else:
-            spec_range = self.wavelength_range
+        spec_range = self.wavelength_range
 
-        if not self.exposure_mode:
-            mode = self.get_exposure_mode()
-        else:
-            mode = self.exposure_mode
+        mode = self.exposure_mode
 
-        if not self.device_id:
-            device_id = self.get_device_id()
-        else:
-            device_id = self.device_id
+        device_id = self.device_id
         device = device_id.split('-')[0]
 
         LOGGER.debug("requesting data")
-        self.send_message(MessageType.GET_DATA)
+        self._send_message(MessageType.GET_DATA)
 
         last_ok = False
         while True:
             LOGGER.debug("reading")
-            response = self.read_message()
+            response = self._read_message()
             LOGGER.debug("read %s", response)
 
             if response['message_type'] != MessageType.GET_DATA:
                 if response['message_type'] == MessageType.STOP:
                     # FIXME: rootcause this, and don't quickfix
                     LOGGER.info('quickfixing stall (STOP rcvd in get_data)')
-                    self.send_message(MessageType.GET_DATA)
+                    self._send_message(MessageType.GET_DATA)
                     continue
                 LOGGER.info('unexpected message: %s', response)
                 continue
@@ -237,9 +252,9 @@ class TorchBearerSpectrometer(Spectrometer, registered_types = ['tb', 'torchbear
 
         # Terminate streaming
         LOGGER.debug("about to stop %s", last_ok)
-        self.send_message(MessageType.STOP)
+        self._send_message(MessageType.STOP)
         if last_ok:
-            while (msg := self.read_message()["message_type"]) != MessageType.STOP:
+            while (msg := self._read_message()["message_type"]) != MessageType.STOP:
                 LOGGER.debug("wait-stop msg %s", msg)
         else:
             # When the last GET_DATA message wasn't OK, the system doesn't send

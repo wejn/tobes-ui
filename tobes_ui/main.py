@@ -152,36 +152,33 @@ def parse_args():
     return parser.parse_args()
 
 def _init_meter(meter, argv):
-    basic_info = meter.get_basic_info()
+    basic_info = meter.basic_info
     if 'TorchBearer' in str(basic_info.device_type) and not basic_info.device_id.startswith('Y'):
         print(f'Warning: only tested on Y21B*, this is {basic_info.device_id}')
 
-    def is_ok(result):
-        """Bool to string with extra nonsense on top, pylint"""
-        return "success" if result else "failure"
     if argv.exposure == 'auto':
         if basic_info.exposure_mode != ExposureMode.AUTOMATIC:
-            print('Setting auto mode:',
-                  is_ok(meter.set_exposure_mode(ExposureMode.AUTOMATIC)))
+            print('Setting auto mode...')
+            meter.exposure_mode = ExposureMode.AUTOMATIC
         else:
             print('Spectrometer already in auto mode.')
     else:
         if basic_info.exposure_mode != ExposureMode.MANUAL:
-            print('Setting manual mode:',
-                  is_ok(meter.set_exposure_mode(ExposureMode.MANUAL)))
+            print('Setting manual mode...')
+            meter.exposure_mode = ExposureMode.MANUAL
         else:
             print('Spectrometer already in manual mode.')
         exposure_time_us = int(argv.exposure * 1000)
         if basic_info.time != exposure_time_us:
-            print('Setting exposure value:',
-                  is_ok(meter.set_exposure_value(exposure_time_us)))
+            print('Setting exposure time...')
+            meter.exposure_time = exposure_time_us
         else:
             print(f'Spectrometer already has exposure value of {argv.exposure} ms.')
 
-    print("Exposure mode:", meter.get_exposure_mode())
-    print("Exposure value:", meter.get_exposure_value(), 'μs')
+    print("Exposure mode:", meter.exposure_mode)
+    print("Exposure time:", meter.exposure_time, 'μs')
 
-    basic_info = meter.get_basic_info()
+    basic_info = meter.basic_info
     print("Device basic info: ")
     pprint.pprint(basic_info)
 
