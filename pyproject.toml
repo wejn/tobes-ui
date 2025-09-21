@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tobes-ui"
-version = '0.1.4'
+version = '0.1.5'
 description = "Totally Bearable Spectrometer UI"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -32,7 +32,7 @@ where = ["."]
 exclude = ["scratch*", "helpers*"]
 
 [tool.setuptools.data-files]
-"assets" = ["*.png", "icons/*.png", "pictures/*.png"]
+"assets" = ["*.png", "icons/*.png"]
 
 [tool.setuptools]
 include-package-data = true
