@@ -153,7 +153,7 @@ def parse_args():
 
 def _init_meter(meter, argv):
     basic_info = meter.get_basic_info()
-    if not basic_info.device_id.startswith('Y'):
+    if 'TorchBearer' in str(basic_info.device_type) and not basic_info.device_id.startswith('Y'):
         print(f'Warning: only tested on Y21B*, this is {basic_info.device_id}')
 
     def is_ok(result):
