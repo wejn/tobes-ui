@@ -76,16 +76,16 @@ python3 -m tobes_ui.main -d examples/*.json
 
 The first invocation gives one-shot spectrum on auto exposure (from `/dev/ttyUSB0`):
 
-![screenshot of live capture](https://github.com/wejn/tobes-ui/blob/master/pictures/oneshot.png)
+![screenshot of live capture](https://raw.githubusercontent.com/wejn/tobes-ui/master/pictures/oneshot.png)
 
-Or, if you prefer, [screenshot of the CIE1976UCS locus](https://github.com/wejn/tobes-ui/blob/master/pictures/oneshot-cie1976ucs.png)
-or [screenshot of the TM30 graph](https://github.com/wejn/tobes-ui/blob/master/pictures/oneshot-tm30.png).
+Or, if you prefer, [screenshot of the CIE1976UCS locus](https://raw.githubusercontent.com/wejn/tobes-ui/master/pictures/oneshot-cie1976ucs.png)
+or [screenshot of the TM30 graph](https://raw.githubusercontent.com/wejn/tobes-ui/master/pictures/oneshot-tm30.png).
 
 The second invocation shows you replay of examples (no spectrometer needed!):
 
-![screenshot of replay](https://github.com/wejn/tobes-ui/blob/master/pictures/replay.png)
+![screenshot of replay](https://raw.githubusercontent.com/wejn/tobes-ui/master/pictures/replay.png)
 
-![screenshot of replay overlay log](https://github.com/wejn/tobes-ui/blob/master/pictures/replay-overlay-log.png)
+![screenshot of replay overlay log](https://raw.githubusercontent.com/wejn/tobes-ui/master/pictures/replay-overlay-log.png)
 
 There are several icons on the toolbar:
 
