@@ -747,7 +747,7 @@ class RefreshableSpectralPlot:
         status = []
 
         if self.data_refresh_issue:
-            if self.refresh_type == RefreshType.CONTINUOUS:
+            if self.refresh_type in [RefreshType.CONTINUOUS, RefreshType.ONESHOT]:
                 self.make_overlay(f'Refresh problem: {self.data_refresh_issue}',
                                   tag='refresh_issue')
             else:
