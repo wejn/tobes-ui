@@ -11,9 +11,11 @@ import sys
 import matplotlib
 from matplotlib.backend_tools import default_toolbar_tools
 
+from tobes_ui.loader import Loader
+import tobes_ui.loaders
 from tobes_ui.logger import LogLevel, configure_logging, LOGGER
 from tobes_ui.plot import RefreshableSpectralPlot
-from tobes_ui.spectrometer import ExposureMode, Spectrometer, Spectrum
+from tobes_ui.spectrometer import ExposureMode, Spectrometer
 import tobes_ui.spectrometers
 from tobes_ui.types import GraphType, RefreshType
 
@@ -51,6 +53,12 @@ if __name__ == "__main__":
             '-b', '--backends',
             action='store_true',
             help="List all spectrometer backends"
+        )
+
+        parser.add_argument(
+            '-L', '--loaders',
+            action='store_true',
+            help="List all file loaders"
         )
 
         parser.add_argument(
@@ -189,10 +197,23 @@ if __name__ == "__main__":
             print(types)
             print("")
 
-            ub = tobes_ui.spectrometers.failed_plugins()
-            if ub:
+            u_b = tobes_ui.spectrometers.failed_plugins()
+            if u_b:
                 print("Unavailable backends:")
-                for name, reason in ub.items():
+                for name, reason in u_b.items():
+                    print(f"{name}:\n\t{reason}")
+            sys.exit(0)
+
+        if argv.loaders:
+            print("Available loaders:")
+            types =  ', '.join(Loader.loader_types())
+            print(types)
+            print("")
+
+            u_l = tobes_ui.loaders.failed_plugins()
+            if u_l:
+                print("Unavailable loaders:")
+                for name, reason in u_l.items():
                     print(f"{name}:\n\t{reason}")
             sys.exit(0)
 
@@ -232,7 +253,7 @@ if __name__ == "__main__":
         if argv.data:
             for filename in argv.data:
                 try:
-                    data.append(Spectrum.from_file(filename))
+                    data.append(Loader.load(filename))
                 except (OSError, ValueError, json.decoder.JSONDecodeError) as exc:
                     print(f"File '{filename}' couldn't be parsed, skipping: {exc}")
 
