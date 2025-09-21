@@ -1,4 +1,4 @@
-.PHONY: all help examples lint
+.PHONY: all help examples lint lintmod
 
 all:
 	python3 main.py /dev/ttyUSB0 -e auto -o
@@ -11,3 +11,11 @@ examples:
 
 lint:
 	pylint *.py helpers/*.py tobes_ui/*.py tobes_ui/*/*.py
+
+lintmod:
+	@FILES=$$(git diff --name-only HEAD | grep 'py$$'); \
+	if [ -n "$$FILES" ]; then \
+		pylint $$FILES; \
+	else \
+		echo "No python files modified."; \
+	fi
