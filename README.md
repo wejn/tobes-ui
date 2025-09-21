@@ -67,25 +67,25 @@ My typical use is:
 ``` sh
 # To gather new data
 python3 -m tobes_ui.main /dev/ttyUSB0 -e auto -o
-# or: tobes-ui /dev/...
+# or (if you use pipx): tobes-ui /dev/...
 
 # To "replay" existing samples:
 python3 -m tobes_ui.main -d examples/*.json
-# or: tobes-ui -d ...
+# or (if you use pipx): tobes-ui -d ...
 ```
 
 The first invocation gives one-shot spectrum on auto exposure (from `/dev/ttyUSB0`):
 
-![screenshot of live capture](pictures/oneshot.png)
+![screenshot of live capture](https://github.com/wejn/tobes-ui/blob/master/pictures/oneshot.png)
 
-Or, if you prefer, [screenshot of the CIE1976UCS locus](pictures/oneshot-cie1976ucs.png)
-or [screenshot of the TM30 graph](pictures/oneshot-tm30.png).
+Or, if you prefer, [screenshot of the CIE1976UCS locus](https://github.com/wejn/tobes-ui/blob/master/pictures/oneshot-cie1976ucs.png)
+or [screenshot of the TM30 graph](https://github.com/wejn/tobes-ui/blob/master/pictures/oneshot-tm30.png).
 
 The second invocation shows you replay of examples (no spectrometer needed!):
 
-![screenshot of replay](pictures/replay.png)
+![screenshot of replay](https://github.com/wejn/tobes-ui/blob/master/pictures/replay.png)
 
-![screenshot of replay overlay log](pictures/replay-overlay-log.png)
+![screenshot of replay overlay log](https://github.com/wejn/tobes-ui/blob/master/pictures/replay-overlay-log.png)
 
 There are several icons on the toolbar:
 
