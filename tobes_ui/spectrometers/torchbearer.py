@@ -41,7 +41,7 @@ class MessageType(Enum):
         return str(self.name).lower()
 
 
-class TorchBearerSpectrometer(Spectrometer):
+class TorchBearerSpectrometer(Spectrometer, registered_types = ['tb', 'torchbearer']):
     """Handles the Torch Bearer Spectrometer"""
 
     def __init__(self, path):

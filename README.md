@@ -16,17 +16,19 @@ and improved (beyond recognition?).
 
 ```
 $ python3 main.py -h
-usage: main.py [-h] [-e EXPOSURE] [-q | -t GRAPH_TYPE] [-o | -n] [-f FILE_TEMPLATE]
+usage: main.py [-h] [-b] [-e EXPOSURE] [-q | -t GRAPH_TYPE] [-o | -n] [-f FILE_TEMPLATE]
                [-d [DATA ...]] [-s HISTORY_SIZE] [-l LOG_LEVEL] [--log-file LOG_FILE]
                [input_device]
 
 TorchBearer spectrometer tool
 
 positional arguments:
-  input_device          Spectrometer device (/dev/ttyUSB0)
+  input_device          Spectrometer device (dev:string); ; e.g. /dev/ttyUSB0, or
+                        type:/dev/foo (registered types: tb, torchbearer)
 
 options:
   -h, --help            show this help message and exit
+  -b, --backends        List all spectrometer backends
   -e EXPOSURE, --exposure EXPOSURE
                         Exposure time in milliseconds (0.1-5000) or 'auto' (default: auto)
   -q, --quick-graph     Enable quick (LINE) graph mode

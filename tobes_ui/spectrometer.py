@@ -10,6 +10,9 @@ import json
 
 import colour
 
+from tobes_ui.logger import LOGGER
+
+
 @dataclass
 class BasicInfo:
     """Basic spectrometer info"""
@@ -134,6 +137,8 @@ class Spectrum:
 
 class Spectrometer(ABC):
     """Abstract base class for spectrometers."""
+    _registry = []
+    _spectrometer_types = {}
 
     @abstractmethod
     def get_basic_info(self) -> BasicInfo:
@@ -147,12 +152,46 @@ class Spectrometer(ABC):
     def cleanup(self):
         """Cleanup function to ensure proper shutdown"""
 
+    def __init_subclass__(cls, registered_types: list[str] = None, **kwargs):
+        super().__init_subclass__(**kwargs)
+        Spectrometer._registry.append(cls)
+        for type_ in registered_types or []:
+            Spectrometer._spectrometer_types[type_] = cls
+
+    @classmethod
+    def spectrometer_types(cls):
+        """Return registered spectrometer types"""
+        return list(cls._spectrometer_types.keys())
+
     @classmethod
     def create(cls, input_device: str) -> 'Spectrometer':
         """Factory method for Spectrometers"""
-        # For now there's just one impl
-        import tobes_ui.spectrometers  # pylint: disable=import-outside-toplevel
-        print(tobes_ui.spectrometers.__all__)
-        print(tobes_ui.spectrometers.failed_plugins())
-        return tobes_ui.spectrometers.torchbearer.TorchBearerSpectrometer(input_device)
-        # FIXME: this should be dynamically resolved...
+        import tobes_ui.spectrometers  # pylint: disable=import-outside-toplevel, unused-import
+
+        if ':' in input_device:
+            type_, spec_id = input_device.split(':', 2)
+
+            if type_ in Spectrometer._spectrometer_types:
+                LOGGER.debug("Trying spectrometer type=%s with id=%s", type_, spec_id)
+                try:
+                    spec = Spectrometer._spectrometer_types[type_](spec_id)
+                    LOGGER.debug("Success: %s", spec)
+                    return spec
+                except Exception as ex:  # pylint: disable=broad-exception-caught
+                    LOGGER.debug("Spectrometer type=%s doesn't work: %s", type_, ex)
+                    raise ValueError(f"Couldn't initialize spectrometer {type_}: {ex})") from ex
+
+            raise ValueError(f'No such spectrometer type: {type_}')
+
+        LOGGER.debug("Brute-forcing spectrometers for %s", input_device)
+        # Brute force
+        for spec_cls in Spectrometer._registry:
+            LOGGER.debug("Trying spectrometer class: %s", spec_cls)
+            try:
+                spec = spec_cls(input_device)
+                LOGGER.debug("Success: %s", spec)
+                return spec
+            except Exception as ex:  # pylint: disable=broad-exception-caught
+                LOGGER.debug("Spectrometer type=%s doesn't work: %s", spec_cls, ex)
+
+        raise ValueError(f'No spectrometer implementation can take {input_device} as input')

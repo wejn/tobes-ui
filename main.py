@@ -11,10 +11,11 @@ import sys
 import matplotlib
 from matplotlib.backend_tools import default_toolbar_tools
 
+from tobes_ui.logger import LogLevel, configure_logging, LOGGER
 from tobes_ui.plot import RefreshableSpectralPlot
 from tobes_ui.spectrometer import ExposureMode, Spectrometer, Spectrum
+import tobes_ui.spectrometers
 from tobes_ui.types import GraphType, RefreshType
-from tobes_ui.logger import LogLevel, configure_logging, LOGGER
 
 # pylint: disable=broad-exception-caught
 
@@ -27,8 +28,11 @@ if __name__ == "__main__":
         parser = argparse.ArgumentParser(description="TorchBearer spectrometer tool")
 
         # Somewhat optional argument: input file
+        types =  ', '.join(Spectrometer.spectrometer_types())
         parser.add_argument('input_device', nargs='?', default=None,
-                            help="Spectrometer device (/dev/ttyUSB0)")
+                            help=("Spectrometer device (dev:string); " +
+                                  "; e.g. /dev/ttyUSB0, or type:/dev/foo (" +
+                                  f"registered types: {types})"))
 
         # Exposure: either 'auto' or number of milliseconds
         def exposure_type(value):
@@ -42,6 +46,12 @@ if __name__ == "__main__":
                 return fvalue
             except ValueError as exc:
                 raise argparse.ArgumentTypeError(err) from exc
+
+        parser.add_argument(
+            '-b', '--backends',
+            action='store_true',
+            help="List all spectrometer backends"
+        )
 
         parser.add_argument(
             '-e', '--exposure',
@@ -172,6 +182,19 @@ if __name__ == "__main__":
 
         configure_logging(argv.log_level, argv.log_file)
         print(f'Logging for tobes-ui configured at: {argv.log_level}')
+
+        if argv.backends:
+            print("Available backends:")
+            types =  ', '.join(Spectrometer.spectrometer_types())
+            print(types)
+            print("")
+
+            ub = tobes_ui.spectrometers.failed_plugins()
+            if ub:
+                print("Unavailable backends:")
+                for name, reason in ub.items():
+                    print(f"{name}:\n\t{reason}")
+            sys.exit(0)
 
         if argv.input_device:
             try:
