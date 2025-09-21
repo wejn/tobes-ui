@@ -15,8 +15,7 @@ It also supports importing `csv` from Hopoocolor HPCS-320, HPCS-330 spectrometer
 
 or:
 
-- Python 3.10
-- `pip install colour-science matplotlib pyserial`
+- `pip install tobes-ui`
 
 ## Usage
 
