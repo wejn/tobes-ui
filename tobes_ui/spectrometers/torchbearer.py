@@ -13,7 +13,7 @@ from tobes_ui.logger import LOGGER
 from tobes_ui.spectrometer import BasicInfo, ExposureMode, ExposureStatus, Spectrometer, Spectrum
 
 class TBExposureMode(Enum):
-    """Type of exposure mode"""
+    """Type of exposure mode (TorchBearer specific)"""
     MANUAL = 0x00
     AUTOMATIC = 0x01
 
@@ -21,9 +21,18 @@ class TBExposureMode(Enum):
         """Convert to readable string"""
         return str(self.name)
 
+    @classmethod
+    def from_generic(cls, value):
+        """Convert from generic ExposureMode"""
+        return cls[str(value).upper()]
+
+    def to_generic(self):
+        """Convert to generic ExposureMode"""
+        return ExposureMode[str(self)]
+
 
 class TBExposureStatus(Enum):
-    """Status of exposure"""
+    """Status of exposure (TorchBearer specific)"""
     NORMAL = 0x00
     OVER = 0x01
     UNDER = 0x02
@@ -31,6 +40,15 @@ class TBExposureStatus(Enum):
     def __str__(self):
         """Convert to readable string"""
         return str(self.name)
+
+    @classmethod
+    def from_generic(cls, value):
+        """Convert from generic ExposureStatus"""
+        return cls[str(value).upper()]
+
+    def to_generic(self):
+        """Convert to generic ExposureStatus"""
+        return ExposureStatus[str(self)]
 
 
 class MessageType(Enum):
@@ -108,12 +126,11 @@ class TorchBearerSpectrometer(Spectrometer, registered_types = ['tb', 'torchbear
         if not self.port:
             raise ValueError("Already closed")
 
-        if self._device_id:
-            return self._device_id
+        if not self._device_id:
+            self._send_message(MessageType.GET_DEVICE_ID, b"\x18")
+            response = self._read_message(MessageType.GET_DEVICE_ID)
+            self._device_id = response['device_id']
 
-        self._send_message(MessageType.GET_DEVICE_ID, b"\x18")
-        response = self._read_message(MessageType.GET_DEVICE_ID)
-        self._device_id = response['device_id']
         return self._device_id
 
     @property
@@ -122,15 +139,12 @@ class TorchBearerSpectrometer(Spectrometer, registered_types = ['tb', 'torchbear
         if not self.port:
             raise ValueError("Already closed")
 
-        if self._wavelength_range:
-            return self._wavelength_range
-
-        self._send_message(MessageType.GET_RANGE)
-        response = self._read_message(MessageType.GET_RANGE)
-
-        self._wavelength_range = range(
-                response["start_wavelength"],
-                response["end_wavelength"])
+        if not self._wavelength_range:
+            self._send_message(MessageType.GET_RANGE)
+            response = self._read_message(MessageType.GET_RANGE)
+            self._wavelength_range = range(
+                    response["start_wavelength"],
+                    response["end_wavelength"])
 
         return self._wavelength_range
 
@@ -140,13 +154,12 @@ class TorchBearerSpectrometer(Spectrometer, registered_types = ['tb', 'torchbear
         if not self.port:
             raise ValueError("Already closed")
 
-        if self._exposure_mode:
-            return self._exposure_mode
+        if not self._exposure_mode:
+            self._send_message(MessageType.GET_EXPOSURE_MODE)
+            response = self._read_message(MessageType.GET_EXPOSURE_MODE)
+            self._exposure_mode = response['exposure_mode']
 
-        self._send_message(MessageType.GET_EXPOSURE_MODE)
-        response = self._read_message(MessageType.GET_EXPOSURE_MODE)
-        self._exposure_mode = response['exposure_mode']
-        return self._exposure_mode
+        return self._exposure_mode.to_generic()
 
     @exposure_mode.setter
     def exposure_mode(self, mode: ExposureMode):
@@ -154,10 +167,12 @@ class TorchBearerSpectrometer(Spectrometer, registered_types = ['tb', 'torchbear
         if not self.port:
             raise ValueError("Already closed")
 
-        self._send_message(MessageType.SET_EXPOSURE_MODE, struct.pack("<B", mode.value))
+        tbmode = TBExposureMode.from_generic(mode)
+
+        self._send_message(MessageType.SET_EXPOSURE_MODE, struct.pack("<B", tbmode.value))
         response = self._read_message(MessageType.SET_EXPOSURE_MODE)
         if response['success']:
-            self._exposure_mode = mode
+            self._exposure_mode = tbmode
         return response['success']
 
     @property
@@ -199,7 +214,7 @@ class TorchBearerSpectrometer(Spectrometer, registered_types = ['tb', 'torchbear
         LOGGER.debug("enter")
         spec_range = self.wavelength_range
 
-        mode = self.exposure_mode
+        mode = self.exposure_mode # already generic
 
         device_id = self.device_id
         device = device_id.split('-')[0]
@@ -222,10 +237,10 @@ class TorchBearerSpectrometer(Spectrometer, registered_types = ['tb', 'torchbear
                 LOGGER.info('unexpected message: %s', response)
                 continue
 
-            last_ok = response['exposure_status'] == ExposureStatus.NORMAL
+            last_ok = response['exposure_status'] == TBExposureStatus.NORMAL
 
             spectrum=Spectrum(
-                    status=response['exposure_status'],
+                    status=response['exposure_status'].to_generic(),
                     exposure=mode,
                     time=response["exposure_time"],
                     spd={
@@ -310,10 +325,10 @@ class TorchBearerSpectrometer(Spectrometer, registered_types = ['tb', 'torchbear
                 if len(data) == 1:
                     message["success"] = data[0] == 0x00
                 else:
-                    message["exposure_mode"] = ExposureMode(data[0])
+                    message["exposure_mode"] = TBExposureMode(data[0])
 
             case MessageType.GET_EXPOSURE_MODE:
-                message["exposure_mode"] = ExposureMode(data[0])
+                message["exposure_mode"] = TBExposureMode(data[0])
 
             case MessageType.SET_EXPOSURE_VALUE:
                 message["success"] = data[0] == 0x00
@@ -337,7 +352,7 @@ class TorchBearerSpectrometer(Spectrometer, registered_types = ['tb', 'torchbear
 
                 encoded_spectrum = [item[0] for item in struct.iter_unpack("<H", data[19:])]
 
-                message["exposure_status"] = ExposureStatus(exposure_status_code)
+                message["exposure_status"] = TBExposureStatus(exposure_status_code)
                 message["exposure_time"] = exposure_time_microseconds / 1000
                 message["spectrum"] = self._decode_spectrum(
                     encoded_spectrum,
