@@ -1,6 +1,6 @@
 """Class to talk to the Ocean Optics Spectrometer"""
 
-# pylint: disable=too-many-instance-attributes,too-many-locals
+# pylint: disable=too-many-instance-attributes,too-many-locals,broad-exception-caught
 
 from datetime import datetime
 import pprint
@@ -29,7 +29,13 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
                 self._spectrometer = sb.Spectrometer.from_serial_number(path)
         except Exception as ex:
             LOGGER.debug("exception", exc_info=True)
-            raise ValueError(f"Couldn't initialize spectrometer({path}): {ex}") from ex
+            try:
+                available = sb.list_devices()
+            except Exception:
+                available = None
+
+            raise ValueError(f"Couldn't initialize spectrometer({path}): {ex}"
+                             f" (available: {available})") from ex
 
         if self._spectrometer.serial_number.startswith("FLMS"):
             # According to docs: 0-17 optical black, 18-19 not usable, 20-2047 active

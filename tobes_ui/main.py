@@ -31,11 +31,17 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Totally Bearable Spectrometer UI")
 
     # Somewhat optional argument: input file
-    types =  ', '.join(Spectrometer.spectrometer_types())
+    types = []
+    registered = ', '.join(Spectrometer.spectrometer_types())
+    unavailable = ', '.join(tobes_ui.spectrometers.failed_plugins().keys())
+    if registered:
+        types.append(f"registered types: {registered}")
+    if unavailable:
+        types.append(f"unavailable: {unavailable}")
+
     parser.add_argument('input_device', nargs='?', default=None,
-                        help=("Spectrometer device (dev:string); " +
-                              "; e.g. /dev/ttyUSB0, or type:/dev/foo (" +
-                              f"registered types: {types})"))
+                        help=("Spectrometer device (dev:string); "
+                              f"; e.g. /dev/ttyUSB0, or type:/dev/foo ({'; '.join(types)})"))
 
     # Exposure: either 'auto' or number of milliseconds
     def exposure_type(value):
@@ -113,12 +119,18 @@ def parse_args():
             f" '{template_with_name}' might be also useful"
     )
 
-    loaders= ", ".join(Loader.loader_types())
+    types = []
+    registered = ', '.join(Loader.loader_types())
+    unavailable = ', '.join(tobes_ui.loaders.failed_plugins().keys())
+    if registered:
+        types.append(f"loaders: {registered}")
+    if unavailable:
+        types.append(f"unavailable: {unavailable}")
     parser.add_argument(
         '-d', '--data',
         default=None,
         nargs='*',
-        help=f'File(s) to load for viewing (disables data refresh); loaders: {loaders}'
+        help=f'File(s) to load for viewing (disables data refresh); ({"; ".join(types)})'
     )
 
     parser.add_argument(
@@ -201,7 +213,11 @@ def main():
             print("Unavailable backends:")
             for name, reason in u_b.items():
                 print(f"{name}:\n\t{reason}")
-        sys.exit(0)
+
+        if argv.loaders:
+            print("")
+        else:
+            sys.exit(0)
 
     if argv.loaders:
         print("Available loaders:")
