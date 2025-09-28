@@ -55,13 +55,13 @@ options:
                         'spectrum-{timestamp_full}{graph_type}'),
                         '{name}-{timestamp_full}{graph_type}' might be also useful
   -d [DATA ...], --data [DATA ...]
-                        File(s) to load for viewing (disables data refresh); loaders: hpcs,
-                        json
+                        File(s) to load for viewing (disables data refresh); (loaders: hpcs,
+                        json)
   -s HISTORY_SIZE, --history-size HISTORY_SIZE
                         Size of the measurement history (default: 50)
   -l LOG_LEVEL, --log-level LOG_LEVEL
-                        Logging level to configure: {", ".join(e.name for e in LogLevel}
-                        (default WARN)
+                        Logging level to configure: DEBUG, INFO, WARN, ERROR, FATAL (default
+                        WARN)
   --log-file LOG_FILE   Logfile to write to (defaults to none (=console))
 ```
 

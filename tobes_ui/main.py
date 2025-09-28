@@ -151,7 +151,7 @@ def parse_args():
         '-l', '--log-level',
         type=log_level,
         default=LogLevel.WARN,
-        help='Logging level to configure: {", ".join(e.name for e in LogLevel} (default WARN)'
+        help=f'Logging level to configure: {", ".join(e.name for e in LogLevel)} (default WARN)'
     )
 
     parser.add_argument(
