@@ -3,6 +3,9 @@
 all:
 	python3 -m tobes_ui.main /dev/ttyUSB0 -e auto -o
 
+oo:
+	python3 -m tobes_ui.main oo: -e auto -o
+
 help:
 	@COLUMNS=94 python3 -m tobes_ui.main -h
 
