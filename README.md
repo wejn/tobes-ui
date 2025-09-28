@@ -1,6 +1,6 @@
 # tobes-ui: **To**tally **Be**arable **S**pectrometer UI
 
-This is a UI for a several spectrometers:
+This is a UI for several spectrometers:
 - [Torch Bearer](https://www.torchbearer.tech/) Spectrometer (`Y21B7W10034CCPD`)
   that is available on Amazon and AliExpress ([TB Store](https://www.aliexpress.com/store/1104401209))
 - Ocean Optics Flame-S (and maybe others)
