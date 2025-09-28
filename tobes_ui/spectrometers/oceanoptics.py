@@ -87,6 +87,7 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
         """Cleanup function to ensure proper shutdown"""
         try:
             if self._spectrometer:
+                LOGGER.debug("cleaning up")
                 self._spectrometer.close()
                 self._spectrometer = None
         except Exception: # pylint: disable=broad-exception-caught
