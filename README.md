@@ -20,7 +20,10 @@ or:
 
 - `pip install tobes-ui`
 
-If you want support for Ocean Optics, you also need to install `tobes-ui[ocean]`.
+If you want support for Ocean Optics, you also need to install `tobes-ui[ocean]`,
+and also (for Linux and Windows) follow the
+[OS support instructions](https://github.com/ap--/python-seabreeze/blob/main/os_support/readme.md)
+on python-seabreeze.
 
 ## Usage
 
