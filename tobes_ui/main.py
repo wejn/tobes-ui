@@ -1,4 +1,4 @@
-"""Nice UI for TorchBearer Spectrometer"""
+"""Nice UI for various spectrometers"""
 
 # pylint: disable=too-many-statements,too-many-branches
 
@@ -28,7 +28,7 @@ default_toolbar_tools.clear()
 
 def parse_args():
     """Parse the arguments for the cli"""
-    parser = argparse.ArgumentParser(description="TorchBearer spectrometer tool")
+    parser = argparse.ArgumentParser(description="Totally Bearable Spectrometer UI")
 
     # Somewhat optional argument: input file
     types =  ', '.join(Spectrometer.spectrometer_types())
