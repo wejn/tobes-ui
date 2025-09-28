@@ -1,13 +1,16 @@
 # tobes-ui: **To**tally **Be**arable **S**pectrometer UI
 
-This is a UI for [Torch Bearer](https://www.torchbearer.tech/)
-Spectrometer (`Y21B7W10034CCPD`) that is available on Amazon
-and AliExpress ([TB Store](https://www.aliexpress.com/store/1104401209)).
+This is a UI for a several spectrometers:
+- [Torch Bearer](https://www.torchbearer.tech/) Spectrometer (`Y21B7W10034CCPD`)
+  that is available on Amazon and AliExpress ([TB Store](https://www.aliexpress.com/store/1104401209))
+- Ocean Optics Flame-S (and maybe others)
 
-Forked from [ZoidTechnology/Torch-Bearer-Tools](https://github.com/ZoidTechnology/Torch-Bearer-Tools)[^1]
-and improved (beyond recognition?).
+Originally forked from
+[ZoidTechnology/Torch-Bearer-Tools](https://github.com/ZoidTechnology/Torch-Bearer-Tools)[^1]
+and improved (beyond recognition).
 
-It also supports importing `csv` from Hopoocolor HPCS-320, HPCS-330 spectrometers.
+It also supports displaying its own `json` saves and importing `csv` data from 
+yet another Chinese range of spectrometers (Hopoocolor HPCS-320, HPCS-330).
 
 ## Install
 
@@ -16,6 +19,8 @@ It also supports importing `csv` from Hopoocolor HPCS-320, HPCS-330 spectrometer
 or:
 
 - `pip install tobes-ui`
+
+If you want support for Ocean Optics, you also need to install `tobes-ui[ocean]`.
 
 ## Usage
 
@@ -26,11 +31,12 @@ usage: main.py [-h] [-b] [-L] [-e EXPOSURE] [-q | -t GRAPH_TYPE] [-o | -n]
                [--log-file LOG_FILE]
                [input_device]
 
-TorchBearer spectrometer tool
+Totally Bearable Spectrometer UI
 
 positional arguments:
   input_device          Spectrometer device (dev:string); ; e.g. /dev/ttyUSB0, or
-                        type:/dev/foo (registered types: tb, torchbearer)
+                        type:/dev/foo (registered types: oo, ocean, oceanoptics, tb,
+                        torchbearer)
 
 options:
   -h, --help            show this help message and exit
@@ -57,17 +63,17 @@ options:
                         Logging level to configure: {", ".join(e.name for e in LogLevel}
                         (default WARN)
   --log-file LOG_FILE   Logfile to write to (defaults to none (=console))
-usage: main.py [-h] [-b] [-e EXPOSURE] [-q | -t GRAPH_TYPE] [-o | -n] [-f FILE_TEMPLATE]
-               [-d [DATA ...]] [-s HISTORY_SIZE] [-l LOG_LEVEL] [--log-file LOG_FILE]
-               [input_device]
 ```
 
 My typical use is:
 
 ``` sh
-# To gather new data
+# To gather new data from Torch Bearer:
 python3 -m tobes_ui.main /dev/ttyUSB0 -e auto -o
 # or (if you use pipx): tobes-ui /dev/...
+
+# To gather new data from Ocean Optics:
+python3 -m tobes_ui.main oo: -e auto -o
 
 # To "replay" existing samples:
 python3 -m tobes_ui.main -d examples/*.json
@@ -81,7 +87,7 @@ The first invocation gives one-shot spectrum on auto exposure (from `/dev/ttyUSB
 Or, if you prefer, [screenshot of the CIE1976UCS locus](https://raw.githubusercontent.com/wejn/tobes-ui/master/pictures/oneshot-cie1976ucs.png)
 or [screenshot of the TM30 graph](https://raw.githubusercontent.com/wejn/tobes-ui/master/pictures/oneshot-tm30.png).
 
-The second invocation shows you replay of examples (no spectrometer needed!):
+The "replay" invocation shows you saved data from examples (no spectrometer needed!):
 
 ![screenshot of replay](https://raw.githubusercontent.com/wejn/tobes-ui/master/pictures/replay.png)
 
