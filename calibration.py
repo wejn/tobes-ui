@@ -144,10 +144,10 @@ class CalibrationGUI:
 
         #self.init_poly_table() # FIXME
         parameters = [
-            ('X⁰', f"{self._initial_polyfit[3]:.6f}"),
-            ('X¹', f"{self._initial_polyfit[2]:.6f}"),
-            ('X²', f"{self._initial_polyfit[1]:.6f}"),
-            ('X³', f"{self._initial_polyfit[0]:.6f}"),
+            ('X⁰', f"{self._initial_polyfit[3]:e}"),
+            ('X¹', f"{self._initial_polyfit[2]:e}"),
+            ('X²', f"{self._initial_polyfit[1]:e}"),
+            ('X³', f"{self._initial_polyfit[0]:e}"),
             ('R²', "-"),
             ('Serr', "-")
         ]
