@@ -293,3 +293,22 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
 
         LOGGER.debug("done")
         return self
+
+
+    def supports_wavelength_calibration(self):
+        """Introspection method to check whether the spectrometer supports WL calibration."""
+        return True
+
+    def read_wavelength_calibration(self):
+        """Read WL calibration: [a3, a2, a1, a0] for polynomial a3*x^3 + a2*x^2 + a1*x + a0."""
+        coeffs = []
+        eeprom = self._spectrometer.f.eeprom
+        # Slots 1-4 are wavelength calibration
+        for i in range(1, 5):
+            try:
+                # For some reason this can be empty
+                coeffs.append(float(eeprom.eeprom_read_slot(i).split(b'\x00')[0]))
+            except (ValueError, IndexError):
+                coeffs.append(0.0)
+        # a0, a1, a2, a3 -> a3, a2, a1, a0
+        return coeffs[::-1]

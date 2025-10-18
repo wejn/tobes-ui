@@ -26,6 +26,7 @@ from tobes_ui.calibration.sampling_control import SamplingControl
 from tobes_ui.calibration.peak_detection_control import PeakDetectionControl
 from tobes_ui.calibration.reference_match_control import ReferenceMatchControl
 from tobes_ui.calibration.x_axis_control import XAxisControl
+from tobes_ui.spectrometer import Spectrometer
 
 
 class CalibrationGUI:
@@ -258,6 +259,11 @@ class CalibrationGUI:
             self._capturing = False
             if self.worker_thread:
                 self.worker_thread.join()
+
+        if self._spectrometer:
+            self._spectrometer.cleanup()
+            self._spectrometer = None
+
         self._root.destroy()
 
 if __name__ == "__main__":
@@ -266,27 +272,16 @@ if __name__ == "__main__":
         matplotlib.use('TkAgg')
 
         try:
-            #spectrometer = sb.Spectrometer.from_first_available() # FIXME
-            spectrometer = None
-        except Exception: # pylint: disable=broad-exception-caught
-            print("No spectrometer available")
+            spectrometer = Spectrometer.create("oo:") # FIXME: maybe configurable?
+        except Exception as ex: # pylint: disable=broad-exception-caught
+            print("No spectrometer available", ex)
             sys.exit(1)
 
-        # read wavelength calibration: [a3, a2, a1, a0] for polynomial a3*x^3 + a2*x^2 + a1*x + a0
-        def read_wlc(spec):
-            coeffs = []
-            # Slots 1-4 are wavelength calibration
-            for i in range(1, 5):
-                try:
-                    # For some reason this can be empty
-                    coeffs.append(float(spec.f.eeprom.eeprom_read_slot(i).split(b'\x00')[0]))
-                except (ValueError, IndexError):
-                    coeffs.append(0.0)
-            # a0, a1, a2, a3 -> a3, a2, a1, a0
-            return coeffs[::-1]
+        if not spectrometer.supports_wavelength_calibration():
+            print("Spectrometer doesn't support WL calibration.")
+            sys.exit(2)
 
-        #wlc = read_wlc(spectrometer) # FIXME
-        wlc = [0, 0, 1, 0]
+        wlc = spectrometer.read_wavelength_calibration()
         print("Read initial wavelength calibration coefficients:", wlc)
 
         root = tk.Tk()

@@ -216,3 +216,13 @@ class Spectrometer(ABC):
                 LOGGER.debug("Spectrometer type=%s doesn't work: %s", spec_cls, ex)
 
         raise ValueError(f'No spectrometer implementation can take {input_device} as input')
+
+    def supports_wavelength_calibration(self):
+        """Introspection method to check whether the spectrometer supports WL calibration."""
+        return False
+
+    def read_wavelength_calibration(self):
+        """Optional hook method for reading WL calibration (if supported)."""
+        raise NotImplementedError("This is by default not supported; override if needed")
+
+        wlc = [0, 0, 1, 0]
