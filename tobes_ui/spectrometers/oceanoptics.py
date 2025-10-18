@@ -74,10 +74,12 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
         self._max_intensity = self._spectrometer.max_intensity
         LOGGER.debug("Max intensity: %s", self._max_intensity)
 
-        # FIXME: these should be configurable properties
+        # Backed by normal @property-ies
         self._exposure_mode = ExposureMode.AUTOMATIC
-        self._exposure_limits = self._spectrometer.integration_time_micros_limits
         self._exposure_time = 128000
+
+        # FIXME: these should be configurable properties
+        self._exposure_limits = self._spectrometer.integration_time_micros_limits
         self._correct_dark_counts = True
         self._correct_nonlinearity = False
         self._max_fps = 0.8  # FIXME: this is a travesty, but one we must suffer for now

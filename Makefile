@@ -31,3 +31,6 @@ push:
 	rm -rf dist/ tobes_ui.egg-info/
 	python -m build
 	twine upload dist/*
+
+test:
+	pytest tests
