@@ -11,6 +11,7 @@ import json
 import colour
 
 from tobes_ui.logger import LOGGER
+from tobes_ui.properties import PropertyContainer
 
 
 @dataclass
@@ -135,6 +136,11 @@ class Spectrum:
             return cls.from_json(file.read())
 
 
+class SpectrometerProperties(PropertyContainer):
+    """Properties common to all spectrometers."""
+    # None at the moment
+
+
 class Spectrometer(ABC):
     """Abstract base class for spectrometers."""
     _registry = []
@@ -226,3 +232,27 @@ class Spectrometer(ABC):
         raise NotImplementedError("This is by default not supported; override if needed")
 
         wlc = [0, 0, 1, 0]
+
+    @abstractmethod
+    def properties_list(self):
+        """Return list of configurable properties.
+
+        You MUST use subclass of SpectrometerProperties for your properties,
+        and this method should call properties() on its instance.
+        """
+
+    @abstractmethod
+    def property_get(self, name):
+        """Get value of property with given name.
+
+        You MUST use subclass of SpectrometerProperties for your properties,
+        and this method should call get() on its instance.
+        """
+
+    @abstractmethod
+    def property_set(self, name, value):
+        """Set property of given name to value.
+
+        You MUST use subclass of SpectrometerProperties for your properties,
+        and this method should call get() on its instance.
+        """

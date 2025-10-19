@@ -15,7 +15,23 @@ except ImportError as iex:
                       "Install them via: pip/pipx install tobes-ui[ocean]") from iex
 
 from tobes_ui.logger import LOGGER
-from tobes_ui.spectrometer import BasicInfo, ExposureMode, ExposureStatus, Spectrometer, Spectrum
+from tobes_ui.spectrometer import (BasicInfo, ExposureMode, ExposureStatus, Spectrometer,
+                                   SpectrometerProperties, Spectrum)
+from tobes_ui.properties import BoolProperty, EnumProperty, FloatProperty, IntProperty
+
+
+class OceanOpticsProperties(SpectrometerProperties):
+    """Properties of the OO spectrometer (tweakable)"""
+    exposure_mode = EnumProperty(ExposureMode)
+    exposure_time = IntProperty(min_value=1, max_value=5000000) # needs adj @ runtime
+    auto_max_exposure_time = IntProperty(min_value=1, max_value=5000000) # ditto
+    auto_min_exposure_time = IntProperty(min_value=1, max_value=5000000) # ditto
+    auto_min_step = IntProperty(min_value=1, max_value=10000) # defaults to 1k
+
+    correct_dark_counts = BoolProperty()
+    correct_nonlinearity = BoolProperty()
+    max_fps = FloatProperty(min_value=0.01, max_value=1000) # 0.8 is fine
+    auto_max_threshold = FloatProperty(min_value=0.1, max_value=0.999) # 0.9 is fine
 
 
 class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', 'oceanoptics']):
@@ -74,16 +90,41 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
         self._max_intensity = self._spectrometer.max_intensity
         LOGGER.debug("Max intensity: %s", self._max_intensity)
 
-        # Backed by normal @property-ies
-        self._exposure_mode = ExposureMode.AUTOMATIC
-        self._exposure_time = 128000
+        exp_lim = self._spectrometer.integration_time_micros_limits
+        LOGGER.debug("ExposureLimits: %s", exp_lim)
 
-        # FIXME: these should be configurable properties
-        self._exposure_limits = self._spectrometer.integration_time_micros_limits
-        self._correct_dark_counts = True
-        self._correct_nonlinearity = False
-        self._max_fps = 0.8  # FIXME: this is a travesty, but one we must suffer for now
-        self._auto_max_threshold = 0.9  # max threshold in auto exposure mode
+        self._properties = OceanOpticsProperties(
+            exposure_mode=ExposureMode.AUTOMATIC,
+            exposure_time=128000,
+            # auto_min_step, auto_min_exposure_time, auto_max_exposure_time not set on purpose
+            correct_dark_counts=True,
+            correct_nonlinearity=False,
+            max_fps=0.8,
+            auto_max_threshold=0.9
+        )
+        OceanOpticsProperties.exposure_time.min_value = exp_lim[0]
+        OceanOpticsProperties.exposure_time.max_value = exp_lim[1]
+        OceanOpticsProperties.auto_min_exposure_time.min_value = exp_lim[0]
+        OceanOpticsProperties.auto_min_exposure_time.max_value = exp_lim[1]
+        OceanOpticsProperties.auto_max_exposure_time.min_value = exp_lim[0]
+        OceanOpticsProperties.auto_max_exposure_time.max_value = exp_lim[1]
+
+        LOGGER.debug("Properties: %s", self.properties_list())
+        LOGGER.debug("Property values: %s",
+                     {item['name']: self.property_get(item['name'])
+                      for item in self.properties_list()})
+
+    def properties_list(self):
+        """Return list of configurable properties"""
+        return self._properties.properties()
+
+    def property_get(self, name):
+        """Get value of property with given name"""
+        return self._properties.get(name)
+
+    def property_set(self, name, value):
+        """Set property of given name to value"""
+        self._properties.set(name, value)
 
     def cleanup(self):
         """Cleanup function to ensure proper shutdown"""
@@ -117,7 +158,7 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
         if not self._spectrometer:
             raise ValueError("Not active")
 
-        return self._exposure_mode
+        return self._properties.exposure_mode
 
     @exposure_mode.setter
     def exposure_mode(self, mode: ExposureMode):
@@ -125,7 +166,7 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
         if not self._spectrometer:
             raise ValueError("Not active")
 
-        self._exposure_mode = mode
+        self._properties.exposure_mode = mode
 
     @property
     def exposure_time(self):
@@ -133,7 +174,7 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
         if not self._spectrometer:
             raise ValueError("Not active")
 
-        return self._exposure_time
+        return self._properties.exposure_time
 
     @exposure_time.setter
     def exposure_time(self, exposure_time_us: int):
@@ -141,10 +182,7 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
         if not self._spectrometer:
             raise ValueError("Not active")
 
-        if not self._exposure_limits[0] <= exposure_time_us <= self._exposure_limits[1]:
-            raise ValueError(f"Requested time {exposure_time_us} outside {self._exposure_limits}")
-
-        self._exposure_time = exposure_time_us
+        self._properties.exposure_time = exposure_time_us
 
     @property
     def basic_info(self) -> BasicInfo:
@@ -159,9 +197,14 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
                 exposure_mode=self.exposure_mode,
                 time=self.exposure_time)
 
-    def _spd_with_auto(self, init_time, min_time=None, max_time=None, min_step=1000):
+    def _spd_with_auto(self, init_time):
         """Get spectral distribution in auto exposure mode (within limits)"""
         hw_min, hw_max = self._spectrometer.integration_time_micros_limits
+        min_step = self._properties.auto_min_step
+        min_time = self._properties.auto_min_exposure_time
+        max_time = self._properties.auto_max_exposure_time
+        if not min_step:
+            min_step = 1000
         if not min_time or min_time < hw_min:
             low = hw_min
         else:
@@ -176,7 +219,7 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
 
         def is_overexposed(intensities):
             return len([1 for v in intensities
-                        if v > self._max_intensity * self._auto_max_threshold]) > 0
+                        if v > self._max_intensity * self._properties.auto_max_threshold]) > 0
 
         while initial or high - low > min_step:
             mid = init_time if initial else (low + high) / 2.0
@@ -231,7 +274,7 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
             LOGGER.debug('dark_mean(%d px): %.3f', len(self._dark_pixels), dark_mean)
 
             # Correcting dark counts and non-linearity
-            match (self._correct_dark_counts, self._correct_nonlinearity):
+            match (self._properties.correct_dark_counts, self._properties.correct_nonlinearity):
                 case (False, False):
                     pass
                 case (True, False):
@@ -286,11 +329,11 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
                 print('Data (no where_to):')
                 pprint.pprint(spectrum)
 
-            if self._max_fps > 0:
-                interval = 1 / self._max_fps
+            max_fps = self._properties.max_fps
+            if max_fps > 0:
+                interval = 1 / max_fps
                 sleepy_time = max(0, interval - exp_time/1000000)
-                LOGGER.debug("thanks to max fps %.3f, sleeping for %.3fs",
-                             self._max_fps, sleepy_time)
+                LOGGER.debug("thanks to max fps %.3f, sleeping for %.3fs", max_fps, sleepy_time)
                 time.sleep(sleepy_time)
 
         LOGGER.debug("done")

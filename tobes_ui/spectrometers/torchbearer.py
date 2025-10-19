@@ -10,7 +10,9 @@ import struct
 from serial import Serial
 
 from tobes_ui.logger import LOGGER
-from tobes_ui.spectrometer import BasicInfo, ExposureMode, ExposureStatus, Spectrometer, Spectrum
+from tobes_ui.spectrometer import (BasicInfo, ExposureMode, ExposureStatus, Spectrometer,
+                                   SpectrometerProperties, Spectrum)
+from tobes_ui.properties import BoolProperty, EnumProperty, FloatProperty, IntProperty
 
 class TBExposureMode(Enum):
     """Type of exposure mode (TorchBearer specific)"""
@@ -67,6 +69,11 @@ class MessageType(Enum):
         return str(self.name).lower()
 
 
+class OceanOpticsProperties(SpectrometerProperties):
+    """Properties of the TorchBearer spectrometer (tweakable)"""
+    # None at the moment
+
+
 class TorchBearerSpectrometer(Spectrometer, registered_types = ['tb', 'torchbearer']):
     """Handles the Torch Bearer Spectrometer"""
 
@@ -77,6 +84,8 @@ class TorchBearerSpectrometer(Spectrometer, registered_types = ['tb', 'torchbear
             self._wavelength_range = None
             self._exposure_mode = None
             self._device_id = None
+            self._properties = TorchBearerProperties(
+            )
         except Exception as ex:
             LOGGER.debug("exception", exc_info=True)
             raise ValueError(f"Couldn't open serial: {ex}") from ex
@@ -392,3 +401,16 @@ class TorchBearerSpectrometer(Spectrometer, registered_types = ['tb', 'torchbear
         if messages:
             LOGGER.debug('parsed %s', messages)
         return (data, messages)
+
+    def properties_list(self):
+        """Return list of configurable properties"""
+        return self._properties.properties()
+
+    def property_get(self, name):
+        """Get value of property with given name"""
+        return self._properties.get(name)
+
+    def property_set(self, name, value):
+        """Set property of given name to value"""
+        self._properties.set(name, value)
+
