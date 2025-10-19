@@ -133,6 +133,36 @@ class TestPropertyContainer(unittest.TestCase):
             cfg.set(name, value)  # should not raise
             self.assertEqual(cfg.get(name), value)
 
+    def test_class_level_override(self):
+        class Config(PropertyContainer):
+            temperature = FloatProperty(min_value=-273.15, max_value=1000)
+
+        cfg = Config(temperature=25.0)
+
+        # Initial constraints
+        self.assertEqual(cfg.temperature, 25.0)
+        with self.assertRaises(ValueError):
+            cfg.temperature = -300  # below initial min
+        with self.assertRaises(ValueError):
+            cfg.temperature = 2000  # above initial max
+
+        # Change constraints at the class level
+        Config.temperature.min_value = -500
+        Config.temperature.max_value = 500
+
+        # Now previously-invalid values are allowed
+        cfg.temperature = -300
+        self.assertEqual(cfg.temperature, -300)
+
+        cfg.temperature = 499.99
+        self.assertEqual(cfg.temperature, 499.99)
+
+        # Still catch values out of the new range
+        with self.assertRaises(ValueError):
+            cfg.temperature = -600
+
+        with self.assertRaises(ValueError):
+            cfg.temperature = 600
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
