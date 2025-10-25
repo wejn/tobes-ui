@@ -303,7 +303,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
             # Add new, if needed
             if len(self._strong_lines):
                 xlim = axis.get_xlim()
-                ref_data = self._strong_lines.plot_data(*xlim)
+                ref_data = self._strong_lines.plot_data()
                 axis.set_xlim(*xlim)
                 ax2.bar(*ref_data, color='gray')
                 ax2.set_ylim(bottom=0, top=1000*ymargin)
