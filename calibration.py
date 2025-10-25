@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """Calibration for Ocean Optics spectrometer"""
 
-from dataclasses import dataclass
-from datetime import datetime
 from enum import Enum
 import queue
 import pprint
@@ -14,15 +12,11 @@ from tkinter import ttk
 
 
 import numpy as np
-from scipy.interpolate import interp1d
-import seabreeze.spectrometers as sb
 import matplotlib
-import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
-from tobes_ui.calibration.common import (
-        CalibrationControlPanel, ClampedSpinbox, ToolTip, TracedStringVar)
+from tobes_ui.calibration.common import ToolTip
 from tobes_ui.calibration.strong_lines_control import StrongLinesControl
 from tobes_ui.calibration.integration_control import IntegrationControl
 from tobes_ui.calibration.sampling_control import SamplingControl
@@ -31,7 +25,7 @@ from tobes_ui.calibration.reference_match_control import ReferenceMatchControl
 from tobes_ui.calibration.x_axis_control import XAxisControl
 from tobes_ui.common import AttrDict
 from tobes_ui.logger import LogLevel, configure_logging, LOGGER
-from tobes_ui.spectrometer import ExposureMode, ExposureStatus, Spectrometer
+from tobes_ui.spectrometer import ExposureMode, Spectrometer
 
 
 class CaptureState(Enum):
