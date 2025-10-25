@@ -3,7 +3,7 @@
 
 from enum import Enum
 import queue
-import pprint
+import pprint # pylint: disable=unused-import
 import sys
 import threading
 import time
@@ -15,6 +15,7 @@ import numpy as np
 import matplotlib
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
+from matplotlib import patches
 
 from tobes_ui.calibration.common import ToolTip
 from tobes_ui.calibration.strong_lines_control import StrongLinesControl
@@ -26,6 +27,7 @@ from tobes_ui.calibration.x_axis_control import XAxisControl
 from tobes_ui.common import AttrDict, SlidingMax
 from tobes_ui.logger import LogLevel, configure_logging, LOGGER, set_level
 from tobes_ui.spectrometer import ExposureMode, Spectrometer
+from tobes_ui.strong_lines_container import StrongLinesContainer
 
 
 class CaptureState(Enum):
@@ -58,6 +60,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
         self._spectrum = None  # Spectrum captured by spectrometer (last)
         self._y_axis_max = SlidingMax(5)  # FIXME: make configurable?
+        self._strong_lines = StrongLinesContainer({})
 
         self._setup_ui()
 
@@ -204,9 +207,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
         # Strong lines
         slc = StrongLinesControl(left_frame)
-        slc.on_change = lambda sl: pprint.pprint(
-                {k: len([[vv.wavelength, vv.raw_flags] for vv in v]) for k,v in sl.items()})
-        # FIXME: something more useful?
+        slc.on_change = self._apply_strong_line_ctrl
         slc.pack(fill="x", padx=5)
 
         status_frame = ttk.LabelFrame(left_frame, height=90, text='Status')
@@ -221,6 +222,11 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
                 text=lambda: 'Status:\n' + self._ui_elements.status_label.cget('text'), above=True)
 
         return left_frame
+
+    def _apply_strong_line_ctrl(self, data):
+        LOGGER.debug([k for k, _v in data.items()])
+        self._strong_lines = StrongLinesContainer(data)
+        self._update_plot(references=True)
 
     def _quit_action(self):
         """Quit button action handler"""
@@ -257,33 +263,50 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         if 'integration_control' in self._ui_elements:
             self._ui_elements.integration_control.integration_time = spectrum.time
         self._spectrum = spectrum
-        self._update_plot()
+        self._update_plot(spectrum=True)
 
-    def _update_plot(self):
+    def _update_plot(self, spectrum=False, references=False):
         """Updates plot based on X-Axis config and data"""
-        if 'plot_canvas' not in self._ui_elements or 'plot_line' not in self._ui_elements:
-            return
-
-        if not self._spectrum:
+        if 'plot_canvas' not in self._ui_elements:
             return
 
         canvas = self._ui_elements.plot_canvas
         fig = canvas.figure
         axis = fig.axes[0]
-        line = self._ui_elements.plot_line
-
-        if self._x_axis_idx is not None:
-            idx = self._x_axis_idx
-        else:
-            idx = self._spectrum.wavelengths_raw
-        spd = self._spectrum.spd_raw
-        line.set_data(idx, spd)
 
         ymargin = 1.02
-        axis.set_ylim(bottom=0, top=self._y_axis_max.add(max(spd))*ymargin)
 
-        xmargin = 5
-        axis.set_xlim(self._x_axis_idx[0] - xmargin, self._x_axis_idx[-1] + 1 + xmargin)
+        if spectrum and self._spectrum:
+
+            line = axis.get_lines()[0]
+
+            if self._x_axis_idx is not None:
+                idx = self._x_axis_idx
+            else:
+                idx = self._spectrum.wavelengths_raw
+            spd = self._spectrum.spd_raw
+            line.set_data(idx, spd)
+
+            axis.set_ylim(bottom=0, top=self._y_axis_max.add(max(spd))*ymargin)
+
+            xmargin = 5
+            axis.set_xlim(self._x_axis_idx[0] - xmargin, self._x_axis_idx[-1] + 1 + xmargin)
+
+        if references:
+            ax2 = fig.axes[1]
+
+            # Remove old
+            for rect in ax2.patches:
+                if isinstance(rect, patches.Rectangle) and rect.get_y() == 0:
+                    rect.remove()
+
+            # Add new, if needed
+            if len(self._strong_lines):
+                xlim = axis.get_xlim()
+                ref_data = self._strong_lines.plot_data(*xlim)
+                axis.set_xlim(*xlim)
+                ax2.bar(*ref_data, color='gray')
+                ax2.set_ylim(bottom=0, top=1000*ymargin)
 
         canvas.draw_idle()
 
@@ -407,7 +430,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
                 LOGGER.warning("Unhandled x-axis mode %s, using pixels", data)
                 self._x_axis_idx = pixels
 
-        self._update_plot()
+        self._update_plot(spectrum=True)
 
     def _setup_plot(self, parent):
         matplotlib.pyplot.rcParams.update({'figure.autolayout': True})
@@ -415,12 +438,18 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         fig = Figure()
         axis = fig.add_subplot(111)
 
-        line, = axis.plot([], [], 'b-', linewidth=1)
+        axis.plot([380, 780], [0, 0], 'b-', linewidth=1)
+        axis.set_ylim(bottom=0, top=1000*1.02)
         axis.set_xlabel('Wavelength (nm)')
         axis.set_ylabel('Counts')
         axis.set_title('Spectral Data')
         axis.grid(True, alpha=0.3)
         axis.set_aspect('auto')
+
+        ax2 = axis.twinx()
+        ax2.set_visible(True)
+        ax2.spines['right'].set_visible(True)
+        ax2.tick_params(axis='y', which='both', length=0, labelleft=False, labelright=False)
 
         canvas = FigureCanvasTkAgg(fig, parent)
         canvas.draw()
@@ -428,7 +457,6 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         fig.tight_layout(pad=0.1)
 
         self._ui_elements.plot_canvas = canvas
-        self._ui_elements.plot_line = line
 
         return canvas.get_tk_widget()
 
