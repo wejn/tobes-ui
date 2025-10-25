@@ -16,7 +16,7 @@ class IntegrationControl(CalibrationControlPanel):  # pylint: disable=too-many-a
         """Setup GUI elements for the control."""
         self._initialized = False
         self._mode = tk.StringVar(value='auto')
-        self._integration_time_var = tk.StringVar(value='n/a')  # FIXME: plug this in
+        self._integration_time_var = tk.StringVar(value='n/a')
 
         # --- Widgets ---
         auto_radio = ttk.Radiobutton(self, text="Auto", variable=self._mode, value='auto')
@@ -78,6 +78,16 @@ class IntegrationControl(CalibrationControlPanel):  # pylint: disable=too-many-a
 
         self._initialized = True
         _toggle_enabled_state()  # Set initial state & trigger first callback
+
+    @property
+    def integration_time(self) -> int:
+        """Getter for current integration time."""
+        return int(self._integration_time_var.get())
+
+    @integration_time.setter
+    def integration_time(self, value: int):
+        """Setter for current integration time."""
+        self._integration_time_var.set(str(int(value)))
 
     def _on_integration_time_click(self, _event):
         """Handle click on current integration time label."""

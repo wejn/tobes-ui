@@ -3,9 +3,12 @@
 
 from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
 import queue
 import pprint
 import sys
+import threading
+import time
 import tkinter as tk
 from tkinter import ttk
 
@@ -26,7 +29,15 @@ from tobes_ui.calibration.sampling_control import SamplingControl
 from tobes_ui.calibration.peak_detection_control import PeakDetectionControl
 from tobes_ui.calibration.reference_match_control import ReferenceMatchControl
 from tobes_ui.calibration.x_axis_control import XAxisControl
-from tobes_ui.spectrometer import Spectrometer
+from tobes_ui.common import AttrDict
+from tobes_ui.logger import LogLevel, configure_logging, LOGGER
+from tobes_ui.spectrometer import ExposureMode, ExposureStatus, Spectrometer
+
+
+class CaptureState(Enum):
+    PAUSE = 0
+    RUN = 1
+    EXIT = 2
 
 
 class CalibrationGUI:
@@ -40,13 +51,13 @@ class CalibrationGUI:
         #self._root.minsize(800, 600)
 
         self._spectrometer = spectrometer
-        self._capturing = False
-        self._worker_thread = None
-        self._data_queue = queue.Queue()
+        self._capture_state = CaptureState.PAUSE
+        self._worker_thread = threading.Thread(target=self._data_refresh_loop, daemon=True)
+        self._worker_thread.start()
 
         self._initial_polyfit = np.array(initial_polyfit)
 
-        self._status_label = None
+        self._ui_elements = AttrDict()  # all the different UI elements we need access to
 
         # FIXME: rest of the data
 
@@ -59,6 +70,8 @@ class CalibrationGUI:
         screen_width = root.winfo_screenwidth()
         screen_height = root.winfo_screenheight()
         print(f"Primary display size: {screen_width}x{screen_height}")
+
+        self._update_status('Ready.')
 
     def _setup_ui(self):
         paned_window = tk.PanedWindow(self._root, orient=tk.HORIZONTAL, sashrelief=tk.RAISED)
@@ -157,14 +170,15 @@ class CalibrationGUI:
         # Controls
         controls_frame = ttk.Frame(left_frame)
         controls_frame.pack(fill=tk.X, padx=5, pady=5)
-        capture_button = ttk.Button(controls_frame, text="Capture", command=lambda: print('capt'))
+        self._ui_elements.capture_button = ttk.Button(controls_frame, text="Capture",
+                                                      command=self._capture_action)
+        self._ui_elements.capture_button.pack(side=tk.LEFT, padx=5)
+        self._ui_elements.save_button = ttk.Button(controls_frame, text="Save Cali",
+                                                   command=lambda: print('save'), state='disabled')
         # FIXME: action ^^
-        capture_button.pack(side=tk.LEFT, padx=5)
-        save_button = ttk.Button(controls_frame, text="Save Cali",
-                                 command=lambda: print('save'), state='disabled')
-        # FIXME: action ^^
-        save_button.pack(side=tk.LEFT, padx=5)
+        self._ui_elements.save_button.pack(side=tk.LEFT, padx=5)
         ttk.Button(controls_frame, text="Quit", command=self._on_close).pack(side=tk.RIGHT, padx=5)
+        # FIXME: only after confirmation, and even then, update status bar first!
 
         # Strong lines
         slc = StrongLinesControl(left_frame)
@@ -177,13 +191,73 @@ class CalibrationGUI:
         status_frame.pack(fill=tk.X, padx=5, pady=5)
         status_frame.pack_propagate(False)
 
-        self._status_label = ttk.Label(status_frame, text="", justify=tk.LEFT, anchor='nw')
-        self._status_label.pack(fill=tk.BOTH, expand=True, padx=5)
+        self._ui_elements.status_label = ttk.Label(status_frame, text="", justify=tk.LEFT,
+                                                   anchor='nw')
+        self._ui_elements.status_label.pack(fill=tk.BOTH, expand=True, padx=5)
         self._update_status('Initializing...')
-        ToolTip(self._status_label,
-                text=lambda: 'Status:\n' + self._status_label.cget('text'), above=True)
+        ToolTip(self._ui_elements.status_label,
+                text=lambda: 'Status:\n' + self._ui_elements.status_label.cget('text'), above=True)
 
         return left_frame
+
+    def _capture_action(self):
+        match self._capture_state:
+            case CaptureState.RUN:
+                # Stop capture
+                LOGGER.debug("Stopping capture...")
+                self._update_status('Stopping capture...')
+                self._capture_state = CaptureState.PAUSE
+                self._ui_elements.capture_button.config(text="Capture")
+
+            case CaptureState.PAUSE:
+                # Start capture
+                LOGGER.debug("Starting capture...")
+                self._update_status('Starting capture...')
+                self._capture_state = CaptureState.RUN
+                self._ui_elements.capture_button.config(text="Freeze")
+
+            case _:
+                # Ignore
+                LOGGER.debug("unhandled state: %s", self._capture_state)
+                self._update_status(f'Capture error: {self._capture_state}')
+
+    def _data_refresh_loop(self):
+        while True:
+            match self._capture_state:
+                case CaptureState.EXIT:
+                    return
+
+                case CaptureState.PAUSE:
+                    time.sleep(0.1)
+
+                case CaptureState.RUN:
+                    def handle_spectrum(value):
+                        if 'integration_control' in self._ui_elements:
+                            self._ui_elements.integration_control.integration_time = value.time
+                        # FIXME: update graph here, using scratch/tk-matplotlib-bg.py (update_plot)
+                        LOGGER.debug("Got spectrum data with %s status", value.status)
+                        if self._capture_state != CaptureState.RUN:
+                            #self._update_status('Capture stopped.')
+                            pass # ^^ FIXME: can't do this here. must be in main thread
+                        return self._capture_state == CaptureState.RUN
+                    self._update_status('Capture running...')
+                    # ^^ FIXME: can't do this here. must be in main thread
+                    self._spectrometer.stream_data(handle_spectrum)
+
+    def _apply_integration_ctrl(self, data):
+        LOGGER.debug(data)
+        match data['mode']:
+            case 'auto':
+                self._spectrometer.properties_set_many({
+                    'auto_min_exposure_time': data['min'] * 1000, # input in ms, set in µs
+                    'auto_max_exposure_time': data['max'] * 1000, # input in ms, set in µs
+                    'exposure_mode': ExposureMode.AUTOMATIC,
+                })
+            case 'manual':
+                self._spectrometer.properties_set_many({
+                    'exposure_time': data['value'] * 1000, # input in ms, set in µs
+                    'exposure_mode': ExposureMode.MANUAL,
+                })
 
     def _setup_right_frame(self, parent):
         right_frame = ttk.Frame(parent)
@@ -191,17 +265,22 @@ class CalibrationGUI:
         controls_frame = ttk.Frame(right_frame)
         controls_frame.pack(fill=tk.X, padx=5, pady=5)
 
-        controls = []
+        controls = {
+            'integration_control': IntegrationControl(controls_frame,
+                                                      on_change=self._apply_integration_ctrl),
+            'sampling_control': SamplingControl(controls_frame),
+            'reference_match_control': ReferenceMatchControl(controls_frame),
+            'peak_detection_control': PeakDetectionControl(controls_frame),
+            'x_axis_control': XAxisControl(controls_frame),
+        }
 
-        controls.append(IntegrationControl(controls_frame))
-        controls.append(SamplingControl(controls_frame))
-        controls.append(ReferenceMatchControl(controls_frame))
-        controls.append(PeakDetectionControl(controls_frame))
-        controls.append(XAxisControl(controls_frame))
-
-        for col, control in enumerate(controls):
+        col = 0
+        for _name, control in controls.items():
             control.grid(column=col, row=0, sticky="news", padx=5, pady=5)
             control.columnconfigure(col, weight=1)
+            col += 1
+
+        self._ui_elements.update(controls)
 
         def _cf_on_resize(event):
             row = 0
@@ -213,7 +292,7 @@ class CalibrationGUI:
             # (because when the cell on the next row is wider, it ends up stretching the
             # cell in all rows -- preceding and following)
 
-            for control in controls:
+            for _name, control in controls.items():
                 if width + control.winfo_reqwidth() + 10 > event.width:
                     row += 1
                     col = 0
@@ -249,16 +328,16 @@ class CalibrationGUI:
         return canvas.get_tk_widget()
 
     def _update_status(self, message):
-        if self._status_label:
-            self._status_label.config(text=message)
+        if 'status_label' in self._ui_elements:
+            self._ui_elements.status_label.config(text=message)
         else:
             print('Status:', message)
 
     def _on_close(self):
-        if self._capturing:
-            self._capturing = False
-            if self.worker_thread:
-                self.worker_thread.join()
+        self._capture_state = CaptureState.EXIT
+        if self._worker_thread:
+            self._worker_thread.join()
+            self._worker_thread = None
 
         if self._spectrometer:
             self._spectrometer.cleanup()
@@ -270,6 +349,8 @@ if __name__ == "__main__":
     def main():
         """Zee main(), like in C"""
         matplotlib.use('TkAgg')
+
+        configure_logging(LogLevel.DEBUG) # FIXME: configurable?
 
         try:
             spectrometer = Spectrometer.create("oo:") # FIXME: maybe configurable?
