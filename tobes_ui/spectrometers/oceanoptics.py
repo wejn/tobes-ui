@@ -15,6 +15,7 @@ except ImportError as iex:
     raise ImportError("Missing ocean dependencies. "
                       "Install them via: pip/pipx install tobes-ui[ocean]") from iex
 
+from tobes_ui.common import AttrDict
 from tobes_ui.logger import LOGGER
 from tobes_ui.spectrometer import (BasicInfo, ExposureMode, ExposureStatus, Spectrometer,
                                    SpectrometerProperties, Spectrum)
@@ -33,21 +34,6 @@ class OceanOpticsProperties(SpectrometerProperties):
     correct_nonlinearity = BoolProperty()
     max_fps = FloatProperty(min_value=0.01, max_value=1000) # 0.8 is fine
     auto_max_threshold = FloatProperty(min_value=0.1, max_value=0.999) # 0.9 is fine
-
-
-class _AttrDict(dict):
-    """Simple attribute dict, for constants."""
-    def __getattr__(self, name):
-        try:
-            value = self[name]
-            if isinstance(value, dict):
-                return _AttrDict(value)
-            return value
-        except KeyError as ex:
-            raise AttributeError(f"'_AttrDict' object has no attribute '{name}'") from ex
-
-    def __setattr__(self, name, value):
-        self[name] = value
 
 
 class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', 'oceanoptics']):
@@ -69,7 +55,7 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
             raise ValueError(f"Couldn't initialize spectrometer({path}): {ex}"
                              f" (available: {available})") from ex
 
-        self._consts = _AttrDict()
+        self._consts = AttrDict()
 
         if self._spectrometer.serial_number.startswith("FLMS"):
             # According to docs: 0-17 optical black, 18-19 not usable, 20-2047 active
