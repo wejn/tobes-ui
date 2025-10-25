@@ -25,6 +25,7 @@ ELEMENT_URLS = {
     "Hg": "https://physics.nist.gov/PhysRefData/Handbook/Tables/mercurytable2_a.htm",
     "Kr": "https://physics.nist.gov/PhysRefData/Handbook/Tables/kryptontable2_a.htm",
     "N": "https://physics.nist.gov/PhysRefData/Handbook/Tables/nitrogentable2_a.htm",
+    "Na": "https://physics.nist.gov/PhysRefData/Handbook/Tables/sodiumtable2_a.htm",
     "Ne": "https://physics.nist.gov/PhysRefData/Handbook/Tables/neontable2_a.htm",
     "O": "https://physics.nist.gov/PhysRefData/Handbook/Tables/oxygentable2_a.htm",
     "Xe": "https://physics.nist.gov/PhysRefData/Handbook/Tables/xenontable2_a.htm"
