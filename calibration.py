@@ -29,12 +29,13 @@ from tobes_ui.spectrometer import ExposureMode, Spectrometer
 
 
 class CaptureState(Enum):
+    """State machine of the spectrum capture"""
     PAUSE = 0
     RUN = 1
     EXIT = 2
 
 
-class CalibrationGUI:
+class CalibrationGUI: # pylint: disable=too-few-public-methods
     """GUI for Ocean spectrometer wavelength calibration."""
 
     def __init__(self, root, spectrometer, initial_polyfit):
@@ -224,6 +225,7 @@ class CalibrationGUI:
             self._on_close()
 
     def _capture_action(self):
+        """Capture button action handler"""
         match self._capture_state:
             case CaptureState.RUN:
                 # Stop capture
@@ -272,6 +274,7 @@ class CalibrationGUI:
                     self._spectrometer.stream_data(handle_spectrum)
 
     def _apply_integration_ctrl(self, data):
+        """Applies integration control data to spectrometer"""
         LOGGER.debug(data)
         match data['mode']:
             case 'auto':
@@ -331,23 +334,20 @@ class CalibrationGUI:
 
         controls_frame.bind('<Configure>', _cf_on_resize)
 
-        plot = self._setup_plot(right_frame)
-        plot.pack(fill="both", expand=True)
-        # FIXME: maybe store plot?
+        self._ui_elements.plot = self._setup_plot(right_frame)
+        self._ui_elements.plot.pack(fill="both", expand=True)
 
         return right_frame
 
     def _setup_plot(self, parent):
         fig = Figure(figsize=(8,6), dpi=100) # FIXME: orly?
-        ax = fig.add_subplot(111)
+        axis = fig.add_subplot(111)
 
-        data = ax.plot([], [], 'b-', linewidth=1)
-        ax.set_xlabel('Wavelength (nm)')
-        ax.set_ylabel('Counts')
-        ax.set_title('Spectral Data')
-        ax.grid(True, alpha=0.3)
-
-        # FIXME: maybe objectify? to hold state...
+        axis.plot([], [], 'b-', linewidth=1)
+        axis.set_xlabel('Wavelength (nm)')
+        axis.set_ylabel('Counts')
+        axis.set_title('Spectral Data')
+        axis.grid(True, alpha=0.3)
 
         canvas = FigureCanvasTkAgg(fig, parent)
         canvas.draw()
