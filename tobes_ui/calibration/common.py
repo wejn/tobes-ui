@@ -123,10 +123,10 @@ class ClampedSpinbox(ttk.Frame):  # pylint: disable=too-many-ancestors
                  **kwargs):  # pylint: disable=too-many-arguments
         super().__init__(parent, **kwargs)
 
-        self.min_val = min_val
-        self.max_val = max_val
+        self._min_val = min_val
+        self._max_val = max_val
         self._on_change = on_change
-        self._value_var = TracedStringVar(value=str(initial if initial is not None else min_val))
+        self._value_var = TracedStringVar(value=str(initial if initial is not None else self.min_val))
         self._value_var.on_change = self._change_cb
 
         ttk.Label(self, text=label_text).pack(side="left")
@@ -138,7 +138,7 @@ class ClampedSpinbox(ttk.Frame):  # pylint: disable=too-many-ancestors
             textvariable=self._value_var,
             validate="key",
             validatecommand=(self.register(self._validate), "%P"),
-            width=max(len(str(min_val)), len(str(max_val))),
+            width=max(len(str(self.min_val)), len(str(self.max_val))),
             command=lambda: self._clamp(lose_focus=True)
         )
         self._spinbox.pack(side="right", padx=(5, 0))
@@ -146,6 +146,22 @@ class ClampedSpinbox(ttk.Frame):  # pylint: disable=too-many-ancestors
         # Bind arrow changes to update label
         self._spinbox.bind("<FocusOut>", lambda e: self._clamp())
         self._spinbox.bind("<Return>", lambda e: self._clamp(lose_focus=True))
+
+    @property
+    def min_val(self):
+        return self._min_val() if callable(self._min_val) else self._min_val
+
+    @min_val.setter
+    def min_val(self, val):
+        self._min_val = val
+
+    @property
+    def max_val(self):
+        return self._max_val() if callable(self._max_val) else self._max_val
+
+    @max_val.setter
+    def max_val(self, val):
+        self._max_val = val
 
     @property
     def on_change(self):
@@ -180,6 +196,7 @@ class ClampedSpinbox(ttk.Frame):  # pylint: disable=too-many-ancestors
         """Clamp value on focus out or Enter."""
         if lose_focus:
             self.focus()
+        self._spinbox.config(from_=self.min_val, to=self.max_val)
         value = max(self.min_val, min(self.max_val, self.get()))
         self._value_var.set(str(value))
         self._spinbox.selection_clear()
@@ -199,6 +216,7 @@ class ClampedSpinbox(ttk.Frame):  # pylint: disable=too-many-ancestors
 
     def set(self, value):
         """Set value programmatically (clamped)."""
+        self._spinbox.config(from_=self.min_val, to=self.max_val)
         value = max(self.min_val, min(self.max_val, int(value)))
         self._value_var.set(str(value))
 

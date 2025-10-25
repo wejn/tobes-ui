@@ -29,6 +29,8 @@ class IntegrationControl(CalibrationControlPanel):  # pylint: disable=too-many-a
                                                 initial=1, on_change=self._change_cb)
         self._auto_max_spinbox = ClampedSpinbox(auto_widgets_frame, min_val=1, max_val=65535,
                                                 initial=1000, on_change=self._change_cb)
+        self._auto_min_spinbox.max_val = lambda: min(self._auto_max_spinbox.get(), 65535)
+        self._auto_max_spinbox.min_val = lambda: max(self._auto_min_spinbox.get(), 1)
 
         self._auto_min_spinbox.pack(side=tk.LEFT)
         ToolTip(self._auto_min_spinbox, "Min integration period [ms]")
