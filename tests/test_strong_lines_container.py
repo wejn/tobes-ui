@@ -77,6 +77,26 @@ class TestStrongLinesContainer(unittest.TestCase):
         empty_container = StrongLinesContainer({})
         self.assertEqual(len(empty_container), 0)
 
+    def test_plot_data_with_range(self):
+        keys, values = self.container.plot_data(430, 450)
+        self.assertEqual(keys, [434.0, 447.1])
+        self.assertEqual(values, [12, 5])
+
+    def test_plot_data_with_min_only(self):
+        keys, values = self.container.plot_data(min_val=447.1)
+        self.assertEqual(keys, [447.1, 501.6])
+        self.assertEqual(values, [5, 15])
+
+    def test_plot_data_with_max_only(self):
+        keys, values = self.container.plot_data(max_val=434.0)
+        self.assertEqual(keys, [410.2, 434.0])
+        self.assertEqual(values, [8, 12])
+
+    def test_plot_data_out_of_range(self):
+        keys, values = self.container.plot_data(600, 700)
+        self.assertEqual(keys, [])
+        self.assertEqual(values, [])
+
 
 if __name__ == "__main__":
     unittest.main()

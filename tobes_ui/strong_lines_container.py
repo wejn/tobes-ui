@@ -2,7 +2,7 @@
 
 import bisect
 from itertools import chain
-from typing import Dict, List
+from typing import Dict, List, Optional, Tuple
 
 from tobes_ui.strong_lines import StrongLine
 
@@ -21,9 +21,23 @@ class StrongLinesContainer:
         max_idx = bisect.bisect_right(self._keys, max_val)
         return self._all_lines[min_idx:max_idx]
 
-    def plot_data(self):
-        """Return data for plotting"""
-        return (self._keys, self._values)
+    def plot_data(
+        self,
+        min_val: Optional[float] = None,
+        max_val: Optional[float] = None
+    ) -> Tuple[List[float], List[float]]:
+        """Return data for plotting, optionally filtered by wavelength range"""
+        if min_val is None and max_val is None:
+            return self._keys, self._values
+
+        # Determine index range using bisect
+        min_idx = bisect.bisect_left(self._keys, float("-inf") if min_val is None else min_val)
+        max_idx = bisect.bisect_right(self._keys, float("inf") if max_val is None else max_val)
+
+
+        filtered_keys = self._keys[min_idx:max_idx]
+        filtered_values = self._values[min_idx:max_idx]
+        return filtered_keys, filtered_values
 
     def __len__(self):
         return len(self._all_lines)
