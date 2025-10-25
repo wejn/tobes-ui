@@ -340,7 +340,9 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         return right_frame
 
     def _setup_plot(self, parent):
-        fig = Figure(figsize=(8,6), dpi=100) # FIXME: orly?
+        matplotlib.pyplot.rcParams.update({'figure.autolayout': True})
+
+        fig = Figure()
         axis = fig.add_subplot(111)
 
         axis.plot([], [], 'b-', linewidth=1)
@@ -348,9 +350,12 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         axis.set_ylabel('Counts')
         axis.set_title('Spectral Data')
         axis.grid(True, alpha=0.3)
+        axis.set_aspect('auto')
 
         canvas = FigureCanvasTkAgg(fig, parent)
         canvas.draw()
+
+        fig.tight_layout(pad=0.1)
 
         return canvas.get_tk_widget()
 
