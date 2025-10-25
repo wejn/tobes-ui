@@ -46,6 +46,7 @@ class CalibrationGUI:
 
         self._spectrometer = spectrometer
         self._capture_state = CaptureState.PAUSE
+        self._event_queue = queue.Queue()  # TK events submitted from non-main thread
         self._worker_thread = threading.Thread(target=self._data_refresh_loop, daemon=True)
         self._worker_thread.start()
 
@@ -65,7 +66,21 @@ class CalibrationGUI:
         screen_height = root.winfo_screenheight()
         print(f"Primary display size: {screen_width}x{screen_height}")
 
+        self._root.after(0, self._process_event_queue)
+
         self._update_status('Ready.')
+
+    def _process_event_queue(self):
+        while not self._event_queue.empty():
+            event = self._event_queue.get_nowait()
+            event()
+        self._root.after(100, self._process_event_queue)
+
+    def _push_event(self, event):
+        if callable(event):
+            self._event_queue.put(event)
+        else:
+            raise ValueError(f"Event {event} is not callable")
 
     def _setup_ui(self):
         paned_window = tk.PanedWindow(self._root, orient=tk.HORIZONTAL, sashrelief=tk.RAISED)
@@ -215,7 +230,14 @@ class CalibrationGUI:
                 LOGGER.debug("unhandled state: %s", self._capture_state)
                 self._update_status(f'Capture error: {self._capture_state}')
 
+    def _process_spectrum(self, spectrum):
+        """Processes captured spectrum"""
+        if 'integration_control' in self._ui_elements:
+            self._ui_elements.integration_control.integration_time = spectrum.time
+        # FIXME: update self._ui_elements.plot (graph) here
+
     def _data_refresh_loop(self):
+        # WARNING: Does NOT run in main thread; do not run any Tkinter code here!
         while True:
             match self._capture_state:
                 case CaptureState.EXIT:
@@ -226,16 +248,13 @@ class CalibrationGUI:
 
                 case CaptureState.RUN:
                     def handle_spectrum(value):
-                        if 'integration_control' in self._ui_elements:
-                            self._ui_elements.integration_control.integration_time = value.time
-                        # FIXME: update graph here, using scratch/tk-matplotlib-bg.py (update_plot)
-                        LOGGER.debug("Got spectrum data with %s status", value.status)
+                        LOGGER.debug("Got spectrum data with %s status and %.2f integration",
+                                     value.status, value.time)
+                        self._push_event(lambda: self._process_spectrum(value))
                         if self._capture_state != CaptureState.RUN:
-                            #self._update_status('Capture stopped.')
-                            pass # ^^ FIXME: can't do this here. must be in main thread
+                            self._push_event(lambda: self._update_status('Capture stopped.'))
                         return self._capture_state == CaptureState.RUN
-                    self._update_status('Capture running...')
-                    # ^^ FIXME: can't do this here. must be in main thread
+                    self._push_event(lambda: self._update_status('Capture running...'))
                     self._spectrometer.stream_data(handle_spectrum)
 
     def _apply_integration_ctrl(self, data):
