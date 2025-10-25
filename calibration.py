@@ -52,6 +52,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         self._worker_thread.start()
 
         self._initial_polyfit = np.array(initial_polyfit)
+        self._x_axis_idx = None
 
         self._ui_elements = AttrDict()  # all the different UI elements we need access to
 
@@ -76,7 +77,11 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         while not self._event_queue.empty():
             event = self._event_queue.get_nowait()
             event()
-        self._root.after(100, self._process_event_queue)
+        if self._capture_state == CaptureState.RUN:
+            # Make queue processing more snappy when capturing...
+            self._root.after(20, self._process_event_queue)
+        else:
+            self._root.after(100, self._process_event_queue)
 
     def _push_event(self, event):
         if callable(event):
@@ -259,21 +264,26 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         if 'plot_canvas' not in self._ui_elements or 'plot_line' not in self._ui_elements:
             return
 
+        if not self._spectrum:
+            return
+
         canvas = self._ui_elements.plot_canvas
         fig = canvas.figure
         axis = fig.axes[0]
         line = self._ui_elements.plot_line
 
-        # FIXME: update self._ui_elements.plot (graph) here
-        spd = self._spectrum.to_spectral_distribution()
-        line.set_data(list(spd.wavelengths), list(spd.values)) # FIXME: not this; pixels!!
-        # FIXME: when doing this via pixels, consider first_pixel, too
+        if self._x_axis_idx is not None:
+            idx = self._x_axis_idx
+        else:
+            idx = self._spectrum.wavelengths_raw
+        spd = self._spectrum.spd_raw
+        line.set_data(idx, spd)
 
         ymargin = 1.02
-        axis.set_ylim(bottom=0, top=self._y_axis_max.add(max(spd.values))*ymargin)
+        axis.set_ylim(bottom=0, top=self._y_axis_max.add(max(spd))*ymargin)
 
         xmargin = 5
-        axis.set_xlim(spd.wavelengths[0] - xmargin, spd.wavelengths[-1] + 1 + xmargin)
+        axis.set_xlim(self._x_axis_idx[0] - xmargin, self._x_axis_idx[-1] + 1 + xmargin)
 
         canvas.draw_idle()
 
@@ -289,8 +299,8 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
                 case CaptureState.RUN:
                     def handle_spectrum(value):
-                        LOGGER.debug("Got spectrum data with %s status and %.2f integration",
-                                     value.status, value.time)
+                        #LOGGER.debug("Got spectrum data with %s status and %.2f integration",
+                        #             value.status, value.time)
                         self._push_event(lambda: self._process_spectrum(value))
                         if self._capture_state != CaptureState.RUN:
                             self._push_event(lambda: self._update_status('Capture stopped.'))
@@ -328,7 +338,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
             'sampling_control': SamplingControl(controls_frame),
             'reference_match_control': ReferenceMatchControl(controls_frame),
             'peak_detection_control': PeakDetectionControl(controls_frame),
-            'x_axis_control': XAxisControl(controls_frame),
+            'x_axis_control': XAxisControl(controls_frame, on_change=self._apply_x_axis_ctrl),
         }
 
         col = 0
@@ -365,6 +375,39 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         self._ui_elements.plot.pack(fill="both", expand=True)
 
         return right_frame
+
+    def _apply_x_axis_ctrl(self, data):
+        """Applies X-Axis Control data"""
+        LOGGER.debug(data)
+        first_pixel = 0
+        num_pixels = 1
+
+        constants = self._spectrometer.constants()
+        if 'first_pixel' in constants:
+            first_pixel = constants['first_pixel']
+        if 'num_pixels' in constants:
+            num_pixels = constants['num_pixels']
+        else:
+            LOGGER.warning("Can't determine number of pixels, zeroing _x_axis_idx.")
+            self._x_axis_idx = None
+            return
+
+        pixels = np.array(range(first_pixel, num_pixels))
+        match data['mode']:
+            case 'init':
+                self._x_axis_idx = np.polyval(self._initial_polyfit, pixels)
+            case 'fixed':
+                self._x_axis_idx = np.linspace(data['min'], data['max'], num_pixels-first_pixel)
+
+            case 'new':
+                # FIXME: implement this
+                self._x_axis_idx = np.polyval(self._initial_polyfit, pixels)
+
+            case _:
+                LOGGER.warning("Unhandled x-axis mode %s, using pixels", data)
+                self._x_axis_idx = pixels
+
+        self._update_plot()
 
     def _setup_plot(self, parent):
         matplotlib.pyplot.rcParams.update({'figure.autolayout': True})

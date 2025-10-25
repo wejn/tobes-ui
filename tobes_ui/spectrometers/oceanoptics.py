@@ -72,6 +72,8 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
         self._consts.update({
             'dark_pixels': dark_pixels,
             'first_pixel': first_pixel,
+            'num_pixels': self._spectrometer.pixels,
+            'num_active_pixels': self._spectrometer.pixels - first_pixel,
         })
 
         self._consts.nonlinearity_coeffs = None

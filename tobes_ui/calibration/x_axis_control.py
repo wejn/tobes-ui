@@ -25,15 +25,18 @@ class XAxisControl(CalibrationControlPanel):  # pylint: disable=too-many-ancesto
                                     state='disabled')  # FIXME: enable when new cali is available
         ToolTip(new_radio, "Use new (currently setup) calibration for X axis")
         fixed_radio = ttk.Radiobutton(self, text="Fixed:", variable=self._mode, value='fixed')
-        ToolTip(fixed_radio, ("Use fixed min..max for X axis;\n" +
-                              "(beware that first few px are optical dark)"))
+        ToolTip(fixed_radio, "Use fixed min..max for X axis")
 
         fixed_widgets_frame = ttk.Frame(self)
         # FIXME: this might need floats, not ints
-        self._fixed_min_spinbox = ClampedSpinbox(fixed_widgets_frame, min_val=200, max_val=1100,
+        # FIXME: with min=200 it was hard to edit to something reasonable.
+        #        (ClampedSpinbox might need editing... to only reject on focus out/enter)
+        self._fixed_min_spinbox = ClampedSpinbox(fixed_widgets_frame, min_val=1, max_val=2500,
                                                  initial=380, on_change=self._change_cb)
-        self._fixed_max_spinbox = ClampedSpinbox(fixed_widgets_frame, min_val=200, max_val=1100,
+        self._fixed_max_spinbox = ClampedSpinbox(fixed_widgets_frame, min_val=1, max_val=2500,
                                                  initial=780, on_change=self._change_cb)
+        self._fixed_min_spinbox.max_val = lambda: min(self._fixed_max_spinbox.get(), 2500) - 10
+        self._fixed_max_spinbox.min_val = lambda: max(self._fixed_min_spinbox.get(), 1) + 10
         self._fixed_min_spinbox.pack(side=tk.LEFT)
         ToolTip(self._fixed_min_spinbox, "Min for X axis (for first pixel)")
 
