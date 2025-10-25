@@ -16,10 +16,12 @@ except ImportError as iex:
                       "Install them via: pip/pipx install tobes-ui[ocean]") from iex
 
 from tobes_ui.common import AttrDict
-from tobes_ui.logger import LOGGER
+from tobes_ui.logger import SUB_LOGGER
 from tobes_ui.spectrometer import (BasicInfo, ExposureMode, ExposureStatus, Spectrometer,
                                    SpectrometerProperties, Spectrum)
 from tobes_ui.properties import BoolProperty, EnumProperty, FloatProperty, IntProperty
+
+LOGGER = SUB_LOGGER('oceanoptics')
 
 
 class OceanOpticsProperties(SpectrometerProperties):

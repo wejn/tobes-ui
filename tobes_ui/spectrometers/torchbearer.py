@@ -9,10 +9,12 @@ import struct
 
 from serial import Serial
 
-from tobes_ui.logger import LOGGER
+from tobes_ui.logger import SUB_LOGGER
 from tobes_ui.spectrometer import (BasicInfo, ExposureMode, ExposureStatus, Spectrometer,
                                    SpectrometerProperties, Spectrum)
 from tobes_ui.properties import BoolProperty, EnumProperty, FloatProperty, IntProperty
+
+LOGGER = SUB_LOGGER('torchbearer')
 
 class TBExposureMode(Enum):
     """Type of exposure mode (TorchBearer specific)"""

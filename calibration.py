@@ -24,7 +24,7 @@ from tobes_ui.calibration.peak_detection_control import PeakDetectionControl
 from tobes_ui.calibration.reference_match_control import ReferenceMatchControl
 from tobes_ui.calibration.x_axis_control import XAxisControl
 from tobes_ui.common import AttrDict
-from tobes_ui.logger import LogLevel, configure_logging, LOGGER
+from tobes_ui.logger import LogLevel, configure_logging, LOGGER, set_level
 from tobes_ui.spectrometer import ExposureMode, Spectrometer
 
 
@@ -386,6 +386,7 @@ if __name__ == "__main__":
         matplotlib.use('TkAgg')
 
         configure_logging(LogLevel.DEBUG) # FIXME: configurable?
+        set_level(LogLevel.INFO, 'oceanoptics')  # way less noisy, TY
 
         try:
             spectrometer = Spectrometer.create("oo:") # FIXME: maybe configurable?
