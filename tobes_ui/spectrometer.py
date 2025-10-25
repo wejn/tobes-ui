@@ -231,8 +231,6 @@ class Spectrometer(ABC):
         """Optional hook method for reading WL calibration (if supported)."""
         raise NotImplementedError("This is by default not supported; override if needed")
 
-        wlc = [0, 0, 1, 0]
-
     @abstractmethod
     def properties_list(self):
         """Return list of configurable properties.
@@ -254,5 +252,23 @@ class Spectrometer(ABC):
         """Set property of given name to value.
 
         You MUST use subclass of SpectrometerProperties for your properties,
-        and this method should call get() on its instance.
+        and this method should call set() on its instance.
         """
+
+    def properties(self):
+        """Return list of properties with their values"""
+        return {item['name']: self.property_get(item['name']) for item in self.properties_list()}
+
+    def properties_set_many(self, props):
+        """Set many properties in a single call using name:value hash"""
+        for name, value in props.items():
+            self.property_set(name, value)
+
+    def constants(self):
+        """Return list of spectrometer-related constants with their values. Optional.
+
+        This is useful to return integration limits and various other internals.
+        It is not expected that these are truly constants (they can change between calls),
+        but they are not expected to be modified by the user -- the way properties are.
+        """
+        return {}  # By default: no constants
