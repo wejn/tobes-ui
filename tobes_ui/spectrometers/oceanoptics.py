@@ -34,7 +34,7 @@ class OceanOpticsProperties(SpectrometerProperties):
 
     correct_dark_counts = BoolProperty()
     correct_nonlinearity = BoolProperty()
-    max_fps = FloatProperty(min_value=0.01, max_value=1000) # 0.8 is fine
+    max_fps = FloatProperty(min_value=0, max_value=1000) # 0.8 is fine
     auto_max_threshold = FloatProperty(min_value=0.1, max_value=0.999) # 0.9 is fine
 
 

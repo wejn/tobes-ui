@@ -23,7 +23,7 @@ from tobes_ui.calibration.sampling_control import SamplingControl
 from tobes_ui.calibration.peak_detection_control import PeakDetectionControl
 from tobes_ui.calibration.reference_match_control import ReferenceMatchControl
 from tobes_ui.calibration.x_axis_control import XAxisControl
-from tobes_ui.common import AttrDict
+from tobes_ui.common import AttrDict, SlidingMax
 from tobes_ui.logger import LogLevel, configure_logging, LOGGER, set_level
 from tobes_ui.spectrometer import ExposureMode, Spectrometer
 
@@ -55,7 +55,8 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
         self._ui_elements = AttrDict()  # all the different UI elements we need access to
 
-        # FIXME: rest of the data
+        self._spectrum = None  # Spectrum captured by spectrometer (last)
+        self._y_axis_max = SlidingMax(5)  # FIXME: make configurable?
 
         self._setup_ui()
 
@@ -250,7 +251,31 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         """Processes captured spectrum"""
         if 'integration_control' in self._ui_elements:
             self._ui_elements.integration_control.integration_time = spectrum.time
+        self._spectrum = spectrum
+        self._update_plot()
+
+    def _update_plot(self):
+        """Updates plot based on X-Axis config and data"""
+        if 'plot_canvas' not in self._ui_elements or 'plot_line' not in self._ui_elements:
+            return
+
+        canvas = self._ui_elements.plot_canvas
+        fig = canvas.figure
+        axis = fig.axes[0]
+        line = self._ui_elements.plot_line
+
         # FIXME: update self._ui_elements.plot (graph) here
+        spd = self._spectrum.to_spectral_distribution()
+        line.set_data(list(spd.wavelengths), list(spd.values)) # FIXME: not this; pixels!!
+        # FIXME: when doing this via pixels, consider first_pixel, too
+
+        ymargin = 1.02
+        axis.set_ylim(bottom=0, top=self._y_axis_max.add(max(spd.values))*ymargin)
+
+        xmargin = 5
+        axis.set_xlim(spd.wavelengths[0] - xmargin, spd.wavelengths[-1] + 1 + xmargin)
+
+        canvas.draw_idle()
 
     def _data_refresh_loop(self):
         # WARNING: Does NOT run in main thread; do not run any Tkinter code here!
@@ -288,6 +313,8 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
                     'exposure_time': data['value'] * 1000, # input in ms, set in µs
                     'exposure_mode': ExposureMode.MANUAL,
                 })
+
+        self._spectrometer.property_set('max_fps', 0)  # FIXME: maybe configurable?
 
     def _setup_right_frame(self, parent):
         right_frame = ttk.Frame(parent)
@@ -345,7 +372,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         fig = Figure()
         axis = fig.add_subplot(111)
 
-        axis.plot([], [], 'b-', linewidth=1)
+        line, = axis.plot([], [], 'b-', linewidth=1)
         axis.set_xlabel('Wavelength (nm)')
         axis.set_ylabel('Counts')
         axis.set_title('Spectral Data')
@@ -356,6 +383,9 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         canvas.draw()
 
         fig.tight_layout(pad=0.1)
+
+        self._ui_elements.plot_canvas = canvas
+        self._ui_elements.plot_line = line
 
         return canvas.get_tk_widget()
 
