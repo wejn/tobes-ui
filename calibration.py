@@ -8,7 +8,7 @@ import sys
 import threading
 import time
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 
 
 import numpy as np
@@ -182,12 +182,18 @@ class CalibrationGUI:
         self._ui_elements.capture_button = ttk.Button(controls_frame, text="Capture",
                                                       command=self._capture_action)
         self._ui_elements.capture_button.pack(side=tk.LEFT, padx=5)
+        ToolTip(self._ui_elements.capture_button, 'Capture/freeze spectrum from the spectrometer.')
+
         self._ui_elements.save_button = ttk.Button(controls_frame, text="Save Cali",
                                                    command=lambda: print('save'), state='disabled')
         # FIXME: action ^^
         self._ui_elements.save_button.pack(side=tk.LEFT, padx=5)
-        ttk.Button(controls_frame, text="Quit", command=self._on_close).pack(side=tk.RIGHT, padx=5)
-        # FIXME: only after confirmation, and even then, update status bar first!
+        ToolTip(self._ui_elements.save_button, 'Save the wavelength calibration.')
+
+        self._ui_elements.quit_button = ttk.Button(controls_frame, text="Quit",
+                                                   command=self._quit_action)
+        self._ui_elements.quit_button.pack(side=tk.RIGHT, padx=5)
+        ToolTip(self._ui_elements.quit_button, 'Stop capture and quit the app.')
 
         # Strong lines
         slc = StrongLinesControl(left_frame)
@@ -208,6 +214,14 @@ class CalibrationGUI:
                 text=lambda: 'Status:\n' + self._ui_elements.status_label.cget('text'), above=True)
 
         return left_frame
+
+    def _quit_action(self):
+        """Quit button action handler"""
+        # FIXME: only ask for confirmation once it's all working
+        if True or messagebox.askokcancel("Quit", "Are you sure you want to quit?"): # pylint: disable=condition-evals-to-constant,line-too-long
+            LOGGER.debug("Quitting...")
+            self._update_status('Quitting...')
+            self._on_close()
 
     def _capture_action(self):
         match self._capture_state:
@@ -347,15 +361,18 @@ class CalibrationGUI:
             print('Status:', message)
 
     def _on_close(self):
+        self._update_status('Terminating capture...')
         self._capture_state = CaptureState.EXIT
         if self._worker_thread:
             self._worker_thread.join()
             self._worker_thread = None
 
+        self._update_status('Terminating spectrometer...')
         if self._spectrometer:
             self._spectrometer.cleanup()
             self._spectrometer = None
 
+        self._update_status('Bye!')
         self._root.destroy()
 
 if __name__ == "__main__":
