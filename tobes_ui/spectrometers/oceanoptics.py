@@ -238,7 +238,8 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
         init_time = max(low, min(high, init_time))
 
         if not min_step:
-            min_step = 1000
+            min_step = (high - low) / (2 ** 4) # at most ~4 iterations
+            LOGGER.debug("Chose min_step: %.2f", min_step)
 
         data = None
         initial = True
@@ -253,12 +254,14 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
             wls, i = self._spectrometer.spectrum()  # see stream_data() as to why like this
             data = [wls, i]
 
-            if is_overexposed(i):
+            if is_overexposed(i[self._consts.first_pixel:]): # only consider live pixels...
                 LOGGER.debug("Over-exposed at %dµs", int(mid))
                 high = mid  # Too bright, decrease time
                 initial = False
             else:
-                LOGGER.debug("Good exposure at %dµs", int(mid))
+                current_max_int = max(i[self._consts.first_pixel:])
+                LOGGER.debug("Good exposure at %dµs (%.3f%% of max)", int(mid),
+                             100*(current_max_int/self._consts.max_intensity))
                 low = mid
                 if initial:
                     break
