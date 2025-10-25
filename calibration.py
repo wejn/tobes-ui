@@ -90,7 +90,7 @@ class CalibrationGUI:
 
         # Create treeview for table
         columns = ('pixel', 'wl', 'new_wl')
-        tree = ttk.Treeview(table_frame, columns=columns, show='headings', height=16)
+        tree = ttk.Treeview(table_frame, columns=columns, show='headings', height=4)
 
         # Define headings
         tree.heading('pixel', text='pixel')
