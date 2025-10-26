@@ -13,12 +13,12 @@ class TestStrongLinesContainer(unittest.TestCase):
         # Prepare test data
         self.data = {
             "He": [
-                StrongLine("He", 501.6, 15, ""),
-                StrongLine("He", 447.1, 5, ""),
+                StrongLine("He", 501.6, 15, "", 1),
+                StrongLine("He", 447.1, 5, "", 1),
             ],
             "H": [
-                StrongLine("H", 434.0, 12, ""),
-                StrongLine("H", 410.2, 8, ""),
+                StrongLine("H", 434.0, 12, "", 1),
+                StrongLine("H", 410.2, 8, "", 1),
             ],
         }
         self.expected_plot_data = [

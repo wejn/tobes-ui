@@ -37,6 +37,7 @@ class StrongLine:
     wavelength: float
     intensity: int
     raw_flags: str
+    ionization: int
 
     def flags(self):
         """Get humanized flags for raw_flags."""
@@ -72,12 +73,14 @@ STRONG_LINES = {
         element="{{ element }}",
         lines=[
         {%- for entry in lines %}
-            StrongLine(element="{{ element }}", wavelength={{ entry[1] }}, intensity={{ entry[0] }}, raw_flags="{{ entry[2] }}"),
+            StrongLine(element="{{ element }}", wavelength={{ entry[1] }}, intensity={{ entry[0] }}, raw_flags="{{ entry[2] }}",
+                       ionization={{ entry[3] }}),
         {%- endfor %}
         ],
         persistent_lines=[
         {%- for entry in lines if 'P' in entry[2] %}
-            StrongLine(element="{{ element }}", wavelength={{ entry[1] }}, intensity={{ entry[0] }}, raw_flags="{{ entry[2] }}"),
+            StrongLine(element="{{ element }}", wavelength={{ entry[1] }}, intensity={{ entry[0] }}, raw_flags="{{ entry[2] }}",
+                       ionization={{ entry[3] }}),
         {%- endfor %}
         ]
     ),
