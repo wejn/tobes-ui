@@ -50,12 +50,28 @@ class StrongLinesControl(CalibrationControlPanel):
         self._intensity.pack()
         ToolTip(self._intensity, "Minimal intensity of the strong lines to select (0..1000)")
 
+        self._ionization_1 = tk.BooleanVar(value=True)
+        self._io1_cbox = ttk.Checkbutton(self, text='Ionization I',
+                                         variable=self._ionization_1, command=self._change_cb)
+        self._ionization_2 = tk.BooleanVar(value=False)
+        self._io2_cbox = ttk.Checkbutton(self, text='Ionization II',
+                                         variable=self._ionization_2, command=self._change_cb)
+        self._io1_cbox.pack(side="left", padx=(5,0))
+        ToolTip(self._io1_cbox, "Show lines related to first level of ionization")
+        self._io2_cbox.pack(side="right", padx=(0,5))
+        ToolTip(self._io2_cbox, "Show lines related to second level of ionization")
+
+
+
     def _change_cb(self, element=None):
         """Change callback, for individual elements (or all when None)."""
         min_int = self._intensity.get()
         pers_only = self._persistent_only.get()
         def sl_find(elem):
-            return STRONG_LINES[elem].for_intensity_range(range(min_int,1000), pers_only)
+            ionization = [1 if self._ionization_1.get() else -1,
+                          2 if self._ionization_2.get() else -1]
+            sls = STRONG_LINES[elem].for_intensity_range(range(min_int,1000), pers_only)
+            return [sl for sl in sls if sl.ionization in ionization]
 
         if element is not None:
             if self._vars[element].get():
