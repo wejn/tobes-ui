@@ -2,6 +2,12 @@
 
 from collections import deque
 import time
+from typing import Any, Literal
+
+import numpy as np
+
+from tobes_ui.spectrometer import Spectrum
+
 
 
 class AttrDict(dict):
@@ -73,3 +79,77 @@ class SlidingMax:
         # so don't use this to run a nuclear power plant, ok? ;)
         while self._max_deque and self._max_deque[0][0] <= cutoff:
             self._max_deque.popleft()
+
+
+class SpectrumAggregator:
+    """Aggregates spectrum readings over given window_size with given func"""
+
+    def __init__(self, window_size: int, func: Literal["avg", "max"] = "avg"):
+        self._buffers = {
+            'spd': deque(),
+            'spd_raw': deque(),
+        }
+        self.func = func  # invariants by setter
+        self.window_size = window_size  # invariants by setter
+
+    @property
+    def window_size(self) -> int:
+        """Get current window size"""
+        return self._window_size
+
+    @window_size.setter
+    def window_size(self, value: int):
+        """Resize the window"""
+        if value <= 0:
+            raise ValueError("window_size must be positive")
+        self._window_size = value
+        for buffer in self._buffers.values():
+            while len(buffer) > value:
+                buffer.popleft()
+
+    @property
+    def func(self) -> str:
+        """Get current func"""
+        return self._op
+
+    @func.setter
+    def func(self, value: Literal["avg", "max"]):
+        """Set aggregating func to use (avg or max)"""
+        if value not in ("avg", "max"):
+            raise ValueError("func must be 'avg' or 'max'")
+        self._op = value
+
+    def add(self, instance: Spectrum) -> Spectrum:
+        """Add value (instance of spectrum) and return aggregated"""
+        for field_name, buffer in self._buffers.items():
+            value = getattr(instance, field_name)
+            if isinstance(value, dict):
+                buffer.append(list(value.values()))
+            else:
+                buffer.append(value.copy())
+            while len(buffer) > self._window_size:
+                buffer.popleft()
+
+        return self._compute_aggregate(instance)
+
+
+    def _agg_op(self, data):
+        stacked = np.stack(data, axis=0)
+
+        if self._op == "avg":
+            return list(np.mean(stacked, axis=0))
+        # max
+        return list(np.max(stacked, axis=0))
+
+    def _compute_aggregate(self, template: Any) -> Any:
+        template.spd_raw = self._agg_op(self._buffers['spd_raw'])
+        template.spd = dict(zip(template.spd.keys(), self._agg_op(self._buffers['spd'])))
+
+        if not template.y_axis:
+            template.y_axis = "counts"
+        template.y_axis += f" (func: {self.func}, win: {self.window_size})"
+
+        return template
+
+    def __repr__(self):
+        return f"<{__name__}.SpectrumAggregator(op={self.func}, window_size={self.window_size})>"
