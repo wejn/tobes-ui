@@ -162,3 +162,15 @@ class TestSpectrumAggregator:
 
         assert result.y_axis.startswith('fancy_y_axis')
         assert 'fancy_y_axis' != result.y_axis # info is appended to it, shouldn't be the same
+
+    def test_clear(self):
+        aggregator_avg = SpectrumAggregator(window_size=3, func="avg")
+
+        aggregator_avg.add(spectrum([1.0, 2.0], [3.0, 4.0]))
+        aggregator_avg.clear()
+
+        data = spectrum([5.0, 6.0], [7.0, 8.0])
+        result = aggregator_avg.add(data)
+
+        np.testing.assert_array_equal(list(result.spd.values()), [5.0, 6.0])
+        np.testing.assert_array_equal(result.spd_raw, [7.0, 8.0])

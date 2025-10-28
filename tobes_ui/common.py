@@ -119,6 +119,11 @@ class SpectrumAggregator:
             raise ValueError("func must be 'avg' or 'max'")
         self._op = value
 
+    def clear(self):
+        """Clear all buffers"""
+        for _field_name, buffer in self._buffers.items():
+            buffer.clear()
+
     def add(self, instance: Spectrum) -> Spectrum:
         """Add value (instance of spectrum) and return aggregated"""
         for field_name, buffer in self._buffers.items():

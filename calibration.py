@@ -251,6 +251,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
                 # Start capture
                 LOGGER.debug("Starting capture...")
                 self._update_status('Starting capture...')
+                self._spectrum_agg.clear()
                 self._capture_state = CaptureState.RUN
                 self._ui_elements.capture_button.config(text="Freeze")
 
