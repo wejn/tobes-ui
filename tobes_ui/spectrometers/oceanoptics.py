@@ -234,6 +234,14 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
         data = None
         initial = True
 
+        # FIXME:
+        # The auto-detection fails like a boss (settles @ exposure much higher than min) when the
+        # light source leads to over-exposure even at min level. This algorithm requires more
+        # thought to make fast & robust.
+        #
+        # Consequently: I think that when over-exposed it should continue the search down until it
+        # exhausts max num of tries (or min floor).
+
         def is_overexposed(intensities):
             return len([1 for v in intensities
                         if v > self._consts.max_intensity * self._props.auto_max_threshold]) > 0
