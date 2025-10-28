@@ -142,14 +142,22 @@ class SpectrumAggregator:
         return list(np.max(stacked, axis=0))
 
     def _compute_aggregate(self, template: Any) -> Any:
-        template.spd_raw = self._agg_op(self._buffers['spd_raw'])
-        template.spd = dict(zip(template.spd.keys(), self._agg_op(self._buffers['spd'])))
+        if not template.y_axis or template.y_axis == 'counts':
+            template.y_axis = "Counts"
 
-        if not template.y_axis:
-            template.y_axis = "counts"
-        template.y_axis += f" (func: {self.func}, win: {self.window_size})"
+        if self.window_size > 1:
+            template.spd_raw = self._agg_op(self._buffers['spd_raw'])
+            template.spd = dict(zip(template.spd.keys(), self._agg_op(self._buffers['spd'])))
+
+            buf_len = len(self._buffers['spd'])
+            if buf_len < self.window_size:
+                template.y_axis += f" (func: {self.func}, win: {buf_len}/{self.window_size})"
+            else:
+                template.y_axis += f" (func: {self.func}, win: {self.window_size})"
 
         return template
 
     def __repr__(self):
-        return f"<{__name__}.SpectrumAggregator(op={self.func}, window_size={self.window_size})>"
+        buf_len = len(self._buffers['spd'])
+        return (f"<{__name__}.SpectrumAggregator(op={self.func},"
+                f" window_size={self.window_size}, buf={buf_len})>")

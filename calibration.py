@@ -24,7 +24,7 @@ from tobes_ui.calibration.sampling_control import SamplingControl
 from tobes_ui.calibration.peak_detection_control import PeakDetectionControl
 from tobes_ui.calibration.reference_match_control import ReferenceMatchControl
 from tobes_ui.calibration.x_axis_control import XAxisControl
-from tobes_ui.common import AttrDict, SlidingMax
+from tobes_ui.common import AttrDict, SlidingMax, SpectrumAggregator
 from tobes_ui.logger import LogLevel, configure_logging, LOGGER, set_level
 from tobes_ui.spectrometer import ExposureMode, Spectrometer
 from tobes_ui.strong_lines_container import StrongLinesContainer
@@ -58,6 +58,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
         self._ui_elements = AttrDict()  # all the different UI elements we need access to
 
+        self._spectrum_agg = SpectrumAggregator(1)
         self._spectrum = None  # Spectrum captured by spectrometer (last)
         self._y_axis_max = SlidingMax(5)  # FIXME: make configurable?
         self._strong_lines = StrongLinesContainer({})
@@ -262,7 +263,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         """Processes captured spectrum"""
         if 'integration_control' in self._ui_elements:
             self._ui_elements.integration_control.integration_time = spectrum.time
-        self._spectrum = spectrum
+        self._spectrum = self._spectrum_agg.add(spectrum)
         self._update_plot(spectrum=True)
 
     def _update_plot(self, spectrum=False, references=False):
@@ -286,6 +287,8 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
                 idx = self._spectrum.wavelengths_raw
             spd = self._spectrum.spd_raw
             line.set_data(idx, spd)
+            axis.set_ylabel(self._spectrum.y_axis)
+            axis.set_title(f'Spectral Data ({self._spectrum.ts})')
 
             axis.set_ylim(bottom=0, top=self._y_axis_max.add(max(spd))*ymargin)
 
@@ -358,9 +361,10 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         controls = {
             'integration_control': IntegrationControl(controls_frame,
                                                       on_change=self._apply_integration_ctrl),
-            'sampling_control': SamplingControl(controls_frame),
-            'reference_match_control': ReferenceMatchControl(controls_frame),
-            'peak_detection_control': PeakDetectionControl(controls_frame),
+            'sampling_control': SamplingControl(controls_frame,
+                                                on_change=self._apply_sampling_ctrl),
+            'reference_match_control': ReferenceMatchControl(controls_frame), # FIXME: action
+            'peak_detection_control': PeakDetectionControl(controls_frame), # FIXME: action
             'x_axis_control': XAxisControl(controls_frame, on_change=self._apply_x_axis_ctrl),
         }
 
@@ -398,6 +402,12 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         self._ui_elements.plot.pack(fill="both", expand=True)
 
         return right_frame
+
+    def _apply_sampling_ctrl(self, data):
+        """Applies Sampling Control data"""
+        LOGGER.debug(data)
+        self._spectrum_agg.func = data['mode'] or 'avg'
+        self._spectrum_agg.window_size = data['samples'] or 1
 
     def _apply_x_axis_ctrl(self, data):
         """Applies X-Axis Control data"""
