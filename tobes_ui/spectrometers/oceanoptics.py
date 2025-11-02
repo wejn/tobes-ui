@@ -63,6 +63,12 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
             # According to docs: 0-17 optical black, 18-19 not usable, 20-2047 active
             dark_pixels = list(range(6,19))  # 6..18, absent of better cali
             first_pixel = 20
+        elif self._spectrometer.serial_number.startswith("USB4"):
+            # According to docs:
+            # 1-5 not usable, 6-18 optical black, 19-21 transition, 22-3669 active
+            # but indexed from 1?! (and usb transmits first 3648px)
+            dark_pixels = list(range(5,18))  # 5..17, absent of better cali
+            first_pixel = 21
         else:
             LOGGER.warning("This spectrometer model (%s) was not tested first hand.",
                            self._spectrometer.serial_number)
