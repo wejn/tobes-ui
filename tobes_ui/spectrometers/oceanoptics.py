@@ -30,7 +30,7 @@ class OceanOpticsProperties(SpectrometerProperties):
     exposure_time = IntProperty(min_value=1, max_value=5000000) # needs adj @ runtime
     auto_max_exposure_time = IntProperty(min_value=1, max_value=5000000) # ditto
     auto_min_exposure_time = IntProperty(min_value=1, max_value=5000000) # ditto
-    auto_min_step = IntProperty(min_value=1, max_value=10000) # defaults to 1k
+    auto_max_iterations = IntProperty(min_value=1, max_value=100) # defaults to 4
 
     correct_dark_counts = BoolProperty()
     correct_nonlinearity = BoolProperty()
@@ -101,7 +101,8 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
         self._props = OceanOpticsProperties(
             exposure_mode=ExposureMode.AUTOMATIC,
             exposure_time=128000,
-            # auto_min_step, auto_min_exposure_time, auto_max_exposure_time not set on purpose
+            # auto_min_exposure_time, auto_max_exposure_time not set on purpose
+            auto_max_iterations=4,
             correct_dark_counts=True,
             correct_nonlinearity=False,
             max_fps=0.8,
@@ -208,66 +209,123 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
 
     def _spd_with_auto(self, init_time):
         """Get spectral distribution in auto exposure mode (within limits)"""
-        low, high = self._spectrometer.integration_time_micros_limits
+        hw_low, hw_high = self._spectrometer.integration_time_micros_limits
 
-        min_step = self._props.auto_min_step
         min_time = self._props.auto_min_exposure_time
         max_time = self._props.auto_max_exposure_time
+        max_iterations = self._props.auto_max_iterations
 
         # d'oh
         if min_time and max_time and min_time > max_time:
+            LOGGER.warning("auto_min_exposure_time(%f) > auto_max_exposure_time(%f), fixing",
+                           min_time, max_time)
             min_time, max_time = max_time, min_time
 
         # cap low/high at hw limits
         if min_time:
-            low = max(low, min_time)
+            min_time = max(hw_low, min_time)
+        else:
+            min_time = hw_low
         if max_time:
-            high = min(high, max_time)
+            max_time = min(hw_high, max_time)
+        else:
+            max_time = hw_high
 
-        # cap init within low..high
-        init_time = max(low, min(high, init_time))
+        # cap init within min/max bounds, be it hw or props
+        init_time = max(min_time, min(init_time, max_time))
 
-        if not min_step:
-            min_step = (high - low) / (2 ** 4) # at most ~4 iterations
-            LOGGER.debug("Chose min_step: %.2f", min_step)
+        # For debugging
+        total_meas = 0
+        time_taken = 0
 
-        data = None
-        initial = True
+        def spectrum_at(integration_time, hold_off_time=None):
+            """Get spectrum + max intensity at given integration_time, with optional hold-off"""
+            nonlocal total_meas, time_taken
 
-        # FIXME:
-        # The auto-detection fails like a boss (settles @ exposure much higher than min) when the
-        # light source leads to over-exposure even at min level. This algorithm requires more
-        # thought to make fast & robust.
-        #
-        # Consequently: I think that when over-exposed it should continue the search down until it
-        # exhausts max num of tries (or min floor).
+            total_meas += 1
+            time_taken += integration_time
+            self._spectrometer.integration_time_micros(integration_time)
+            if hold_off_time:
+                # Warn: https://github.com/ap--/python-seabreeze/issues/110#issuecomment-3478107206
+                # Switching from a LONG integration period to short one is buggy, we need to wait
+                # previous integration period to be sure.
+                time.sleep(hold_off_time / 1e6)
+            wls, intensities = self._spectrometer.spectrum()
+            max_intensity = max(intensities[self._consts.first_pixel:])
+            return [max_intensity, wls, intensities]
 
-        def is_overexposed(intensities):
-            return len([1 for v in intensities
-                        if v > self._consts.max_intensity * self._props.auto_max_threshold]) > 0
+        target_intensity = self._consts.max_intensity * self._props.auto_max_threshold
+        overexposed_threshold = self._consts.max_intensity * 0.98
 
-        while initial or high - low > min_step:
-            mid = init_time if initial else (low + high) / 2.0
-            self._spectrometer.integration_time_micros(mid)
-            wls, i = self._spectrometer.spectrum()  # see stream_data() as to why like this
-            data = [wls, i]
+        # Try at initial integration time
+        init_max, wls, intensities = spectrum_at(init_time)
+        if init_max < overexposed_threshold:
+            LOGGER.debug("Initial %dµs is OK at %.3f%%",
+                         int(init_time), 100*(init_max/self._consts.max_intensity))
+            return int(init_time), wls, intensities
 
-            if is_overexposed(i[self._consts.first_pixel:]): # only consider live pixels...
-                LOGGER.debug("Over-exposed at %dµs", int(mid))
-                high = mid  # Too bright, decrease time
-                initial = False
+        # Try at minimum (no sense to continue if overexposed)
+        min_max, wls, intensities = spectrum_at(min_time, init_time)
+        if min_max >= overexposed_threshold:
+            LOGGER.debug("Min %dµs is over-exposed, abort", int(min_time))
+            return int(min_time), wls, intensities
+
+        # Binary search within (min..init) -- because min wasn't overexp and init was
+        low, high = min_time, init_time
+        best_time = min_time
+        best_data = (wls, intensities)
+        test_time = min_time
+
+        for _ in range(max_iterations):
+            old_test_time = test_time
+            test_time = (low * high) ** 0.5
+            test_time = max(min_time, min(max_time, test_time))
+
+            if abs(test_time - best_time) / best_time < 0.05:
+                LOGGER.debug("avoid redundant meas...")
+                break
+
+            test_max, wls, intensities = spectrum_at(test_time, old_test_time)
+            if test_max >= overexposed_threshold:
+                LOGGER.debug("Over-exposed at %dµs", int(test_time))
+                high = test_time
             else:
-                current_max_int = max(i[self._consts.first_pixel:])
-                LOGGER.debug("Good exposure at %dµs (%.3f%% of max)", int(mid),
-                             100*(current_max_int/self._consts.max_intensity))
-                low = mid
-                if initial:
-                    break
-                initial = False
+                LOGGER.debug("Good exposure at %dµs (%.3f%% of max)", int(test_time),
+                             100*(test_max/self._consts.max_intensity))
+                low = test_time
+                best_time, best_data = test_time, (wls, intensities)
 
-        if not initial:
-            LOGGER.debug("Final exposure at %dµs", int(mid))
-        return int(mid), *data
+                # Try predicting from target intensity...
+                predicted_time = test_time * (target_intensity / test_max)
+                predicted_time = max(test_time, min(high, predicted_time))
+
+                # Only test if meaningfully different (it has some cost)
+                if abs(predicted_time - test_time) / test_time > 0.1:
+                    old_test_time = test_time
+                    test_time = predicted_time
+                    LOGGER.debug("Testing prediction at %dµs", int(test_time))
+
+                    test_max, wls, intensities = spectrum_at(test_time, old_test_time)
+
+                    if test_max < overexposed_threshold:
+                        LOGGER.debug("Predicted exposure good at %dµs (%.3f%% of max)",
+                                     int(test_time), 100*(test_max/self._consts.max_intensity))
+                        best_time, best_data = test_time, (wls, intensities)
+
+                        # Abort if close enough
+                        if abs(test_max - target_intensity) / target_intensity < 0.15:
+                            break
+                    else:
+                        LOGGER.debug("Prediction over-exposed at %dµs", int(test_time))
+                        high = test_time
+                else:
+                    # Abort if close enough
+                    if abs(test_max - target_intensity) / target_intensity < 0.15:
+                        break
+
+        LOGGER.debug("Best exposure at %dµs, took %d measurements for %.2fs walltime",
+                     int(best_time), total_meas, time_taken/1e6)
+        return int(best_time), *best_data
 
     def stream_data(self, where_to):
         """Stream spectral data to the where_to callback, until told to stop"""
