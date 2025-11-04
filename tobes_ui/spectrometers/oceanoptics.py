@@ -125,6 +125,8 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
         LOGGER.debug("Properties: %s", self.properties())
         LOGGER.debug("Constants: %s", self.constants())
 
+        self._integration_time_set = None  # See _set_integration_time()
+
     def constants(self):
         """Return list of spectrometer-related constants with their values"""
         return copy.deepcopy(self._consts)
@@ -213,6 +215,29 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
                 exposure_mode=self.exposure_mode,
                 time=self.exposure_time)
 
+    def _set_integration_time(self, integration_time):
+        """Set integration time and workaround OO's silliness if needed.
+
+        This method can block for up to previous integration_time, to make sure
+        that next read of spectrum() returns proper value.
+
+        This is somewhat discussed here:
+        https://github.com/ap--/python-seabreeze/issues/110#issuecomment-3478107206
+
+        But tl;dr: Some spectrometers collect the spectrum constantly (freerun mode).
+        Which is ~fine with short integration times, but NOT ok for precise results
+        every time (which is needed when ranging).
+
+        As such, running a read of the spectrum() once after changing IT is generally
+        needed to make sure the result is OK in all cases.
+        """
+        self._spectrometer.integration_time_micros(integration_time)
+        if self._integration_time_set is None or self._integration_time_set != integration_time:
+            LOGGER.debug("Throwaway read because IT: %.2f -> %.2f",
+                         self._integration_time_set or -1, integration_time or -1)
+            self._spectrometer.spectrum()  # throwaway read
+        self._integration_time_set = integration_time
+
     def _spd_with_auto(self, init_time):
         """Get spectral distribution in auto exposure mode (within limits)"""
         hw_low, hw_high = self._spectrometer.integration_time_micros_limits
@@ -244,18 +269,13 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
         total_meas = 0
         time_taken = 0
 
-        def spectrum_at(integration_time, hold_off_time=None):
+        def spectrum_at(integration_time):
             """Get spectrum + max intensity at given integration_time, with optional hold-off"""
             nonlocal total_meas, time_taken
 
             total_meas += 1
             time_taken += integration_time
-            self._spectrometer.integration_time_micros(integration_time)
-            if hold_off_time:
-                # Warn: https://github.com/ap--/python-seabreeze/issues/110#issuecomment-3478107206
-                # Switching from a LONG integration period to short one is buggy, we need to wait
-                # previous integration period to be sure.
-                time.sleep(hold_off_time / 1e6)
+            self._set_integration_time(integration_time)
             wls, intensities = self._spectrometer.spectrum()
             max_intensity = max(intensities[self._consts.first_pixel:])
             return [max_intensity, wls, intensities]
@@ -271,7 +291,7 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
             return int(init_time), wls, intensities
 
         # Try at minimum (no sense to continue if overexposed)
-        min_max, wls, intensities = spectrum_at(min_time, init_time)
+        min_max, wls, intensities = spectrum_at(min_time)
         if min_max >= overexposed_threshold:
             LOGGER.debug("Min %dµs is over-exposed, abort", int(min_time))
             return int(min_time), wls, intensities
@@ -283,7 +303,6 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
         test_time = min_time
 
         for _ in range(max_iterations):
-            old_test_time = test_time
             test_time = (low * high) ** 0.5
             test_time = max(min_time, min(max_time, test_time))
 
@@ -291,7 +310,7 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
                 LOGGER.debug("avoid redundant meas...")
                 break
 
-            test_max, wls, intensities = spectrum_at(test_time, old_test_time)
+            test_max, wls, intensities = spectrum_at(test_time)
             if test_max >= overexposed_threshold:
                 LOGGER.debug("Over-exposed at %dµs", int(test_time))
                 high = test_time
@@ -307,11 +326,10 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
 
                 # Only test if meaningfully different (it has some cost)
                 if abs(predicted_time - test_time) / test_time > 0.1:
-                    old_test_time = test_time
                     test_time = predicted_time
                     LOGGER.debug("Testing prediction at %dµs", int(test_time))
 
-                    test_max, wls, intensities = spectrum_at(test_time, old_test_time)
+                    test_max, wls, intensities = spectrum_at(test_time)
 
                     if test_max < overexposed_threshold:
                         LOGGER.debug("Predicted exposure good at %dµs (%.3f%% of max)",
@@ -346,7 +364,7 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
                 exp_time, wavelengths, intensities = self._spd_with_auto(self.exposure_time)
                 self.exposure_time = exp_time  # in auto mode, remember the exposure time
             else:
-                self._spectrometer.integration_time_micros(self.exposure_time)
+                self._set_integration_time(self.exposure_time)
                 wavelengths, intensities = self._spectrometer.spectrum()
                 exp_time = self.exposure_time
 
