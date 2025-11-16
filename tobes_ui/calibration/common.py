@@ -88,46 +88,20 @@ class ToolTip:
             self.schedule()
 
 
-class TracedStringVar(tk.StringVar):
-    """String var that has onchange handler."""
-
-    def __init__(self, value="", on_change=None):
-        super().__init__(value=value)
-        self._old = value
-        self._on_change = on_change
-        self.trace_add("write", self._change_cb)
-
-    @property
-    def on_change(self):
-        "Getter for on_change."""
-        return self._on_change
-
-    @on_change.setter
-    def on_change(self, proc):
-        "Setter for on_change."""
-        self._on_change = proc
-
-    def _change_cb(self, *args):
-        """Change callback, to be executed when value changes."""
-        new = self.get()
-        if new != self._old:
-            self._old = new
-            if self._on_change:
-                self._on_change(*args)
-
-
 class ClampedSpinbox(ttk.Frame):  # pylint: disable=too-many-ancestors
-    """Spinbox that holds an integer clamped to min_val, max_val range (inclusive)."""
+    """Spinbox that holds a number clamped to min_val, max_val range (inclusive)."""
 
     def __init__(self, parent, min_val=0, max_val=10, initial=None, label_text="", on_change=None,
-                 **kwargs):  # pylint: disable=too-many-arguments
+                 allow_float=False, **kwargs):  # pylint: disable=too-many-arguments
         super().__init__(parent, **kwargs)
 
         self._min_val = min_val
         self._max_val = max_val
         self._on_change = on_change
-        self._value_var = TracedStringVar(value=str(initial if initial is not None else self.min_val))
-        self._value_var.on_change = self._change_cb
+        self._allow_float = allow_float
+        self._value_var = tk.StringVar(value=str(initial if initial is not None else self.min_val))
+        self._last_valid = self._value_var.get()
+        self._last_emitted = None
 
         ttk.Label(self, text=label_text).pack(side="left")
 
@@ -139,13 +113,12 @@ class ClampedSpinbox(ttk.Frame):  # pylint: disable=too-many-ancestors
             validate="key",
             validatecommand=(self.register(self._validate), "%P"),
             width=max(len(str(self.min_val)), len(str(self.max_val))),
-            command=lambda: self._clamp(lose_focus=True)
+            command=lambda: self._apply_value()
         )
         self._spinbox.pack(side="right", padx=(5, 0))
 
-        # Bind arrow changes to update label
-        self._spinbox.bind("<FocusOut>", lambda e: self._clamp())
-        self._spinbox.bind("<Return>", lambda e: self._clamp(lose_focus=True))
+        self._spinbox.bind("<FocusOut>", lambda e: self._apply_value())
+        self._spinbox.bind("<Return>", lambda e: self._apply_value(lose_focus=True))
 
     @property
     def min_val(self):
@@ -174,51 +147,69 @@ class ClampedSpinbox(ttk.Frame):  # pylint: disable=too-many-ancestors
         self._on_change = proc
 
     def _validate(self, new_value):
-        """Per-keystroke validation."""
-        if new_value == "":
+        """Per-keystroke validation - allow any numeric input."""
+        if new_value == "" or new_value == "-":
             return True
-        if new_value.isdigit():
-            value = int(new_value)
-            if value < self.min_val:
-                self._value_var.set(str(self.min_val))
-                self._spinbox.selection_clear()
-                self._spinbox.icursor(tk.END)
+        if self._allow_float:
+            try:
+                float(new_value)
+                return True
+            except ValueError:
                 return False
-            if value > self.max_val:
-                self._value_var.set(str(self.max_val))
-                self._spinbox.selection_clear()
-                self._spinbox.icursor(tk.END)
-                return False
-            return True
-        return False
+        else:
+            return new_value.lstrip("-").isdigit()
 
-    def _clamp(self, lose_focus=False):
-        """Clamp value on focus out or Enter."""
+    def _apply_value(self, lose_focus=False):
+        """Apply and clamp value, trigger on_change."""
         if lose_focus:
             self.focus()
         self._spinbox.config(from_=self.min_val, to=self.max_val)
-        value = max(self.min_val, min(self.max_val, self.get()))
-        self._value_var.set(str(value))
+
+        try:
+            if self._allow_float:
+                value = float(self._value_var.get())
+            else:
+                value = int(self._value_var.get())
+            value = max(self.min_val, min(self.max_val, value))
+            value_str = str(value)
+        except (ValueError, TypeError):
+            value_str = self._last_valid
+            value = float(value_str) if self._allow_float else int(value_str)
+
+        self._value_var.set(value_str)
+        self._last_valid = value_str
         self._spinbox.selection_clear()
         self._spinbox.icursor(tk.END)
+
+        self._change_cb()
 
     def _change_cb(self, *args):
         """Change callback, to be executed when spinbox changes."""
         if self._on_change:
-            self._on_change(self.get())
+            value = self.get()
+            if self._last_emitted is None or self._last_emitted != value:
+                self._last_emitted = value
+                self._on_change(value)
 
     def get(self):
-        """Return current integer value."""
+        """Return current numeric value."""
         try:
-            return int(self._value_var.get())
+            if self._allow_float:
+                return float(self._value_var.get())
+            else:
+                return int(self._value_var.get())
         except ValueError:
-            return self.min_val
+            return float(self.min_val) if self._allow_float else self.min_val
 
     def set(self, value):
         """Set value programmatically (clamped)."""
         self._spinbox.config(from_=self.min_val, to=self.max_val)
-        value = max(self.min_val, min(self.max_val, int(value)))
-        self._value_var.set(str(value))
+        value = float(value) if self._allow_float else int(value)
+        value = max(self.min_val, min(self.max_val, value))
+        value_str = str(value)
+        self._value_var.set(value_str)
+        self._last_valid = value_str
+        self._change_cb()
 
 
 class CalibrationControlPanel(ttk.LabelFrame, abc.ABC):  # pylint: disable=too-many-ancestors
