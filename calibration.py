@@ -24,6 +24,7 @@ from tobes_ui.calibration.sampling_control import SamplingControl
 from tobes_ui.calibration.peak_detection_control import PeakDetectionControl
 from tobes_ui.calibration.reference_match_control import ReferenceMatchControl
 from tobes_ui.calibration.x_axis_control import XAxisControl
+from tobes_ui.calibration.x_axis_zoom_control import XAxisZoomControl
 from tobes_ui.common import AttrDict, SlidingMax, SpectrumAggregator
 from tobes_ui.logger import LogLevel, configure_logging, LOGGER, set_level
 from tobes_ui.spectrometer import ExposureMode, Spectrometer
@@ -295,6 +296,8 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
             xmargin = 5
             axis.set_xlim(self._x_axis_idx[0] - xmargin, self._x_axis_idx[-1] + 1 + xmargin)
+            if 'xaxis_zoom' in self._ui_elements:
+                self._ui_elements.xaxis_zoom.update_limits(xlim=axis.get_xlim())
 
         if references:
             ax2 = fig.axes[1]
@@ -401,6 +404,11 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
         self._ui_elements.plot = self._setup_plot(right_frame)
         self._ui_elements.plot.pack(fill="both", expand=True)
+
+        canvas = self._ui_elements.plot_canvas
+        axis = canvas.figure.axes[0]
+        self._ui_elements.xaxis_zoom = XAxisZoomControl(right_frame, canvas, axis)
+        self._ui_elements.xaxis_zoom.pack(fill=tk.X, padx=5, pady=5)
 
         return right_frame
 
