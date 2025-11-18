@@ -249,6 +249,11 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         LOGGER.debug([k for k, _v in data.items()])
         self._strong_lines = StrongLinesContainer(data)
         self._update_plot(references=True)
+        num = len(self._strong_lines)
+        if num > 500:
+            self._update_status(f'Applied {num} references.\n(Super slow mode engaged.)')
+        else:
+            self._update_status(f'Applied {num} references.')
 
     def _quit_action(self):
         """Quit button action handler"""
@@ -364,6 +369,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
                 axis.set_xlim(*xlim)
                 ax2.bar(*ref_data, color='gray', width=0.1)
                 ax2.set_ylim(bottom=0, top=1000*ymargin)
+                # FIXME: can we switch this to axvlines? might show up better on the graph
 
         canvas.draw_idle()
 
