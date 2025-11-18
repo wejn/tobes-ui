@@ -442,7 +442,8 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
         self._peak_detector = peak_detector
 
-        self._detect_peaks()
+        if self._capture_state != CaptureState.RUN:
+            self._detect_peaks()
 
     def _setup_right_frame(self, parent):
         right_frame = ttk.Frame(parent)
