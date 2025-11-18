@@ -72,6 +72,8 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
                 k: np.polyval(self._initial_polyfit, k)
                 for k in sorted((rand(3) * 2028 + 20).astype(int))} # FIXME: temp stopgap
 
+        self._x_axis_limits = None  # current x axis limits (min, max)
+
         self._setup_ui()
 
         # debug info
@@ -314,11 +316,14 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
             axis.set_ylim(bottom=0, top=self._y_axis_max.add(max(spd))*ymargin)
 
-            # FIXME: this is SUPER wasteful, and doesn't need to happen ~always (only on change)
+            # Set x axis limits (if need be)
             xmargin = 5
-            axis.set_xlim(self._x_axis_idx[0] - xmargin, self._x_axis_idx[-1] + 1 + xmargin)
-            if 'xaxis_zoom' in self._ui_elements:
-                self._ui_elements.xaxis_zoom.update_limits(xlim=axis.get_xlim())
+            x_axis_limits = [self._x_axis_idx[0] - xmargin, self._x_axis_idx[-1] + 1 + xmargin]
+            if self._x_axis_limits is None or self._x_axis_limits != x_axis_limits:
+                axis.set_xlim(*x_axis_limits)
+                if 'xaxis_zoom' in self._ui_elements:
+                    self._ui_elements.xaxis_zoom.update_limits(xlim=x_axis_limits)
+                self._x_axis_limits = x_axis_limits
 
         if (self._spectrum
             and (((spectrum or references) and self._capture_state != CaptureState.RUN)
