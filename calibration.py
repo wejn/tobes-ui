@@ -12,10 +12,12 @@ from tkinter import ttk, messagebox
 
 
 import numpy as np
+from numpy.random import rand # FIXME: when initial pixels go, this goes too
 import matplotlib
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from matplotlib import patches
+from scipy.signal import find_peaks
 
 from tobes_ui.calibration.common import ToolTip
 from tobes_ui.calibration.strong_lines_control import StrongLinesControl
@@ -63,6 +65,12 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         self._spectrum = None  # Spectrum captured by spectrometer (last)
         self._y_axis_max = SlidingMax(5)  # FIXME: make configurable?
         self._strong_lines = StrongLinesContainer({})
+        self._peak_detector = None  # callable to detect peaks in spectrum data
+        self._peaks = []  # list of peaks detected, indexed against spd_raw, not phys pixels
+        self._pixels = {} # dict of pixels with new wl assigned to them
+        self._pixels = {
+                k: np.polyval(self._initial_polyfit, k)
+                for k in sorted((rand(3) * 2028 + 20).astype(int))} # FIXME: temp stopgap
 
         self._setup_ui()
 
@@ -125,6 +133,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         # Create treeview for table
         columns = ('pixel', 'wl', 'new_wl')
         tree = ttk.Treeview(table_frame, columns=columns, show='headings', height=4)
+        # FIXME: fix the rowheight that's terrible now
 
         # Define headings
         tree.heading('pixel', text='pixel')
@@ -143,9 +152,8 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        tree.insert('', 'end', values=('1', '1', '1'))
-        tree.insert('', 'end', values=('2', '2', '2'))
-        tree.insert('', 'end', values=('3', '3', '3'))
+        self._ui_elements.pixels_table = tree
+        self._update_pixels_table()
 
         # Bind events # FIXME
         #tree.bind('<Double-1>', self.on_table_double_click)
@@ -225,6 +233,16 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
         return left_frame
 
+    def _update_pixels_table(self):
+        """Updates pixels table with current data."""
+        tbl = self._ui_elements.pixels_table
+        constants = self._spectrometer.constants()
+        first_pixel = constants.first_pixel if 'first_pixel' in constants else 0
+        tbl.delete(*tbl.get_children())
+        for pixel, new_wl in self._pixels.items():
+            wl = np.polyval(self._initial_polyfit, pixel)
+            tbl.insert('', 'end', values=(str(pixel), f'{wl:.4f}', f'{new_wl:.4f}'))
+
     def _apply_strong_line_ctrl(self, data):
         LOGGER.debug([k for k, _v in data.items()])
         self._strong_lines = StrongLinesContainer(data)
@@ -252,6 +270,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
                 # Start capture
                 LOGGER.debug("Starting capture...")
                 self._update_status('Starting capture...')
+                self._clear_peaks()
                 self._spectrum_agg.clear()
                 self._capture_state = CaptureState.RUN
                 self._ui_elements.capture_button.config(text="Freeze")
@@ -268,7 +287,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         self._spectrum = self._spectrum_agg.add(spectrum)
         self._update_plot(spectrum=True)
 
-    def _update_plot(self, spectrum=False, references=False):
+    def _update_plot(self, spectrum=False, references=False, peaks=False):
         """Updates plot based on X-Axis config and data"""
         if 'plot_canvas' not in self._ui_elements:
             return
@@ -279,14 +298,15 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
         ymargin = 1.02
 
+        if self._x_axis_idx is not None:
+            idx = self._x_axis_idx
+        else:
+            idx = self._spectrum.wavelengths_raw
+
         if spectrum and self._spectrum:
 
             line = axis.get_lines()[0]
 
-            if self._x_axis_idx is not None:
-                idx = self._x_axis_idx
-            else:
-                idx = self._spectrum.wavelengths_raw
             spd = self._spectrum.spd_raw
             line.set_data(idx, spd)
             axis.set_ylabel(self._spectrum.y_axis)
@@ -294,10 +314,35 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
             axis.set_ylim(bottom=0, top=self._y_axis_max.add(max(spd))*ymargin)
 
+            # FIXME: this is SUPER wasteful, and doesn't need to happen ~always (only on change)
             xmargin = 5
             axis.set_xlim(self._x_axis_idx[0] - xmargin, self._x_axis_idx[-1] + 1 + xmargin)
             if 'xaxis_zoom' in self._ui_elements:
                 self._ui_elements.xaxis_zoom.update_limits(xlim=axis.get_xlim())
+
+        if (self._spectrum
+            and (((spectrum or references) and self._capture_state != CaptureState.RUN)
+                 or peaks)):
+            # Update peaks (because they depend on spectrum and refs)
+            constants = self._spectrometer.constants()
+            first_pixel = constants.first_pixel if 'first_pixel' in constants else 0
+
+            def peak_color(x):
+                if x+first_pixel in self._pixels:
+                    return 'lime'
+                elif False: # FIXME: check if close to ref
+                    return 'yellow'
+                else:
+                    return 'gray'
+
+            # in case I want all the pixels visible all the time:
+            #peak_i = sorted(set(self._peaks + [p-first_pixel for p in self._pixels.keys()]))
+            peak_i = self._peaks
+            peak_x = [idx[i] for i in peak_i]
+            peak_y = [self._spectrum.spd_raw[i] for i in peak_i]
+            peak_c = [peak_color(i) for i in peak_i]
+            self._ui_elements.plot_peaks.set_offsets(np.c_[peak_x, peak_y])
+            self._ui_elements.plot_peaks.set_facecolor(peak_c)
 
         if references:
             ax2 = fig.axes[1]
@@ -317,6 +362,23 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
         canvas.draw_idle()
 
+    def _clear_peaks(self):
+        LOGGER.debug('go')
+        self._peaks = []
+        self._update_plot(peaks=True)
+
+    def _detect_peaks(self):
+        if self._spectrum is None:
+            return
+
+        if self._peak_detector is None:
+            LOGGER.warning("bug: no peak detector")
+            return
+
+        self._peaks = list(self._peak_detector(self._spectrum.spd_raw))
+        LOGGER.debug("Detected %d peaks", len(self._peaks))
+        self._update_plot(peaks=True)
+
     def _data_refresh_loop(self):
         # WARNING: Does NOT run in main thread; do not run any Tkinter code here!
         while True:
@@ -334,6 +396,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
                         self._push_event(lambda: self._process_spectrum(value))
                         if self._capture_state != CaptureState.RUN:
                             self._push_event(lambda: self._update_status('Capture stopped.'))
+                            self._push_event(self._detect_peaks)
                         return self._capture_state == CaptureState.RUN
                     self._push_event(lambda: self._update_status('Capture running...'))
                     self._spectrometer.stream_data(handle_spectrum)
@@ -356,6 +419,20 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
         self._spectrometer.property_set('max_fps', 0)  # FIXME: maybe configurable?
 
+    def _apply_peak_detect_ctrl(self, data):
+        """Applies peak detection control data (configures peak finder)"""
+        LOGGER.debug(data)
+
+        def peak_detector(where):
+            prom_percent = (data['prominence'] / 100) * np.max(where)
+            peaks, _ = find_peaks(where, prominence=prom_percent, distance=data['distance'],
+                                  wlen=data['window_length'])
+            return peaks
+
+        self._peak_detector = peak_detector
+
+        self._detect_peaks()
+
     def _setup_right_frame(self, parent):
         right_frame = ttk.Frame(parent)
 
@@ -368,7 +445,8 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
             'sampling_control': SamplingControl(controls_frame,
                                                 on_change=self._apply_sampling_ctrl),
             'reference_match_control': ReferenceMatchControl(controls_frame), # FIXME: action
-            'peak_detection_control': PeakDetectionControl(controls_frame), # FIXME: action
+            'peak_detection_control': PeakDetectionControl(controls_frame,
+                                                           on_change=self._apply_peak_detect_ctrl),
             'x_axis_control': XAxisControl(controls_frame, on_change=self._apply_x_axis_ctrl),
         }
 
@@ -464,6 +542,8 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         axis.set_title('Spectral Data')
         axis.grid(True, alpha=0.3)
         axis.set_aspect('auto')
+
+        self._ui_elements.plot_peaks = axis.scatter([], [], c='gray', marker='o', label='Peaks', zorder=3)
 
         ax2 = axis.twinx()
         ax2.set_visible(True)
