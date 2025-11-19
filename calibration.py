@@ -303,6 +303,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         fig = canvas.figure
         axis = fig.axes[0]
 
+        xmargin = 5
         ymargin = 1.02
 
         if self._x_axis_idx is not None:
@@ -322,13 +323,13 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
             axis.set_ylim(bottom=0, top=self._y_axis_max.add(max(spd))*ymargin)
 
             # Set x axis limits (if need be)
-            xmargin = 5
             x_axis_limits = [self._x_axis_idx[0] - xmargin, self._x_axis_idx[-1] + 1 + xmargin]
             if self._x_axis_limits is None or self._x_axis_limits != x_axis_limits:
                 axis.set_xlim(*x_axis_limits)
                 if 'xaxis_zoom' in self._ui_elements:
                     self._ui_elements.xaxis_zoom.update_limits(xlim=x_axis_limits)
                 self._x_axis_limits = x_axis_limits
+                references = True  # redraw references on xlimit change
 
         if (self._spectrum
             and (((spectrum or references) and self._capture_state != CaptureState.RUN)
@@ -358,18 +359,23 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
             ax2 = fig.axes[1]
 
             # Remove old
-            for rect in ax2.patches:
-                if isinstance(rect, patches.Rectangle) and rect.get_y() == 0:
-                    rect.remove()
+            for line in ax2.lines:
+                line.remove()
 
             # Add new, if needed
             if len(self._strong_lines):
+                ymax = 1000 * ymargin
                 xlim = axis.get_xlim()
-                ref_data = self._strong_lines.plot_data()
+
+                if self._x_axis_limits is None:
+                    valid_x_range = [xlim[0] - xmargin, xlim[1] + xmargin + 1]
+                else:
+                    valid_x_range = [self._x_axis_limits[0] - xmargin,
+                                     self._x_axis_limits[1] + xmargin + 1]
+
+                for x_coord, y_coord in zip(*self._strong_lines.plot_data(*valid_x_range)):
+                    ax2.axvline(x=x_coord, color='gray', ymax=y_coord/ymax, linewidth=1, zorder=0)
                 axis.set_xlim(*xlim)
-                ax2.bar(*ref_data, color='gray', width=0.1)
-                ax2.set_ylim(bottom=0, top=1000*ymargin)
-                # FIXME: can we switch this to axvlines? might show up better on the graph
 
         canvas.draw_idle()
 
