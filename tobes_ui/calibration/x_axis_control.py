@@ -29,8 +29,6 @@ class XAxisControl(CalibrationControlPanel):  # pylint: disable=too-many-ancesto
 
         fixed_widgets_frame = ttk.Frame(self)
         # FIXME: this might need floats, not ints
-        # FIXME: with min=200 it was hard to edit to something reasonable.
-        #        (ClampedSpinbox might need editing... to only reject on focus out/enter)
         self._fixed_min_spinbox = ClampedSpinbox(fixed_widgets_frame, min_val=1, max_val=2500,
                                                  initial=380, on_change=self._change_cb)
         self._fixed_max_spinbox = ClampedSpinbox(fixed_widgets_frame, min_val=1, max_val=2500,

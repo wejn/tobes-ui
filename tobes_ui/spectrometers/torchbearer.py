@@ -12,7 +12,6 @@ from serial import Serial
 from tobes_ui.logger import SUB_LOGGER
 from tobes_ui.spectrometer import (BasicInfo, ExposureMode, ExposureStatus, Spectrometer,
                                    SpectrometerProperties, Spectrum)
-from tobes_ui.properties import BoolProperty, EnumProperty, FloatProperty, IntProperty
 
 LOGGER = SUB_LOGGER('torchbearer')
 
@@ -71,7 +70,7 @@ class MessageType(Enum):
         return str(self.name).lower()
 
 
-class OceanOpticsProperties(SpectrometerProperties):
+class TorchBearerProperties(SpectrometerProperties):
     """Properties of the TorchBearer spectrometer (tweakable)"""
     # None at the moment
 
@@ -415,4 +414,3 @@ class TorchBearerSpectrometer(Spectrometer, registered_types = ['tb', 'torchbear
     def property_set(self, name, value):
         """Set property of given name to value"""
         self._properties.set(name, value)
-

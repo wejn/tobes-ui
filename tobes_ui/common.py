@@ -10,7 +10,7 @@ from tobes_ui.spectrometer import Spectrum
 
 
 
-class AttrDict(dict):
+class AttrDict(dict):  # pylint: disable=too-many-instance-attributes
     """Simple attribute dict, to turn a['name'] into a.name."""
 
     def __init__(self, *args, **kwargs):
@@ -29,9 +29,9 @@ class AttrDict(dict):
     def update(self, *args, **kwargs):
         """Ensure all nested dicts are converted to AttrDicts recursively."""
         other = dict(*args, **kwargs)
-        for k, v in other.items():
+        for k, v in other.items():  # pylint: disable=invalid-name
             if isinstance(v, dict) and not isinstance(v, AttrDict):
-                v = AttrDict(v)
+                v = AttrDict(v)  # pylint: disable=invalid-name
             super().__setitem__(k, v)
 
 

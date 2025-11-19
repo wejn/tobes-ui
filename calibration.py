@@ -16,7 +16,6 @@ from numpy.random import rand # FIXME: when initial pixels go, this goes too
 import matplotlib
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
-from matplotlib import patches
 from scipy.signal import find_peaks
 
 from tobes_ui.calibration.common import ToolTip
@@ -78,8 +77,8 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         self._setup_ui()
 
         # debug info
-        w = self._root.winfo_reqwidth()
-        h = self._root.winfo_reqheight()
+        w = self._root.winfo_reqwidth()  # pylint: disable=invalid-name
+        h = self._root.winfo_reqheight()  # pylint: disable=invalid-name
         print(f'window: {w}x{h}')
         screen_width = root.winfo_screenwidth()
         screen_height = root.winfo_screenheight()
@@ -239,12 +238,10 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
     def _update_pixels_table(self):
         """Updates pixels table with current data."""
         tbl = self._ui_elements.pixels_table
-        constants = self._spectrometer.constants()
-        first_pixel = constants.first_pixel if 'first_pixel' in constants else 0
         tbl.delete(*tbl.get_children())
         for pixel, new_wl in self._pixels.items():
-            wl = np.polyval(self._initial_polyfit, pixel)
-            tbl.insert('', 'end', values=(str(pixel), f'{wl:.4f}', f'{new_wl:.4f}'))
+            cur_wl = np.polyval(self._initial_polyfit, pixel)
+            tbl.insert('', 'end', values=(str(pixel), f'{cur_wl:.4f}', f'{new_wl:.4f}'))
 
     def _apply_strong_line_ctrl(self, data):
         LOGGER.debug([k for k, _v in data.items()])
@@ -371,19 +368,18 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
                 line.remove()
 
             # Add new, if needed
-            if len(self._strong_lines):
-                ymax = 1000 * ymargin
-                xlim = axis.get_xlim()
+            ymax = 1000 * ymargin
+            xlim = axis.get_xlim()
 
-                if self._x_axis_limits is None:
-                    valid_x_range = [xlim[0] - xmargin, xlim[1] + xmargin + 1]
-                else:
-                    valid_x_range = [self._x_axis_limits[0] - xmargin,
-                                     self._x_axis_limits[1] + xmargin + 1]
+            if self._x_axis_limits is None:
+                valid_x_range = [xlim[0] - xmargin, xlim[1] + xmargin + 1]
+            else:
+                valid_x_range = [self._x_axis_limits[0] - xmargin,
+                                 self._x_axis_limits[1] + xmargin + 1]
 
-                for x_coord, y_coord in zip(*self._strong_lines.plot_data(*valid_x_range)):
-                    ax2.axvline(x=x_coord, color='gray', ymax=y_coord/ymax, linewidth=1, zorder=0)
-                axis.set_xlim(*xlim)
+            for x_coord, y_coord in zip(*self._strong_lines.plot_data(*valid_x_range)):
+                ax2.axvline(x=x_coord, color='gray', ymax=y_coord/ymax, linewidth=1, zorder=0)
+            axis.set_xlim(*xlim)
 
         canvas.draw_idle()
 
@@ -576,7 +572,8 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         axis.grid(True, alpha=0.3)
         axis.set_aspect('auto')
 
-        self._ui_elements.plot_peaks = axis.scatter([], [], c='gray', marker='o', label='Peaks', zorder=3)
+        self._ui_elements.plot_peaks = axis.scatter([], [], c='gray',
+                                                    marker='o', label='Peaks', zorder=3)
 
         ax2 = axis.twinx()
         ax2.set_visible(True)

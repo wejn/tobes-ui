@@ -380,7 +380,7 @@ class ClearTool(ToolBase):
         script_dir = os.path.dirname(os.path.abspath(__file__))
         self.image = os.path.join(script_dir, "../icons/clear")
         super().__init__(*args, **kwargs)
-    
+
     def trigger(self, *_args, **_kwargs):
         self.plot.remove_all_data()
 

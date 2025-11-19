@@ -113,7 +113,7 @@ class ClampedSpinbox(ttk.Frame):  # pylint: disable=too-many-ancestors
             validate="key",
             validatecommand=(self.register(self._validate), "%P"),
             width=max(len(str(self.min_val)), len(str(self.max_val))),
-            command=lambda: self._apply_value()
+            command=self._apply_value
         )
         self._spinbox.pack(side="right", padx=(5, 0))
 
@@ -122,6 +122,7 @@ class ClampedSpinbox(ttk.Frame):  # pylint: disable=too-many-ancestors
 
     @property
     def min_val(self):
+        """Minimal value of the spinbox."""
         return self._min_val() if callable(self._min_val) else self._min_val
 
     @min_val.setter
@@ -130,6 +131,7 @@ class ClampedSpinbox(ttk.Frame):  # pylint: disable=too-many-ancestors
 
     @property
     def max_val(self):
+        """Maximal value of the spinbox."""
         return self._max_val() if callable(self._max_val) else self._max_val
 
     @max_val.setter
@@ -148,7 +150,7 @@ class ClampedSpinbox(ttk.Frame):  # pylint: disable=too-many-ancestors
 
     def _validate(self, new_value):
         """Per-keystroke validation - allow any numeric input."""
-        if new_value == "" or new_value == "-":
+        if new_value in ("", "-"):
             return True
         if self._allow_float:
             try:
@@ -196,8 +198,7 @@ class ClampedSpinbox(ttk.Frame):  # pylint: disable=too-many-ancestors
         try:
             if self._allow_float:
                 return float(self._value_var.get())
-            else:
-                return int(self._value_var.get())
+            return int(self._value_var.get())
         except ValueError:
             return float(self.min_val) if self._allow_float else self.min_val
 
