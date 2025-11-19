@@ -73,6 +73,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
                 for k in sorted((rand(3) * 2028 + 20).astype(int))} # FIXME: temp stopgap
 
         self._x_axis_limits = None  # current x axis limits (min, max)
+        self._ref_match_delta = 3  # reference match delta (nm)
 
         self._setup_ui()
 
@@ -338,13 +339,20 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
             constants = self._spectrometer.constants()
             first_pixel = constants.first_pixel if 'first_pixel' in constants else 0
 
-            def peak_color(x):
-                if x+first_pixel in self._pixels:
-                    return 'lime'
-                elif False: # FIXME: check if close to ref
-                    return 'yellow'
-                else:
-                    return 'gray'
+            def peak_color(pxl):
+                """Colors for peaks, from https://xkcd.com/color/rgb/."""
+                if pxl+first_pixel in self._pixels:
+                    return '#89fe05'  # pixel added to calibration (lime green)
+
+                refs = self._strong_lines.find_in_range(idx[pxl] - self._ref_match_delta,
+                                                        idx[pxl] + self._ref_match_delta)
+                match len(refs):
+                    case 0:
+                        return '#929591'  # no matches (grey)
+                    case 1:
+                        return '#fec615'  # unique match (golden yellow)
+                    case _:
+                        return '#d9544d'  # more than 1 match (pale red)
 
             # in case I want all the pixels visible all the time:
             #peak_i = sorted(set(self._peaks + [p-first_pixel for p in self._pixels.keys()]))
@@ -451,6 +459,12 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         if self._capture_state != CaptureState.RUN:
             self._detect_peaks()
 
+    def _apply_refmatch_ctrl(self, data):
+        """Applies reference match control data"""
+        LOGGER.debug(data)
+        self._ref_match_delta = data['delta']
+        self._update_plot(peaks=True)
+
     def _setup_right_frame(self, parent):
         right_frame = ttk.Frame(parent)
 
@@ -462,7 +476,8 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
                                                       on_change=self._apply_integration_ctrl),
             'sampling_control': SamplingControl(controls_frame,
                                                 on_change=self._apply_sampling_ctrl),
-            'reference_match_control': ReferenceMatchControl(controls_frame), # FIXME: action
+            'reference_match_control': ReferenceMatchControl(controls_frame,
+                                                             on_change=self._apply_refmatch_ctrl),
             'peak_detection_control': PeakDetectionControl(controls_frame,
                                                            on_change=self._apply_peak_detect_ctrl),
             'x_axis_control': XAxisControl(controls_frame, on_change=self._apply_x_axis_ctrl),
