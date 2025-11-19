@@ -58,10 +58,10 @@ class XAxisZoomControl(ttk.Frame):  # pylint: disable=too-many-ancestors
         button_frame = ttk.Frame(self)
         button_frame.pack(side=tk.LEFT, padx=(0, 5))
 
-        self._zoom_in_btn = ttk.Button(button_frame, text="+", width=3, command=self._zoom_in)
+        self._zoom_in_btn = ttk.Button(button_frame, text="+", width=3, command=self.zoom_in)
         self._zoom_in_btn.pack(side=tk.LEFT, padx=2)
 
-        self._zoom_out_btn = ttk.Button(button_frame, text="-", width=3, command=self._zoom_out)
+        self._zoom_out_btn = ttk.Button(button_frame, text="-", width=3, command=self.zoom_out)
         self._zoom_out_btn.pack(side=tk.LEFT, padx=2)
 
         self._scrollbar = ttk.Scale(self, from_=0, to=0, orient=tk.HORIZONTAL,
@@ -69,8 +69,10 @@ class XAxisZoomControl(ttk.Frame):  # pylint: disable=too-many-ancestors
         self._scrollbar.pack(side=tk.LEFT, fill=tk.X, expand=True)
         self._scrollbar.set(0)
 
-    def _zoom_in(self):
-        center = (self._current_xlim[0] + self._current_xlim[1]) / 2
+    def zoom_in(self, center=None):
+        """Zooms in (increase magnification)."""
+        if center is None:
+            center = (self._current_xlim[0] + self._current_xlim[1]) / 2
         width = self._current_xlim[1] - self._current_xlim[0]
         new_width = width / self._zoom_factor
 
@@ -81,8 +83,10 @@ class XAxisZoomControl(ttk.Frame):  # pylint: disable=too-many-ancestors
         self._update_plot()
         self._update_controls_state()
 
-    def _zoom_out(self):
-        center = (self._current_xlim[0] + self._current_xlim[1]) / 2
+    def zoom_out(self, center=None):
+        """Zooms out (decrease magnification)."""
+        if center is None:
+            center = (self._current_xlim[0] + self._current_xlim[1]) / 2
         width = self._current_xlim[1] - self._current_xlim[0]
         new_width = width * self._zoom_factor
 

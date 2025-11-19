@@ -558,6 +558,15 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
         self._update_plot(spectrum=True)
 
+    def _on_plot_scroll(self, event):
+        """Callback on scroll events."""
+        if self._ui_elements.xaxis_zoom is not None:
+            # FIXME: this zooming is terrible. better than nothing, tho.
+            if event.button == 'up':
+                self._ui_elements.xaxis_zoom.zoom_in(center=event.xdata)
+            elif event.button == 'down':
+                self._ui_elements.xaxis_zoom.zoom_out(center=event.xdata)
+
     def _setup_plot(self, parent):
         matplotlib.pyplot.rcParams.update({'figure.autolayout': True})
 
@@ -587,6 +596,8 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         canvas.draw()
 
         fig.tight_layout(pad=0.1)
+
+        canvas.mpl_connect('scroll_event', self._on_plot_scroll)
 
         self._ui_elements.plot_canvas = canvas
 
