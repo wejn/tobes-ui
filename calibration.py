@@ -24,6 +24,7 @@ from tobes_ui.calibration.integration_control import IntegrationControl
 from tobes_ui.calibration.sampling_control import SamplingControl
 from tobes_ui.calibration.peak_detection_control import PeakDetectionControl
 from tobes_ui.calibration.reference_match_control import ReferenceMatchControl
+from tobes_ui.calibration.wavelength_editor import WavelengthEditor
 from tobes_ui.calibration.x_axis_control import XAxisControl
 from tobes_ui.calibration.x_axis_zoom_control import XAxisZoomControl
 from tobes_ui.common import AttrDict, SlidingMax, SpectrumAggregator
@@ -558,6 +559,26 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
         self._update_plot(spectrum=True)
 
+    def _add_pixel(self, pixel, wavelength):
+        """Callback to add a pixel with given wavelength to pixels."""
+        LOGGER.debug("add pixel: %d: %f", pixel, wavelength) # FIXME: implement
+
+    def _on_peak_pick(self, event):
+        """Callback that gets called when a detected peaks gets picked."""
+        if event.guiEvent.num == 1:
+            idx = event.ind[-1]
+            if idx < len(self._peaks):
+                constants = self._spectrometer.constants()
+                first_pixel = constants.first_pixel if 'first_pixel' in constants else 0
+                pixel = self._peaks[idx] + first_pixel
+                cur_wl = np.polyval(self._initial_polyfit, pixel)
+                new_wl = self._pixels.get(pixel, None)
+                refs = self._strong_lines.find_in_range(cur_wl - self._ref_match_delta,
+                                                        cur_wl + self._ref_match_delta)
+                WavelengthEditor(self._root, pixel, cur_wl, new_wl, refs, self._add_pixel)
+            else:
+                LOGGER.warning('peak %d not found (len(_peaks): %d)', idx, len(self._peaks))
+
     def _on_plot_scroll(self, event):
         """Callback on scroll events."""
         if self._ui_elements.xaxis_zoom is not None:
@@ -582,7 +603,8 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         axis.set_aspect('auto')
 
         self._ui_elements.plot_peaks = axis.scatter([], [], c='gray',
-                                                    marker='o', label='Peaks', zorder=3)
+                                                    marker='o', label='Peaks', zorder=3,
+                                                    picker=0)
 
         ax2 = axis.twinx()
         ax2.set_visible(True)
@@ -597,6 +619,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
         fig.tight_layout(pad=0.1)
 
+        canvas.mpl_connect('pick_event', self._on_peak_pick)
         canvas.mpl_connect('scroll_event', self._on_plot_scroll)
 
         self._ui_elements.plot_canvas = canvas
