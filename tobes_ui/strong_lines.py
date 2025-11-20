@@ -43,6 +43,10 @@ class StrongLine:
         """Get humanized flags for raw_flags."""
         return [_FLAG_MAP[f] for f in list(self.raw_flags)]
 
+    def __str__(self):
+        """Convert to readable string"""
+        return f'{self.wavelength} ({self.element} {"I" * self.ionization}, {self.intensity}, {self.raw_flags})'
+
 @dataclass(frozen=True)
 class StrongLines:
     """Represents collection of strong lines for given element."""
