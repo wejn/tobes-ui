@@ -599,11 +599,16 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
             if 'num_pixels' in constants:
                 num_pixels = constants['num_pixels']
             valid_pixels = [first_pixel, num_pixels - 1]
+
+        cur_wl = None
+        if pixel:
+            cur_wl = np.polyval(self._initial_polyfit, pixel)
+
         WavelengthEditor(parent=self._root,
                          pixel=pixel,
                          valid_pixels=valid_pixels,
                          polyfit=self._initial_polyfit,
-                         new_wl=self._pixels.get(pixel, None),
+                         new_wl=self._pixels.get(pixel, cur_wl),
                          reference_lines_lookup=lambda cur_wl: self._strong_lines.find_in_range(
                              cur_wl - self._ref_match_delta,
                              cur_wl + self._ref_match_delta),
