@@ -154,7 +154,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        def _on_delete(event):
+        def _on_delete(_event):
             """Handler for deleting points from the table."""
             if not tree.selection():
                 return
@@ -174,8 +174,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
                 pixel, _wl, _new_wl = tree.item(row_id, 'values')
                 self._add_or_edit_pixel_dialog(int(pixel))
             else:
-                LOGGER.debug('dblclick: no rows -- maybe add one?')
-                # FIXME: Add arbitrary pixel here (when the WavelengthEditor supports that)
+                self._add_or_edit_pixel_dialog(None)
 
         tree.bind('<Double-1>', _on_double_click)
         tree.bind('<Delete>', _on_delete)
@@ -586,13 +585,29 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
         self._update_plot(spectrum=True)
 
-    def _add_or_edit_pixel_dialog(self, pixel):
+    def _add_or_edit_pixel_dialog(self, pixel, locked=True):
         """Triggers wavelength editor dialog for given pixel (already added or not)."""
-        cur_wl = np.polyval(self._initial_polyfit, pixel)
-        new_wl = self._pixels.get(pixel, None)
-        refs = self._strong_lines.find_in_range(cur_wl - self._ref_match_delta,
-                                                cur_wl + self._ref_match_delta)
-        WavelengthEditor(self._root, pixel, cur_wl, new_wl, refs, self._add_pixel)
+        if locked and pixel is not None:
+            valid_pixels = [pixel, pixel]
+        else:
+            first_pixel = 0
+            num_pixels = 1
+
+            constants = self._spectrometer.constants()
+            if 'first_pixel' in constants:
+                first_pixel = constants['first_pixel']
+            if 'num_pixels' in constants:
+                num_pixels = constants['num_pixels']
+            valid_pixels = [first_pixel, num_pixels - 1]
+        WavelengthEditor(parent=self._root,
+                         pixel=pixel,
+                         valid_pixels=valid_pixels,
+                         polyfit=self._initial_polyfit,
+                         new_wl=self._pixels.get(pixel, None),
+                         reference_lines_lookup=lambda cur_wl: self._strong_lines.find_in_range(
+                             cur_wl - self._ref_match_delta,
+                             cur_wl + self._ref_match_delta),
+                         on_change=self._add_pixel)
 
     def _add_pixel(self, pixel, wavelength):
         """Callback to add a pixel with given wavelength to pixels."""

@@ -102,6 +102,7 @@ class ClampedSpinbox(ttk.Frame):  # pylint: disable=too-many-ancestors
         self._value_var = tk.StringVar(value=str(initial if initial is not None else self.min_val))
         self._last_valid = self._value_var.get()
         self._last_emitted = None
+        self._disabled = False
 
         ttk.Label(self, text=label_text).pack(side="left")
 
@@ -137,6 +138,20 @@ class ClampedSpinbox(ttk.Frame):  # pylint: disable=too-many-ancestors
     @max_val.setter
     def max_val(self, val):
         self._max_val = val
+
+    @property
+    def disabled(self):
+        """Is the spinbox disabled?"""
+        return self._disabled
+
+    @disabled.setter
+    def disabled(self, val):
+        if val:
+            self._spinbox.config(state="disabled")
+            self._disabled = True
+        else:
+            self._spinbox.config(state="normal")
+            self._disabled = False
 
     @property
     def on_change(self):
@@ -176,6 +191,8 @@ class ClampedSpinbox(ttk.Frame):  # pylint: disable=too-many-ancestors
             value_str = str(value)
         except (ValueError, TypeError):
             value_str = self._last_valid
+            if value_str is None or value_str == '':
+                value_str = '0'
             value = float(value_str) if self._allow_float else int(value_str)
 
         self._value_var.set(value_str)
