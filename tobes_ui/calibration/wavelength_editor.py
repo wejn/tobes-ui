@@ -71,31 +71,47 @@ class WavelengthEditor(Dialog):
         ref_frame = ttk.LabelFrame(main_frame, text="Nearby Reference Lines", padding=5)
         ref_frame.grid(row=3, column=0, sticky="nsew", pady=10)
 
-        list_frame = ttk.Frame(ref_frame)
-        list_frame.grid(row=0, column=0, sticky="nsew")
-        scrollbar = ttk.Scrollbar(list_frame, orient="vertical")
-        self._listbox = tk.Listbox(list_frame, yscrollcommand=scrollbar.set, height=3)
-        scrollbar.config(command=self._listbox.yview)
+        tree_frame = ttk.Frame(ref_frame)
+        tree_frame.grid(row=0, column=0, sticky="nsew")
+        scrollbar = ttk.Scrollbar(tree_frame, orient="vertical")
+
+        columns = ("wavelength", "element", "intensity", "flags")
+        self._treeview = ttk.Treeview(tree_frame, columns=columns, yscrollcommand=scrollbar.set,
+                                      show="", height=5)
+
+        self._treeview.column("wavelength", width="100", anchor="e")
+        self._treeview.column("element", width="30", anchor="w")
+        self._treeview.column("intensity", width="50", anchor="e")
+        self._treeview.column("flags", width="25", anchor="w")
+
+        scrollbar.config(command=self._treeview.yview)
         scrollbar.grid(row=0, column=1, sticky="ns")
-        self._listbox.grid(row=0, column=0, sticky="nsew")
+        self._treeview.grid(row=0, column=0, sticky="nsew")
         ref_frame.grid_columnconfigure(0, weight=1)
-        list_frame.grid_columnconfigure(0, weight=1)
-        list_frame.grid_rowconfigure(0, weight=1)
+        tree_frame.grid_columnconfigure(0, weight=1)
+        tree_frame.grid_rowconfigure(0, weight=1)
 
         def update_references():
-            self._listbox.delete(0, tk.END)
+            self._treeview.delete(*self._treeview.get_children())
             self._reference_lines.clear()
 
             if self._pixel:
                 wavelength = np.polyval(self._polyfit, self._pixel)
                 for line in self._reference_lines_lookup(wavelength):
                     self._reference_lines.append(line)
-                    # FIXME: Convert the listbox to Treeview, it will look nicer
-                    self._listbox.insert("end", str(line))
+                    self._treeview.insert(
+                            '',
+                            "end",
+                            values=[
+                                f"{line.wavelength:.6f}",
+                                f"{line.element} {'I' * line.ionization}",
+                                str(line.intensity),
+                                str(line.raw_flags),
+                                ])
         update_references()
 
-        self._listbox.bind("<<ListboxSelect>>", self._on_list_select)
-        self._listbox.bind("<Double-1>", self.ok)
+        self._treeview.bind("<<TreeviewSelect>>", self._on_treeview_select)
+        self._treeview.bind("<Double-1>", self.ok)
 
         master.grid_rowconfigure(0, weight=1)
         master.grid_rowconfigure(1, weight=1)
@@ -114,14 +130,17 @@ class WavelengthEditor(Dialog):
         except ValueError:
             return False
 
-    def _on_list_select(self, _event):
-        """Handle selection from the reference lines listbox."""
-        selection_indices = self._listbox.curselection()
-        if not selection_indices:
+    def _on_treeview_select(self, _event):
+        """Handle selection from the reference lines treeview."""
+        selection = self._treeview.selection()
+        if not selection:
             return
-        if not 0 <= selection_indices[0] < len(self._reference_lines):
+
+        idx = self._treeview.index(selection[0])
+        if not 0 <= idx < len(self._reference_lines):
             return
-        self._new_wl_var.set(self._reference_lines[selection_indices[0]].wavelength)
+
+        self._new_wl_var.set(self._reference_lines[idx].wavelength)
 
     def validate(self):
         """Validate that the pixel and the value are both correct."""
