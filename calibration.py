@@ -267,7 +267,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         # FIXME: recompute polyfit data...
 
     def _apply_strong_line_ctrl(self, data):
-        LOGGER.debug([k for k, _v in data.items()])
+        LOGGER.debug("%s", {k: len(v) for k, v in data.items()})
         self._strong_lines = StrongLinesContainer(data)
         self._update_plot(references=True)
         num = len(self._strong_lines)
