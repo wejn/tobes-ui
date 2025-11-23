@@ -124,10 +124,9 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
             # FIXME: ^^ probably doesn't work as I would expect...
         paned_window.bind('<Configure>', _pw_on_resize)
 
-    def _setup_left_frame(self, parent):
-        left_frame = ttk.Frame(parent)
-
-        table_frame = ttk.Frame(left_frame)
+    def _setup_pixels_table(self, parent):
+        """Sets up the entire "Pixels" table (Treeview)."""
+        table_frame = ttk.Frame(parent)
         table_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         poly_label = ttk.Label(table_frame, text="Pixels")
@@ -144,9 +143,9 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         tree.heading('new_wl', text='new_wl')
 
         # Configure column widths
-        tree.column('pixel', width=60, anchor='e')
-        tree.column('wl', width=80, anchor='e')
-        tree.column('new_wl', width=80, anchor='e')
+        tree.column('pixel', width=50, anchor='e')
+        tree.column('wl', width=85, anchor='e')
+        tree.column('new_wl', width=85, anchor='e')
 
         # Scrollbar for table
         scrollbar = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=tree.yview)
@@ -155,13 +154,40 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        self._ui_elements.pixels_table = tree
-        self._update_pixels_table()
+        def _on_delete(event):
+            """Handler for deleting points from the table."""
+            if not tree.selection():
+                return
 
-        # Bind events # FIXME
-        #tree.bind('<Double-1>', self.on_table_double_click)
-        #tree.bind('<Delete>', self.on_table_delete)
-        #tree.bind('<KeyPress-Delete>', self.on_table_delete)
+            for item_id in tree.selection():
+                pixel, _wl, _new_wl = tree.item(item_id, 'values')
+                self._pixels.pop(int(pixel), None)
+
+            self._update_pixels_table()
+            self._update_plot(peaks=True)
+            # FIXME: Recompute new polyfit...
+
+        def _on_double_click(event):
+            """Handler for editing points from the table (or adding arbitrary new ones)."""
+            row_id = tree.identify_row(event.y)
+            if row_id:
+                pixel, _wl, _new_wl = tree.item(row_id, 'values')
+                self._add_or_edit_pixel_dialog(int(pixel))
+            else:
+                LOGGER.debug('dblclick: no rows -- maybe add one?')
+                # FIXME: Add arbitrary pixel here (when the WavelengthEditor supports that)
+
+        tree.bind('<Double-1>', _on_double_click)
+        tree.bind('<Delete>', _on_delete)
+        tree.bind('<KeyPress-Delete>', _on_delete)
+
+        return tree
+
+    def _setup_left_frame(self, parent):
+        left_frame = ttk.Frame(parent)
+
+        self._ui_elements.pixels_table = self._setup_pixels_table(left_frame)
+        self._update_pixels_table()
 
         # Polynomial fit
         poly_frame = ttk.Frame(left_frame, height=200)
@@ -240,9 +266,10 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         """Updates pixels table with current data."""
         tbl = self._ui_elements.pixels_table
         tbl.delete(*tbl.get_children())
-        for pixel, new_wl in self._pixels.items():
+        for pixel, new_wl in sorted(self._pixels.items()):
             cur_wl = np.polyval(self._initial_polyfit, pixel)
-            tbl.insert('', 'end', values=(str(pixel), f'{cur_wl:.4f}', f'{new_wl:.4f}'))
+            tbl.insert('', 'end', values=(str(pixel), f'{cur_wl:.6f}', f'{new_wl:.6f}'))
+        # FIXME: recompute polyfit data...
 
     def _apply_strong_line_ctrl(self, data):
         LOGGER.debug([k for k, _v in data.items()])
@@ -559,9 +586,21 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
         self._update_plot(spectrum=True)
 
+    def _add_or_edit_pixel_dialog(self, pixel):
+        """Triggers wavelength editor dialog for given pixel (already added or not)."""
+        cur_wl = np.polyval(self._initial_polyfit, pixel)
+        new_wl = self._pixels.get(pixel, None)
+        refs = self._strong_lines.find_in_range(cur_wl - self._ref_match_delta,
+                                                cur_wl + self._ref_match_delta)
+        WavelengthEditor(self._root, pixel, cur_wl, new_wl, refs, self._add_pixel)
+
     def _add_pixel(self, pixel, wavelength):
         """Callback to add a pixel with given wavelength to pixels."""
-        LOGGER.debug("add pixel: %d: %f", pixel, wavelength) # FIXME: implement
+        LOGGER.debug("add pixel: %d: %f", pixel, wavelength)
+        self._pixels[pixel] = wavelength
+        self._update_pixels_table()
+        self._update_plot(peaks=True)
+        # FIXME: Recompute new polyfit...
 
     def _on_peak_pick(self, event):
         """Callback that gets called when a detected peaks gets picked."""
@@ -571,11 +610,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
                 constants = self._spectrometer.constants()
                 first_pixel = constants.first_pixel if 'first_pixel' in constants else 0
                 pixel = self._peaks[idx] + first_pixel
-                cur_wl = np.polyval(self._initial_polyfit, pixel)
-                new_wl = self._pixels.get(pixel, None)
-                refs = self._strong_lines.find_in_range(cur_wl - self._ref_match_delta,
-                                                        cur_wl + self._ref_match_delta)
-                WavelengthEditor(self._root, pixel, cur_wl, new_wl, refs, self._add_pixel)
+                self._add_or_edit_pixel_dialog(pixel)
             else:
                 LOGGER.warning('peak %d not found (len(_peaks): %d)', idx, len(self._peaks))
 
