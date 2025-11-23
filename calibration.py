@@ -12,7 +12,6 @@ from tkinter import ttk, messagebox
 
 
 import numpy as np
-from numpy.random import rand # FIXME: when initial pixels go, this goes too
 import matplotlib
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
@@ -68,9 +67,6 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         self._peak_detector = None  # callable to detect peaks in spectrum data
         self._peaks = []  # list of peaks detected, indexed against spd_raw, not phys pixels
         self._pixels = {} # dict of pixels with new wl assigned to them
-        self._pixels = {
-                k: np.polyval(self._initial_polyfit, k)
-                for k in sorted((rand(3) * 2028 + 20).astype(int))} # FIXME: temp stopgap
 
         self._x_axis_limits = None  # current x axis limits (min, max)
         self._ref_match_delta = 3  # reference match delta (nm)
