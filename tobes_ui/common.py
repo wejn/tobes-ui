@@ -89,8 +89,10 @@ class SpectrumAggregator:
             'spd': deque(),
             'spd_raw': deque(),
         }
-        self.func = func  # invariants by setter
-        self.window_size = window_size  # invariants by setter
+        self._running_sums = {}
+        self._max_deques = {}
+        self.func = func
+        self.window_size = window_size
 
     @property
     def window_size(self) -> int:
@@ -106,6 +108,8 @@ class SpectrumAggregator:
         for buffer in self._buffers.values():
             while len(buffer) > value:
                 buffer.popleft()
+        self._rebuild_running_sums()
+        self._max_deques.clear()
 
     @property
     def func(self) -> str:
@@ -118,41 +122,104 @@ class SpectrumAggregator:
         if value not in ("avg", "max"):
             raise ValueError("func must be 'avg' or 'max'")
         self._op = value
+        if value == "avg":
+            self._rebuild_running_sums()
+        else:
+            self._max_deques.clear()
 
     def clear(self):
         """Clear all buffers"""
         for _field_name, buffer in self._buffers.items():
             buffer.clear()
+        self._running_sums.clear()
+        self._max_deques.clear()
+
+    def _rebuild_running_sums(self):
+        """Rebuild running sums from current buffer state"""
+        if self._op != "avg":
+            return
+
+        self._running_sums.clear()
+        for field_name, buffer in self._buffers.items():
+            if len(buffer) > 0:
+                stacked = np.stack(list(buffer), axis=0)
+                self._running_sums[field_name] = np.sum(stacked, axis=0)
 
     def add(self, instance: Spectrum) -> Spectrum:
         """Add value (instance of spectrum) and return aggregated"""
         for field_name, buffer in self._buffers.items():
             value = getattr(instance, field_name)
             if isinstance(value, dict):
-                buffer.append(list(value.values()))
+                new_array = np.array(list(value.values()))
             else:
-                buffer.append(value.copy())
-            while len(buffer) > self._window_size:
-                buffer.popleft()
+                new_array = np.array(value)
+
+            if self._op == "avg":
+                if field_name not in self._running_sums:
+                    self._running_sums[field_name] = np.zeros_like(new_array, dtype=np.float64)
+
+                if len(buffer) >= self._window_size:
+                    old_array = buffer.popleft()
+                    self._running_sums[field_name] -= old_array
+
+                buffer.append(new_array)
+                self._running_sums[field_name] += new_array
+
+            else:  # max
+                if field_name not in self._max_deques:
+                    self._max_deques[field_name] = [deque() for _ in range(len(new_array))]
+                    for arr in buffer:
+                        max_deques = self._max_deques[field_name]
+                        for i, val in enumerate(arr):
+                            while max_deques[i] and max_deques[i][-1] < val:
+                                max_deques[i].pop()
+                            max_deques[i].append(val)
+
+                if len(buffer) >= self._window_size:
+                    oldest_array = buffer.popleft()
+                    max_deques = self._max_deques[field_name]
+                    for i, val in enumerate(oldest_array):
+                        if max_deques[i] and max_deques[i][0] == val:
+                            max_deques[i].popleft()
+
+                buffer.append(new_array)
+
+                max_deques = self._max_deques[field_name]
+                for i, val in enumerate(new_array):
+                    while max_deques[i] and max_deques[i][-1] < val:
+                        max_deques[i].pop()
+                    max_deques[i].append(val)
 
         return self._compute_aggregate(instance)
 
+    def _agg_op(self, field_name):
+        buffer = self._buffers[field_name]
+        buf_len = len(buffer)
 
-    def _agg_op(self, data):
-        stacked = np.stack(data, axis=0)
+        if buf_len == 0:
+            return None
 
         if self._op == "avg":
-            return list(np.mean(stacked, axis=0))
+            return list(self._running_sums[field_name] / buf_len)
+
         # max
-        return list(np.max(stacked, axis=0))
+        if field_name not in self._max_deques:
+            return None
+        max_deques = self._max_deques[field_name]
+        return [dq[0] if dq else float('-inf') for dq in max_deques]
 
     def _compute_aggregate(self, template: Any) -> Any:
         if not template.y_axis or template.y_axis == 'counts':
             template.y_axis = "Counts"
 
         if self.window_size > 1:
-            template.spd_raw = self._agg_op(self._buffers['spd_raw'])
-            template.spd = dict(zip(template.spd.keys(), self._agg_op(self._buffers['spd'])))
+            spd_raw_agg = self._agg_op('spd_raw')
+            spd_agg = self._agg_op('spd')
+
+            if spd_raw_agg is not None:
+                template.spd_raw = spd_raw_agg
+            if spd_agg is not None:
+                template.spd = dict(zip(template.spd.keys(), spd_agg))
 
             buf_len = len(self._buffers['spd'])
             if buf_len < self.window_size:

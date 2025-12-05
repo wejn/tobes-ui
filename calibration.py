@@ -374,6 +374,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         """Processes captured spectrum"""
         if 'integration_control' in self._ui_elements:
             self._ui_elements.integration_control.integration_time = spectrum.time
+        spectrum.spd = {1: 1}  # Optimization to save some time, because we don't use `spd`
         self._spectrum = self._spectrum_agg.add(spectrum)
         self._update_plot(spectrum=True)
 
