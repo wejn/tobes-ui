@@ -71,7 +71,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         self._calibration_points = {} # dict of pixels with new wl assigned to them
 
         self._x_axis_limits = None  # current x axis limits (min, max)
-        self._ref_match_delta = 3  # reference match delta (nm)
+        self._ref_match_delta = [3, 3]  # reference match delta (minus_nm, plus_nm)
 
         self._setup_ui()
 
@@ -427,8 +427,8 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
                 if pxl+first_pixel in self._calibration_points:
                     return '#89fe05'  # pixel added to calibration (lime green)
 
-                refs = self._strong_lines.find_in_range(idx[pxl] - self._ref_match_delta,
-                                                        idx[pxl] + self._ref_match_delta)
+                refs = self._strong_lines.find_in_range(idx[pxl] - self._ref_match_delta[0],
+                                                        idx[pxl] + self._ref_match_delta[1])
                 match len(refs):
                     case 0:
                         return '#929591'  # no matches (grey)
@@ -542,7 +542,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
     def _apply_refmatch_ctrl(self, data):
         """Applies reference match control data"""
         LOGGER.debug(data)
-        self._ref_match_delta = data['delta']
+        self._ref_match_delta = [data['delta_minus'], data['delta_plus']]
         self._update_plot(peaks=True)
 
     def _setup_right_frame(self, parent):
@@ -671,8 +671,8 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
                          pixel_to_wl=lambda pxl: self._x_axis_idx[pxl - first_pixel],
                          new_wl=self._calibration_points.get(pixel, cur_wl),
                          reference_lines_lookup=lambda cur_wl: self._strong_lines.find_in_range(
-                             cur_wl - self._ref_match_delta,
-                             cur_wl + self._ref_match_delta),
+                             cur_wl - self._ref_match_delta[0],
+                             cur_wl + self._ref_match_delta[1]),
                          on_change=self._add_calibration_point)
 
     def _add_calibration_point(self, pixel, wavelength):
