@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Calibration for Ocean Optics spectrometer"""
 
+import bisect
 from enum import Enum
 import queue
 import pprint # pylint: disable=unused-import
@@ -760,10 +761,80 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
         canvas.mpl_connect('pick_event', self._on_peak_pick)
         canvas.mpl_connect('scroll_event', self._on_plot_scroll)
+        canvas.mpl_connect('motion_notify_event', self._on_motion)
+
+        self._ui_elements.pixel_annotation = axis.annotate(
+                "",
+                xy=(0,0),
+                xytext=(15,15),
+                textcoords="offset points",
+                bbox=dict(boxstyle="round,pad=0.5", fc="yellow", alpha=0.75),
+                arrowprops=dict(arrowstyle="->", connectionstyle="arc3,rad=0"))
+        self._ui_elements.pixel_annotation.set_visible(False)
+
 
         self._ui_elements.plot_canvas = canvas
 
         return canvas.get_tk_widget()
+
+    def _nearest_x(self, x):
+        """Given X, return the nearest index in self._x_axis_idx and nearest value."""
+        if self._spectrum is None or x is None:
+            return [None, None]
+
+        if self._x_axis_idx is not None:
+            idx = self._x_axis_idx
+        else:
+            idx = self._spectrum.wavelengths_raw
+
+        pos = bisect.bisect_left(idx, x)
+        if pos == 0:
+            return [0, idx[0]]
+        if pos == len(idx):
+            return [len(idx) - 1, idx[-1]]
+
+        before = idx[pos - 1]
+        after = idx[pos]
+
+        if abs(x - before) <= abs(after - x):
+            return [pos - 1, idx[pos - 1]]
+        else:
+            return [pos, idx[pos]]
+
+    def _on_motion(self, event):
+        if self._capture_state != CaptureState.PAUSE or self._spectrum is None:
+            return
+        if 'pixel_annotation' not in self._ui_elements:
+            return
+        if 'plot_canvas' not in self._ui_elements:
+            return
+
+        annot = self._ui_elements.pixel_annotation
+        canvas = self._ui_elements.plot_canvas
+        fig = canvas.figure
+        axis = fig.axes[0]
+
+        LOGGER.debug("onmove: %s (%s)", event.xdata, self._nearest_x(event.xdata))
+        nearest_idx, nearest_x = self._nearest_x(event.xdata)
+
+        if nearest_idx is None:
+            if annot.get_visible():
+                annot.set_visible(False)
+                canvas.draw_idle()
+            return
+
+        constants = self._spectrometer.constants()
+        first_pixel = constants.first_pixel if 'first_pixel' in constants else 0
+        pixel = nearest_x + first_pixel
+
+        if annot.xy[0] != nearest_x:
+            LOGGER.debug('jump to: %s', nearest_x)
+            annot.set_text('here') # FIXME: implement
+            annot.xy = (nearest_x, self._spectrum.spd_raw[nearest_idx])
+            annot.set_visible(True)
+            canvas.draw_idle()
+        else:
+            LOGGER.debug('already at: %s', nearest_x)
 
     def _update_status(self, message):
         if 'status_label' in self._ui_elements:
