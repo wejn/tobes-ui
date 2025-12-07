@@ -562,7 +562,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         right_frame = ttk.Frame(parent)
 
         controls_frame = ttk.Frame(right_frame)
-        controls_frame.pack(fill=tk.X, padx=5, pady=5)
+        controls_frame.grid(row=0, column=0, sticky='nsew', padx=5, pady=5)
 
         controls = {
             'integration_control': IntegrationControl(controls_frame,
@@ -607,12 +607,15 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         controls_frame.bind('<Configure>', _cf_on_resize)
 
         self._ui_elements.plot = self._setup_plot(right_frame)
-        self._ui_elements.plot.pack(fill="both", expand=True)
+        self._ui_elements.plot.grid(row=1, column=0, sticky='nsew')
 
         canvas = self._ui_elements.plot_canvas
         axis = canvas.figure.axes[0]
         self._ui_elements.xaxis_zoom = XAxisZoomControl(right_frame, canvas, axis)
-        self._ui_elements.xaxis_zoom.pack(fill=tk.X, padx=5, pady=5)
+        self._ui_elements.xaxis_zoom.grid(row=2, column=0, sticky='nsew', padx=5, pady=5)
+
+        right_frame.grid_columnconfigure(0, weight=1)
+        right_frame.grid_rowconfigure(1, weight=1)
 
         return right_frame
 
