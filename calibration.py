@@ -15,6 +15,7 @@ import numpy as np
 import matplotlib
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
+import matplotlib.patches as mpatches
 from scipy.signal import find_peaks
 
 from tobes_ui.calibration.common import ToolTip
@@ -378,6 +379,13 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         self._spectrum = self._spectrum_agg.add(spectrum)
         self._update_plot(spectrum=True)
 
+    PEAK_COLORS = AttrDict({
+            'cali': '#89fe05',  # calibration point (lime green)
+            'none': '#929591',  # no matches (grey)
+            'single': '#fec615',  # unique match (golden yellow)
+            'multi': '#d9544d',  # more than 1 match (pale red)
+    })
+
     def _update_plot(self, spectrum=False, references=False, peaks=False):
         """Updates plot based on X-Axis config and data"""
         if 'plot_canvas' not in self._ui_elements:
@@ -425,17 +433,17 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
             def peak_color(pxl):
                 """Colors for peaks, from https://xkcd.com/color/rgb/."""
                 if pxl+first_pixel in self._calibration_points:
-                    return '#89fe05'  # pixel added to calibration (lime green)
+                    return self.PEAK_COLORS.cali
 
                 refs = self._strong_lines.find_in_range(idx[pxl] - self._ref_match_delta[0],
                                                         idx[pxl] + self._ref_match_delta[1])
                 match len(refs):
                     case 0:
-                        return '#929591'  # no matches (grey)
+                        return self.PEAK_COLORS.none
                     case 1:
-                        return '#fec615'  # unique match (golden yellow)
+                        return self.PEAK_COLORS.single
                     case _:
-                        return '#d9544d'  # more than 1 match (pale red)
+                        return self.PEAK_COLORS.multi
 
             peak_i = self._peaks
             peak_x = [idx[i] for i in peak_i]
@@ -443,6 +451,11 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
             peak_c = [peak_color(i) for i in peak_i]
             self._ui_elements.plot_peaks.set_offsets(np.c_[peak_x, peak_y])
             self._ui_elements.plot_peaks.set_facecolor(peak_c)
+
+            if 'plot_legend' in self._ui_elements and len(self._peaks) > 1:
+                self._ui_elements.plot_legend.set_visible(True)
+            else:
+                self._ui_elements.plot_legend.set_visible(False)
 
         if references:
             ax2 = fig.axes[1]
@@ -721,6 +734,13 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         self._ui_elements.plot_peaks = axis.scatter([], [], c='gray',
                                                     marker='o', label='Peaks', zorder=3,
                                                     picker=0)
+
+        cali = mpatches.Patch(color=self.PEAK_COLORS.cali, label='Cali point')
+        none = mpatches.Patch(color=self.PEAK_COLORS.none, label='No ref')
+        single = mpatches.Patch(color=self.PEAK_COLORS.single, label='Single ref')
+        multi = mpatches.Patch(color=self.PEAK_COLORS.multi, label='Multi refs')
+        self._ui_elements.plot_legend = axis.legend(handles=[cali, none, single, multi])
+        self._ui_elements.plot_legend.set_visible(False)
 
         ax2 = axis.twinx()
         ax2.set_visible(True)
