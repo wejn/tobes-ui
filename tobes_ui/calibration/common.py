@@ -92,7 +92,7 @@ class ClampedSpinbox(ttk.Frame):  # pylint: disable=too-many-ancestors
     """Spinbox that holds a number clamped to min_val, max_val range (inclusive)."""
 
     def __init__(self, parent, min_val=0, max_val=10, initial=None, label_text="", on_change=None,
-                 allow_float=False, **kwargs):  # pylint: disable=too-many-arguments
+                 allow_float=False, increment=1, **kwargs):  # pylint: disable=too-many-arguments
         super().__init__(parent, **kwargs)
 
         self._min_val = min_val
@@ -114,7 +114,8 @@ class ClampedSpinbox(ttk.Frame):  # pylint: disable=too-many-ancestors
             validate="key",
             validatecommand=(self.register(self._validate), "%P"),
             width=max(len(str(self.min_val)), len(str(self.max_val))),
-            command=self._apply_value
+            command=self._apply_value,
+            increment=increment
         )
         self._spinbox.pack(side="right", padx=(5, 0))
 

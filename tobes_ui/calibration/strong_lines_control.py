@@ -45,7 +45,7 @@ class StrongLinesControl(CalibrationControlPanel):
         ToolTip(self._po_cbox, "Use only persistent lines of the selected element(s)")
 
         self._intensity = ClampedSpinbox(parent=self, min_val=0, max_val=1000,
-                                         label_text="Min. intensity:")
+                                         label_text="Min. intensity:", increment=50)
         self._intensity.on_change = lambda val: self._change_cb()
         self._intensity.pack()
         ToolTip(self._intensity, "Minimal intensity of the strong lines to select (0..1000)")

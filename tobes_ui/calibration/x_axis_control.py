@@ -30,10 +30,12 @@ class XAxisControl(CalibrationControlPanel):  # pylint: disable=too-many-ancesto
 
         fixed_widgets_frame = ttk.Frame(self)
         # FIXME: this might need floats, not ints
-        self._fixed_min_spinbox = ClampedSpinbox(fixed_widgets_frame, min_val=1, max_val=2500,
-                                                 initial=380, on_change=self._change_cb)
-        self._fixed_max_spinbox = ClampedSpinbox(fixed_widgets_frame, min_val=1, max_val=2500,
-                                                 initial=780, on_change=self._change_cb)
+        self._fixed_min_spinbox = ClampedSpinbox(fixed_widgets_frame, min_val=1.0, max_val=2500.0,
+                                                 initial=380, allow_float=True,
+                                                 on_change=self._change_cb)
+        self._fixed_max_spinbox = ClampedSpinbox(fixed_widgets_frame, min_val=1.0, max_val=2500.0,
+                                                 initial=780, allow_float=True,
+                                                 on_change=self._change_cb)
         self._fixed_min_spinbox.max_val = lambda: min(self._fixed_max_spinbox.get(), 2500) - 10
         self._fixed_max_spinbox.min_val = lambda: max(self._fixed_min_spinbox.get(), 1) + 10
         self._fixed_min_spinbox.pack(side=tk.LEFT)
