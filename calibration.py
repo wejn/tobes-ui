@@ -701,13 +701,20 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
     def _on_peak_pick(self, event):
         """Callback that gets called when a detected peaks gets picked."""
-        if event.guiEvent.num == 1:
+        if event.guiEvent.num in [1, 2, 3]:
             idx = event.ind[-1]
             if idx < len(self._peaks):
                 constants = self._spectrometer.constants()
                 first_pixel = constants.first_pixel if 'first_pixel' in constants else 0
                 pixel = self._peaks[idx] + first_pixel
-                self._add_or_edit_pixel_dialog(pixel)
+                if event.guiEvent.num == 1:
+                    self._add_or_edit_pixel_dialog(pixel)
+                elif event.guiEvent.num in [2, 3]:
+                    if pixel in self._calibration_points:
+                        self._calibration_points.pop(int(pixel), None)
+                        self._update_calibration_points_table()
+                        self._update_plot(peaks=True)
+                        self._update_polyfit_table_and_ui_state()
             else:
                 LOGGER.warning('peak %d not found (len(_peaks): %d)', idx, len(self._peaks))
 
