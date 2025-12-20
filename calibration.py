@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Calibration for Ocean Optics spectrometer"""
 
-import bisect
 from enum import Enum
 import queue
 import pprint # pylint: disable=unused-import
@@ -767,9 +766,9 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
                 "",
                 xy=(0,0),
                 xytext=(15,15),
-                textcoords="offset points",
-                bbox=dict(boxstyle="round,pad=0.5", fc="yellow", alpha=0.75),
-                arrowprops=dict(arrowstyle="->", connectionstyle="arc3,rad=0"))
+                textcoords='offset points',
+                bbox={'boxstyle': 'round,pad=0.5', 'fc': '#cafffb', 'alpha': 0.9},
+                arrowprops={'arrowstyle': '->', 'connectionstyle': 'arc3,rad=0'})
         self._ui_elements.pixel_annotation.set_visible(False)
 
 
@@ -777,29 +776,17 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
         return canvas.get_tk_widget()
 
-    def _nearest_x(self, x):
+    def _nearest_peak(self, x):
         """Given X, return the nearest index in self._x_axis_idx and nearest value."""
-        if self._spectrum is None or x is None:
+        if self._spectrum is None or x is None or self._x_axis_idx is None:
             return [None, None]
 
-        if self._x_axis_idx is not None:
-            idx = self._x_axis_idx
-        else:
-            idx = self._spectrum.wavelengths_raw
+        idx = self._x_axis_idx
+        peak_x = np.array([idx[i] for i in self._peaks])
+        distances = np.sqrt((peak_x - x)**2)
 
-        pos = bisect.bisect_left(idx, x)
-        if pos == 0:
-            return [0, idx[0]]
-        if pos == len(idx):
-            return [len(idx) - 1, idx[-1]]
-
-        before = idx[pos - 1]
-        after = idx[pos]
-
-        if abs(x - before) <= abs(after - x):
-            return [pos - 1, idx[pos - 1]]
-        else:
-            return [pos, idx[pos]]
+        nearest = self._peaks[np.argmin(distances)]
+        return [nearest, idx[nearest]]
 
     def _on_motion(self, event):
         if self._capture_state != CaptureState.PAUSE or self._spectrum is None:
@@ -814,8 +801,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         fig = canvas.figure
         axis = fig.axes[0]
 
-        LOGGER.debug("onmove: %s (%s)", event.xdata, self._nearest_x(event.xdata))
-        nearest_idx, nearest_x = self._nearest_x(event.xdata)
+        nearest_idx, nearest_x = self._nearest_peak(event.xdata)
 
         if nearest_idx is None:
             if annot.get_visible():
@@ -825,16 +811,60 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
         constants = self._spectrometer.constants()
         first_pixel = constants.first_pixel if 'first_pixel' in constants else 0
-        pixel = nearest_x + first_pixel
+        pixel = nearest_idx + first_pixel
+
+        redraw = False
+
+        # Prep text
+        text = f"Pixel: {pixel}\nCur WL: {nearest_x:.6f}"
+        if pixel in self._calibration_points:
+            text += f"\nNew WL: {self._calibration_points[pixel]:.6f}"
+        refs = self._strong_lines.find_in_range(nearest_x - self._ref_match_delta[0],
+                                                nearest_x + self._ref_match_delta[1])
+        if len(refs) > 0:
+            text += f"\n{len(refs)} Refs:"
+            for r in sorted(refs, key=lambda ref: abs(nearest_x - ref.wavelength))[:5]:
+                text += f"\n  ({r.wavelength-nearest_x:+.2f}) {r}"
+            if len(refs) > 5:
+                text += "\n  (...)"
+
+        if annot.get_text() != text:
+            annot.set_text(text)
+            redraw = True
+            annot.set_visible(True)
 
         if annot.xy[0] != nearest_x:
-            LOGGER.debug('jump to: %s', nearest_x)
-            annot.set_text('here') # FIXME: implement
-            annot.xy = (nearest_x, self._spectrum.spd_raw[nearest_idx])
+            annot.set(position=(0, 0))
+
+            nearest_y = self._spectrum.spd_raw[nearest_idx]
+            annot.xy = (nearest_x, nearest_y)
+
+            xlim = axis.get_xlim()
+            ylim = axis.get_ylim()
+            xrange = xlim[1] - xlim[0]
+            yrange = ylim[1] - ylim[0]
+            xnorm = (nearest_x - xlim[0]) / xrange if xrange != 0 else 0.5
+            ynorm = (nearest_y - ylim[0]) / yrange if yrange != 0 else 0.5
+
+            if hasattr(annot, '_arrow_relpos'):
+                # XXX: I wish there were public api for this; there ain't
+                annot._arrow_relpos = (xnorm, ynorm) # pylint: disable=protected-access
+
+            offset_scale = 15
+            bb = annot.get_window_extent()
+            xx = - 2*offset_scale*xnorm + offset_scale - (bb.width / fig.dpi * 72)*xnorm
+            yy = -offset_scale - bb.height / fig.dpi * 72 if ynorm > 0.67 else offset_scale
+
+            annot.set(position=(xx, yy))
+            redraw = True
+
+        if not annot.get_visible():
             annot.set_visible(True)
+            redraw = True
+
+        if redraw:
+            #LOGGER.debug('redraw: %s', nearest_x)
             canvas.draw_idle()
-        else:
-            LOGGER.debug('already at: %s', nearest_x)
 
     def _update_status(self, message):
         if 'status_label' in self._ui_elements:

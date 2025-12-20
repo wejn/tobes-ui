@@ -75,10 +75,11 @@ class WavelengthEditor(Dialog):
         tree_frame.grid(row=0, column=0, sticky="nsew")
         scrollbar = ttk.Scrollbar(tree_frame, orient="vertical")
 
-        columns = ("wavelength", "element", "intensity", "flags")
+        columns = ("Δ", "wavelength", "element", "intensity", "flags")
         self._treeview = ttk.Treeview(tree_frame, columns=columns, yscrollcommand=scrollbar.set,
                                       show="", height=5)
 
+        self._treeview.column("Δ", width="30", anchor="e")
         self._treeview.column("wavelength", width="100", anchor="e")
         self._treeview.column("element", width="30", anchor="w")
         self._treeview.column("intensity", width="50", anchor="e")
@@ -97,12 +98,14 @@ class WavelengthEditor(Dialog):
 
             if self._pixel:
                 wavelength = self._pixel_to_wl(self._pixel)
-                for line in self._reference_lines_lookup(wavelength):
+                for line in sorted(self._reference_lines_lookup(wavelength),
+                                   key=lambda e: abs(e.wavelength-wavelength)):
                     self._reference_lines.append(line)
                     self._treeview.insert(
                             '',
                             "end",
                             values=[
+                                f"{line.wavelength-wavelength:+.2f}",
                                 f"{line.wavelength:.6f}",
                                 f"{line.element} {'I' * line.ionization}",
                                 str(line.intensity),
