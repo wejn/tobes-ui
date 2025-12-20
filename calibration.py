@@ -59,7 +59,8 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         self._initial_polyfit = np.array(initial_polyfit)  # Current pixel -> wavelength polynomial
         self._new_polyfit = None  # New (calibrated) pixel -> wavelength polynomial
         self._new_polyfit_stats = None  # New polyfit stats
-        self._x_axis_idx = None
+        self._x_axis_type = None  # Type of x axis coords (initial, fixed, new)
+        self._x_axis_idx = None  # polyfit for the x axis (index for each pixel)
 
         self._ui_elements = AttrDict()  # all the different UI elements we need access to
 
@@ -320,6 +321,9 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         tbl.set(row_to_id[4], column="current", value=f"{self._new_polyfit_stats[0]:e}")
         # Serr
         tbl.set(row_to_id[5], column="current", value=f"{self._new_polyfit_stats[1]:e}")
+
+        if self._x_axis_type == 'new':
+            self._apply_x_axis_ctrl({'mode': self._x_axis_type})
 
     def _update_calibration_points_table(self):
         """Updates calibration points table with current data."""
@@ -639,25 +643,30 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         else:
             LOGGER.warning("Can't determine number of pixels, zeroing _x_axis_idx.")
             self._x_axis_idx = None
+            self._x_axis_type = 'error'
             return
 
         pixels = np.array(range(first_pixel, num_pixels))
         match data['mode']:
             case 'init':
                 self._x_axis_idx = np.polyval(self._initial_polyfit, pixels)
+                self._x_axis_type = 'init'
             case 'fixed':
                 self._x_axis_idx = np.linspace(data['min'], data['max'], num_pixels-first_pixel)
 
             case 'new':
                 if self._new_polyfit is not None:
                     self._x_axis_idx = np.polyval(self._new_polyfit, pixels)
+                    self._x_axis_type = 'new'
                 else:
                     LOGGER.warning("_new_polyfit is None, using _initial_polyfit (and shouldn't)")
                     self._x_axis_idx = np.polyval(self._initial_polyfit, pixels)
+                    self._x_axis_type = 'init'
 
             case _:
                 LOGGER.warning("Unhandled x-axis mode %s, using pixels", data)
                 self._x_axis_idx = pixels
+                self._x_axis_type = 'pixels'
 
         self._update_plot(spectrum=True)
 
