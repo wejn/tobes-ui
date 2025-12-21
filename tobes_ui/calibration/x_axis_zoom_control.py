@@ -73,11 +73,14 @@ class XAxisZoomControl(ttk.Frame):  # pylint: disable=too-many-ancestors
         """Zooms in (increase magnification)."""
         if center is None:
             center = (self._current_xlim[0] + self._current_xlim[1]) / 2
+
         width = self._current_xlim[1] - self._current_xlim[0]
         new_width = width / self._zoom_factor
 
-        self._current_xlim[0] = center - new_width / 2
-        self._current_xlim[1] = center + new_width / 2
+        ratio = (center - self._current_xlim[0]) / width if width > 0 else 0.5
+
+        self._current_xlim[0] = center - new_width * ratio
+        self._current_xlim[1] = center + new_width * (1 - ratio)
 
         self._clamp_limits()
         self._update_plot()
@@ -87,11 +90,14 @@ class XAxisZoomControl(ttk.Frame):  # pylint: disable=too-many-ancestors
         """Zooms out (decrease magnification)."""
         if center is None:
             center = (self._current_xlim[0] + self._current_xlim[1]) / 2
+
         width = self._current_xlim[1] - self._current_xlim[0]
         new_width = width * self._zoom_factor
 
-        self._current_xlim[0] = center - new_width / 2
-        self._current_xlim[1] = center + new_width / 2
+        ratio = (center - self._current_xlim[0]) / width if width > 0 else 0.5
+
+        self._current_xlim[0] = center - new_width * ratio
+        self._current_xlim[1] = center + new_width * (1 - ratio)
 
         self._clamp_limits()
         self._update_plot()
@@ -168,8 +174,9 @@ if __name__ == "__main__":
 
         root = tk.Tk()
         root.title("X-Axis Zoom Control Demo")
+        root.geometry("800x600")
 
-        fig, ax = plt.subplots(figsize=(10, 6))
+        fig, ax = plt.subplots()
         x = np.linspace(0, 100, 1000)
         y = np.sin(x / 5) * np.exp(-x / 50)
         line, = ax.plot(x, y)
@@ -177,13 +184,24 @@ if __name__ == "__main__":
         ax.set_ylabel("Y Axis")
         ax.set_title("Plot with X-Axis Zoom Control")
         ax.grid(True, alpha=0.3)
+        ax.set_aspect('auto')
 
         canvas = FigureCanvasTkAgg(fig, master=root)
         canvas.draw()
-        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        canvas_widget = canvas.get_tk_widget()
+        canvas_widget.grid(row=0, column=0, sticky='nsew', padx=5, pady=5)
 
         zoom_control = XAxisZoomControl(root, canvas, ax)
-        zoom_control.pack(fill=tk.X, padx=5, pady=5)
+        zoom_control.grid(row=1, column=0, sticky='ew', padx=5, pady=5)
+
+        def on_scroll(event):
+            if event.xdata is not None:
+                if event.button == 'up':
+                    zoom_control.zoom_in(center=event.xdata)
+                elif event.button == 'down':
+                    zoom_control.zoom_out(center=event.xdata)
+
+        canvas.mpl_connect('scroll_event', on_scroll)
 
         def update_plot(reset_zoom=False):
             new_x = np.linspace(0, 200, 1000)
@@ -194,17 +212,23 @@ if __name__ == "__main__":
             zoom_control.update_limits(xlim=(0, 200), reset_zoom=reset_zoom, redraw=True)
 
         button_frame = tk.Frame(root)
-        button_frame.pack(padx=10, pady=10)
+        button_frame.grid(row=2, column=0, padx=10, pady=10)
 
         update_btn = ttk.Button(button_frame,
                                 text="Update Plot (0-200)",
                                 command=update_plot)
-        update_btn.pack(side="left", padx=5, pady=5)
+        update_btn.grid(row=0, column=0, padx=5, pady=5)
 
         update2_btn = ttk.Button(button_frame,
                                  text="Update Plot (0-200) + Reset zoom",
                                  command=lambda: update_plot(True))
-        update2_btn.pack(side="left", padx=5, pady=5)
+        update2_btn.grid(row=0, column=1, padx=5, pady=5)
+
+        root.columnconfigure(0, weight=1)
+        root.rowconfigure(0, weight=1)
+
+        # There's some race, not sure what... this fixes it
+        root.after(50, lambda: canvas_widget.grid_configure(padx=0, pady=0))
 
         root.mainloop()
 
