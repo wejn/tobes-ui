@@ -735,6 +735,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
                 self._ui_elements.xaxis_zoom.zoom_in(center=event.xdata)
             elif event.button == 'down':
                 self._ui_elements.xaxis_zoom.zoom_out(center=event.xdata)
+        self._on_motion(event=None, force_redraw=True)
 
     def _setup_plot(self, parent):
         matplotlib.pyplot.rcParams.update({'figure.autolayout': True})
@@ -804,7 +805,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         nearest = self._peaks[np.argmin(distances)]
         return [nearest, idx[nearest]]
 
-    def _on_motion(self, event):
+    def _on_motion(self, event, force_redraw=False):
         if self._capture_state != CaptureState.PAUSE or self._spectrum is None:
             return
         if 'pixel_annotation' not in self._ui_elements:
@@ -817,7 +818,13 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         fig = canvas.figure
         axis = fig.axes[0]
 
-        nearest_idx, nearest_x = self._nearest_peak(event.xdata)
+        if event:
+            xdata = event.xdata
+        elif annot.get_visible():
+            xdata = annot.xy[0]
+        else:
+            xdata = None
+        nearest_idx, nearest_x = self._nearest_peak(xdata)
 
         if nearest_idx is None:
             if annot.get_visible():
@@ -829,7 +836,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         first_pixel = constants.first_pixel if 'first_pixel' in constants else 0
         pixel = nearest_idx + first_pixel
 
-        redraw = False
+        redraw = force_redraw
 
         # Prep text
         text = f"Pixel: {pixel}\nCur WL: {nearest_x:.6f}"
@@ -849,7 +856,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
             redraw = True
             annot.set_visible(True)
 
-        if annot.xy[0] != nearest_x:
+        if redraw or annot.xy[0] != nearest_x:
             annot.set(position=(0, 0))
 
             nearest_y = self._spectrum.spd_raw[nearest_idx]

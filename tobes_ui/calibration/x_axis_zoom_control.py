@@ -135,7 +135,7 @@ class XAxisZoomControl(ttk.Frame):  # pylint: disable=too-many-ancestors
 
     def _update_plot(self):
         self._ax.set_xlim(self._current_xlim)
-        self._canvas.draw()
+        self._canvas.draw_idle()
 
     def _update_scrollbar(self):
         full_width = self._full_xlim[1] - self._full_xlim[0]
