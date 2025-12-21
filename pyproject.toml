@@ -13,9 +13,10 @@ authors = [
   {name = "Michal Jirků", email = "box@wejn.org"},
 ]
 dependencies = [
-  "colour-science",
+  "colour-science[optional]",
   "matplotlib",
   "pyserial",
+  "scipy>=1.15.3",
 ]
 
 [project.optional-dependencies]
