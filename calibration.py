@@ -615,6 +615,9 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         self._ui_elements.plot = self._setup_plot(right_frame)
         self._ui_elements.plot.grid(row=1, column=0, sticky='nsew')
 
+        # When mouse over, set focus...
+        self._ui_elements.plot.bind('<Enter>', lambda _event: self._ui_elements.plot.focus_set())
+
         canvas = self._ui_elements.plot_canvas
         axis = canvas.figure.axes[0]
         self._ui_elements.xaxis_zoom = XAxisZoomControl(right_frame, canvas, axis)
@@ -780,6 +783,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         canvas.mpl_connect('pick_event', self._on_peak_pick)
         canvas.mpl_connect('scroll_event', self._on_plot_scroll)
         canvas.mpl_connect('motion_notify_event', self._on_motion)
+        canvas.mpl_connect('key_press_event', self._on_keypress)
 
         self._ui_elements.pixel_annotation = axis.annotate(
                 "",
@@ -794,6 +798,41 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         self._ui_elements.plot_canvas = canvas
 
         return canvas.get_tk_widget()
+
+    def _on_keypress(self, event):
+        """Handler for key press events from the canvas."""
+        xdata = None
+        if 'plot_canvas' in self._ui_elements and event.x is not None:
+            canvas = self._ui_elements.plot_canvas
+            fig = canvas.figure
+            axis = fig.axes[0]
+            if event.inaxes == axis:
+                xdata = axis.transData.inverted().transform((event.x, 0))[0]
+        match event.key:
+            case '+':
+                if 'xaxis_zoom' in self._ui_elements:
+                    self._ui_elements.xaxis_zoom.zoom_in(xdata)
+            case '-':
+                if 'xaxis_zoom' in self._ui_elements:
+                    self._ui_elements.xaxis_zoom.zoom_out(xdata)
+            case 'right':
+                if 'xaxis_zoom' in self._ui_elements:
+                    self._ui_elements.xaxis_zoom.scroll_by(1)
+            case 'left':
+                if 'xaxis_zoom' in self._ui_elements:
+                    self._ui_elements.xaxis_zoom.scroll_by(-1)
+            case 'enter':  # Trigger point add based on current annotation...
+                if 'pixel_annotation' in self._ui_elements:
+                    annot = self._ui_elements.pixel_annotation
+                    constants = self._spectrometer.constants()
+                    first_pixel = constants.first_pixel if 'first_pixel' in constants else 0
+                    nearest_idx, _nearest_x = self._nearest_peak(annot.xy[0])
+                    if nearest_idx:
+                        pixel = nearest_idx + first_pixel
+                        self._add_or_edit_pixel_dialog(int(pixel))
+            case _:
+                #print(f"Unhandled key: {event.key}")
+                pass
 
     def _nearest_peak(self, x):
         """Given X, return the nearest index in self._x_axis_idx and nearest value."""

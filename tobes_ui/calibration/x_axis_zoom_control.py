@@ -94,6 +94,10 @@ class XAxisZoomControl(ttk.Frame):  # pylint: disable=too-many-ancestors
         """Zooms out (decrease magnification)."""
         self._apply_zoom(self._zoom_factor, center)
 
+    def scroll_by(self, delta):
+        """Applies scroll delta"""
+        self._scrollbar.set(self._scrollbar.get() + delta)
+
     def _on_scroll(self, value):
         value = float(value)
         full_width = self._full_xlim[1] - self._full_xlim[0]
