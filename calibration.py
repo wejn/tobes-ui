@@ -75,6 +75,8 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         self._x_axis_limits = None  # current x axis limits (min, max)
         self._ref_match_delta = [3, 3]  # reference match delta (minus_nm, plus_nm)
 
+        self._annot_lims = None  # (xlim, ylim) for which annot was set up
+
         self._setup_ui()
 
         # debug info
@@ -735,7 +737,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
                 self._ui_elements.xaxis_zoom.zoom_in(center=event.xdata)
             elif event.button == 'down':
                 self._ui_elements.xaxis_zoom.zoom_out(center=event.xdata)
-        self._on_motion(event=None, force_redraw=True)
+        self._on_motion(event=None)
 
     def _setup_plot(self, parent):
         matplotlib.pyplot.rcParams.update({'figure.autolayout': True})
@@ -805,7 +807,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         nearest = self._peaks[np.argmin(distances)]
         return [nearest, idx[nearest]]
 
-    def _on_motion(self, event, force_redraw=False):
+    def _on_motion(self, event):
         if self._capture_state != CaptureState.PAUSE or self._spectrum is None:
             return
         if 'pixel_annotation' not in self._ui_elements:
@@ -836,7 +838,14 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         first_pixel = constants.first_pixel if 'first_pixel' in constants else 0
         pixel = nearest_idx + first_pixel
 
-        redraw = force_redraw
+        redraw = False
+
+        if not annot.get_visible():
+            annot.set_visible(True)
+            redraw = True
+
+        if self._annot_lims is None or self._annot_lims != (axis.get_xlim(), axis.get_ylim()):
+            redraw = True
 
         # Prep text
         text = f"Pixel: {pixel}\nCur WL: {nearest_x:.6f}"
@@ -851,7 +860,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
             if len(refs) > 5:
                 text += "\n  (...)"
 
-        if annot.get_text() != text:
+        if redraw or annot.get_text() != text:
             annot.set_text(text)
             redraw = True
             annot.set_visible(True)
@@ -879,10 +888,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
             yy = -offset_scale - bb.height / fig.dpi * 72 if ynorm > 0.67 else offset_scale
 
             annot.set(position=(xx, yy))
-            redraw = True
-
-        if not annot.get_visible():
-            annot.set_visible(True)
+            self._annot_lims = (xlim, ylim)
             redraw = True
 
         if redraw:
