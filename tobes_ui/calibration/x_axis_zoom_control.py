@@ -29,19 +29,17 @@ class XAxisZoomControl(ttk.Frame):  # pylint: disable=too-many-ancestors
             self._full_xlim = xlim
             self._current_xlim = list(self._full_xlim)
         else:
-            old_full_width = self._full_xlim[1] - self._full_xlim[0]
-            current_width = self._current_xlim[1] - self._current_xlim[0]
-            zoom_level = current_width / old_full_width
+            old_full_width = self._full_width
+            zoom_level = self._current_width / old_full_width
 
-            center = (self._current_xlim[0] + self._current_xlim[1]) / 2
-            #old_center = (self._full_xlim[0] + self._full_xlim[1]) / 2
+            center = self._center
             if old_full_width > 0:
                 center_ratio = (center - self._full_xlim[0]) / old_full_width
             else:
                 center_ratio = 0.5
 
             self._full_xlim = xlim
-            new_full_width = self._full_xlim[1] - self._full_xlim[0]
+            new_full_width = self._full_width
 
             new_width = new_full_width * zoom_level
             new_center = self._full_xlim[0] + center_ratio * new_full_width
@@ -53,6 +51,21 @@ class XAxisZoomControl(ttk.Frame):  # pylint: disable=too-many-ancestors
         self._update_controls_state()
         if redraw:
             self._update_plot()
+
+    @property
+    def _full_width(self):
+        """Full width of the x-axis range."""
+        return self._full_xlim[1] - self._full_xlim[0]
+
+    @property
+    def _current_width(self):
+        """Current width of the visible x-axis range."""
+        return self._current_xlim[1] - self._current_xlim[0]
+
+    @property
+    def _center(self):
+        """Center point of current view."""
+        return (self._current_xlim[0] + self._current_xlim[1]) / 2
 
     def _create_widgets(self):
         button_frame = ttk.Frame(self)
@@ -72,12 +85,14 @@ class XAxisZoomControl(ttk.Frame):  # pylint: disable=too-many-ancestors
     def _apply_zoom(self, width_multiplier, center=None):
         """Apply zoom with given width multiplier, maintaining center point."""
         if center is None:
-            center = (self._current_xlim[0] + self._current_xlim[1]) / 2
+            center = self._center
 
-        width = self._current_xlim[1] - self._current_xlim[0]
-        new_width = width * width_multiplier
+        new_width = self._current_width * width_multiplier
 
-        ratio = (center - self._current_xlim[0]) / width if width > 0 else 0.5
+        if self._current_width > 0:
+            ratio = (center - self._current_xlim[0]) / self._current_width
+        else:
+            ratio = 0.5
 
         self._current_xlim[0] = center - new_width * ratio
         self._current_xlim[1] = center + new_width * (1 - ratio)
@@ -88,7 +103,7 @@ class XAxisZoomControl(ttk.Frame):  # pylint: disable=too-many-ancestors
 
     def zoom_in(self, center=None):
         """Zooms in (increase magnification)."""
-        self._apply_zoom(1 / self._zoom_factor, center)
+        self._apply_zoom(1.0 / self._zoom_factor, center)
 
     def zoom_out(self, center=None):
         """Zooms out (decrease magnification)."""
@@ -100,10 +115,9 @@ class XAxisZoomControl(ttk.Frame):  # pylint: disable=too-many-ancestors
 
     def _on_scroll(self, value):
         value = float(value)
-        full_width = self._full_xlim[1] - self._full_xlim[0]
-        current_width = self._current_xlim[1] - self._current_xlim[0]
+        current_width = self._current_width # must cache, changing _current_xlim!
 
-        scroll_range = full_width - current_width
+        scroll_range = self._full_width - current_width
         if scroll_range > 0:
             offset = (value / 100) * scroll_range
             self._current_xlim[0] = self._full_xlim[0] + offset
@@ -113,10 +127,9 @@ class XAxisZoomControl(ttk.Frame):  # pylint: disable=too-many-ancestors
             self._update_plot()
 
     def _clamp_limits(self):
-        full_width = self._full_xlim[1] - self._full_xlim[0]
-        current_width = self._current_xlim[1] - self._current_xlim[0]
+        current_width = self._current_width # must cache, changing _current_xlim!
 
-        if current_width > full_width:
+        if current_width > self._full_width:
             self._current_xlim = list(self._full_xlim)
             return
 
@@ -133,8 +146,8 @@ class XAxisZoomControl(ttk.Frame):  # pylint: disable=too-many-ancestors
         self._canvas.draw_idle()
 
     def _update_scrollbar(self):
-        full_width = self._full_xlim[1] - self._full_xlim[0]
-        current_width = self._current_xlim[1] - self._current_xlim[0]
+        full_width = self._full_width
+        current_width = self._current_width
 
         if current_width >= full_width:
             self._scrollbar.configure(from_=0, to=0)
@@ -147,10 +160,7 @@ class XAxisZoomControl(ttk.Frame):  # pylint: disable=too-many-ancestors
             self._scrollbar.set(value)
 
     def _update_controls_state(self):
-        full_width = self._full_xlim[1] - self._full_xlim[0]
-        current_width = self._current_xlim[1] - self._current_xlim[0]
-
-        if current_width >= full_width * 0.999:
+        if self._current_width >= self._full_width * 0.999:
             self._zoom_out_btn.state(['disabled'])
         else:
             self._zoom_out_btn.state(['!disabled'])
