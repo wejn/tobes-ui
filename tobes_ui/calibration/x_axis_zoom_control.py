@@ -69,13 +69,13 @@ class XAxisZoomControl(ttk.Frame):  # pylint: disable=too-many-ancestors
         self._scrollbar.pack(side=tk.LEFT, fill=tk.X, expand=True)
         self._scrollbar.set(0)
 
-    def zoom_in(self, center=None):
-        """Zooms in (increase magnification)."""
+    def _apply_zoom(self, width_multiplier, center=None):
+        """Apply zoom with given width multiplier, maintaining center point."""
         if center is None:
             center = (self._current_xlim[0] + self._current_xlim[1]) / 2
 
         width = self._current_xlim[1] - self._current_xlim[0]
-        new_width = width / self._zoom_factor
+        new_width = width * width_multiplier
 
         ratio = (center - self._current_xlim[0]) / width if width > 0 else 0.5
 
@@ -85,23 +85,14 @@ class XAxisZoomControl(ttk.Frame):  # pylint: disable=too-many-ancestors
         self._clamp_limits()
         self._update_plot()
         self._update_controls_state()
+
+    def zoom_in(self, center=None):
+        """Zooms in (increase magnification)."""
+        self._apply_zoom(1 / self._zoom_factor, center)
 
     def zoom_out(self, center=None):
         """Zooms out (decrease magnification)."""
-        if center is None:
-            center = (self._current_xlim[0] + self._current_xlim[1]) / 2
-
-        width = self._current_xlim[1] - self._current_xlim[0]
-        new_width = width * self._zoom_factor
-
-        ratio = (center - self._current_xlim[0]) / width if width > 0 else 0.5
-
-        self._current_xlim[0] = center - new_width * ratio
-        self._current_xlim[1] = center + new_width * (1 - ratio)
-
-        self._clamp_limits()
-        self._update_plot()
-        self._update_controls_state()
+        self._apply_zoom(self._zoom_factor, center)
 
     def _on_scroll(self, value):
         value = float(value)
