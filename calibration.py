@@ -25,6 +25,7 @@ from tobes_ui.calibration.sampling_control import SamplingControl
 from tobes_ui.calibration.peak_detection_control import PeakDetectionControl
 from tobes_ui.calibration.reference_match_control import ReferenceMatchControl
 from tobes_ui.calibration.wavelength_editor import WavelengthEditor
+from tobes_ui.calibration.wavelength_save_dialog import WavelengthCalibrationSaveDialog
 from tobes_ui.calibration.x_axis_control import XAxisControl
 from tobes_ui.calibration.x_axis_zoom_control import XAxisZoomControl
 from tobes_ui.common import AttrDict, SlidingMax, SpectrumAggregator
@@ -71,6 +72,16 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         self._peak_detector = None  # callable to detect peaks in spectrum data
         self._peaks = []  # list of peaks detected, indexed against spd_raw, not phys pixels
         self._calibration_points = {} # dict of pixels with new wl assigned to them
+        self._calibration_points = {  # FIXME: Remove
+            663: 585.248790,
+            821: 640.224800,
+            868: 656.285180,
+            987: 696.543100,
+            1017: 706.721800,
+            1149: 750.386900,
+            1189: 763.510600,
+            1664: 912.296700,
+        }
 
         self._x_axis_limits = None  # current x axis limits (min, max)
         self._ref_match_delta = [3, 3]  # reference match delta (minus_nm, plus_nm)
@@ -242,8 +253,9 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         ToolTip(self._ui_elements.capture_button, 'Capture/freeze spectrum from the spectrometer.')
 
         self._ui_elements.save_button = ttk.Button(controls_frame, text="Save Cali",
-                                                   command=lambda: print('save'), state='disabled')
-        # FIXME: action ^^
+                                                   command=self._save_calibration_action,
+                                                   #state='disabled', # FIXME: re-enable
+                                                   )
         self._ui_elements.save_button.pack(side=tk.LEFT, padx=5)
         ToolTip(self._ui_elements.save_button, 'Save the wavelength calibration.')
 
@@ -269,6 +281,15 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
                 text=lambda: 'Status:\n' + self._ui_elements.status_label.cget('text'), above=True)
 
         return left_frame
+
+    def _save_calibration_action(self):
+        """Triggers calibration save dialog."""
+
+        WavelengthCalibrationSaveDialog(
+                parent=self._root,
+                current_polyfit=self._initial_polyfit,
+                new_polyfit=self._new_polyfit,
+                on_change=lambda: print("saving...")) # FIXME: implement the rest of it
 
     def _recalculate_polyfit_data(self):
         """Recalculates polyfit data based on current calibration points."""
