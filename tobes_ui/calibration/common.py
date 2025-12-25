@@ -259,3 +259,19 @@ class CalibrationControlPanel(ttk.LabelFrame, abc.ABC):  # pylint: disable=too-m
     def controls_state(self):
         """Getter for the state that on_change emits."""
         return self._data
+
+def float_to_string(num, max_len=14):
+    """Format float num to string of up to max_len chars, with max precision possible.
+
+    The max_len should be at least 8.
+    """
+    if max_len < 8:
+        raise ValueError(f"max_len should be at least 8, is {max_len}")
+
+    for precision in range(max_len, 0, -1):
+        out = f"{num:.{precision}g}"
+        if len(out) <= max_len:
+            return out
+
+    # Fallback that works (but might be less precise)
+    return f"{num:.{max_len-7}e}" if num < 0 else f"{num:.{max_len-6}e}"
