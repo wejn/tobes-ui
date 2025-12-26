@@ -72,16 +72,6 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         self._peak_detector = None  # callable to detect peaks in spectrum data
         self._peaks = []  # list of peaks detected, indexed against spd_raw, not phys pixels
         self._calibration_points = {} # dict of pixels with new wl assigned to them
-        self._calibration_points = {  # FIXME: Remove
-            663: 585.248790,
-            821: 640.224800,
-            868: 656.285180,
-            987: 696.543100,
-            1017: 706.721800,
-            1149: 750.386900,
-            1189: 763.510600,
-            1664: 912.296700,
-        }
 
         self._x_axis_limits = None  # current x axis limits (min, max)
         self._ref_match_delta = [3, 3]  # reference match delta (minus_nm, plus_nm)
@@ -254,7 +244,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
         self._ui_elements.save_button = ttk.Button(controls_frame, text="Save Cali",
                                                    command=self._save_calibration_action,
-                                                   #state='disabled', # FIXME: re-enable
+                                                   state='disabled',
                                                    )
         self._ui_elements.save_button.pack(side=tk.LEFT, padx=5)
         ToolTip(self._ui_elements.save_button, 'Save the wavelength calibration.')
@@ -396,8 +386,8 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
     def _quit_action(self):
         """Quit button action handler"""
-        # FIXME: only ask for confirmation once it's all working
-        if True or messagebox.askokcancel("Quit", "Are you sure you want to quit?"): # pylint: disable=condition-evals-to-constant,line-too-long
+        quitnow = len(self._calibration_points) < 2
+        if quitnow or messagebox.askokcancel("Quit", "Are you sure you want to quit?"):
             LOGGER.debug("Quitting...")
             self._update_status('Quitting...')
             self._on_close()
