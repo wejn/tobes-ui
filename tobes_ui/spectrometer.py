@@ -231,6 +231,10 @@ class Spectrometer(ABC):
         """Optional hook method for reading WL calibration (if supported)."""
         raise NotImplementedError("This is by default not supported; override if needed")
 
+    def write_wavelength_calibration(self, calibration):
+        """Optional hook method for writing WL calibration (if supported)."""
+        raise NotImplementedError("This is by default not supported; override if needed")
+
     @abstractmethod
     def properties_list(self):
         """Return list of configurable properties.

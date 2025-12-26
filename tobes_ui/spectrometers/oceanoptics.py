@@ -5,6 +5,7 @@
 import copy
 from datetime import datetime
 import pprint
+import struct
 import time
 
 import numpy as np
@@ -15,6 +16,7 @@ except ImportError as iex:
     raise ImportError("Missing ocean dependencies. "
                       "Install them via: pip/pipx install tobes-ui[ocean]") from iex
 
+from tobes_ui.calibration.common import float_to_string
 from tobes_ui.common import AttrDict
 from tobes_ui.logger import SUB_LOGGER
 from tobes_ui.spectrometer import (BasicInfo, ExposureMode, ExposureStatus, Spectrometer,
@@ -466,3 +468,37 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
                 coeffs.append(0.0)
         # a0, a1, a2, a3 -> a3, a2, a1, a0
         return coeffs[::-1]
+
+    def write_wavelength_calibration(self, calibration):
+        """Write WL calibration to eeprom."""
+        if len(calibration) != 4:
+            raise ValueError(f"need 4 coefficients, got {len(calibration)}")
+
+        slots = [float_to_string(c).encode('latin1') for c in calibration[::-1]]
+
+        all_under_14 = all(len(s) <= 14 for s in slots)
+
+        if not all_under_14:
+            raise ValueError(f"need all coefficients, serialized to <= 14 chars, got {slots}")
+
+        slots = [s.ljust(15, b'\x00') for s in slots]
+
+        LOGGER.info('about to write WLC: %s', slots)
+        for i, s in enumerate(slots):
+            n = i + 1
+            LOGGER.info('writing eeprom slot %d: %s', n, s)
+            self._spectrometer.f.raw_usb_bus_access.raw_usb_write(
+                    data=struct.pack('<BB', 0x06, n) + s,
+                    endpoint='primary_out')
+
+        all_ok = True
+        LOGGER.info('about to verify WLC written')
+        eeprom = self._spectrometer.f.eeprom
+        for i, s in enumerate(slots):
+            n = i + 1
+            r = eeprom.eeprom_read_slot(n)
+            if r != s:
+                LOGGER.error('slot %d does not match: want: %s, is: %r', n, s, r)
+                all_ok = False
+
+        return all_ok

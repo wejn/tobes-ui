@@ -289,7 +289,8 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
             LOGGER.error("No polyfit to save, yet save requested!")
             return
 
-        # FIXME: implement eeprom save
+        self._spectrometer.write_wavelength_calibration(polyfit)
+        self._update_status('Calibration saved.')
 
         self._initial_polyfit = polyfit
         self._update_polyfit_table_and_ui_state()
