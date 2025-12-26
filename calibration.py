@@ -899,6 +899,9 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         if self._spectrum is None or x is None or self._x_axis_idx is None:
             return [None, None]
 
+        if self._peaks is None or not self._peaks:
+            return [None, None]
+
         idx = self._x_axis_idx
         peak_x = np.array([idx[i] for i in self._peaks])
         distances = np.sqrt((peak_x - x)**2)
