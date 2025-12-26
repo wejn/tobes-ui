@@ -282,14 +282,40 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
         return left_frame
 
+    def _execute_calibration_save(self, polyfit):
+        """Executes calibration coeffs save to the eeprom, then updates UI."""
+
+        if polyfit is None:
+            LOGGER.error("No polyfit to save, yet save requested!")
+            return
+
+        # FIXME: implement eeprom save
+
+        self._initial_polyfit = polyfit
+        self._update_polyfit_table_and_ui_state()
+        self._update_calibration_points_table()
+        self._apply_x_axis_ctrl({'mode': self._x_axis_type})
+
     def _save_calibration_action(self):
         """Triggers calibration save dialog."""
 
+        cur_polyfit = self._initial_polyfit
+        new_polyfit = self._new_polyfit
+
+        if new_polyfit is None:
+            LOGGER.error("No polyfit to save, yet save requested!")
+            return
+
+        def do_save():
+            LOGGER.info("Current polyfit: %s", cur_polyfit)
+            LOGGER.info("New polyfit: %s", new_polyfit)
+            self._execute_calibration_save(new_polyfit)
+
         WavelengthCalibrationSaveDialog(
                 parent=self._root,
-                current_polyfit=self._initial_polyfit,
-                new_polyfit=self._new_polyfit,
-                on_change=lambda: print("saving...")) # FIXME: implement the rest of it
+                current_polyfit=cur_polyfit,
+                new_polyfit=new_polyfit,
+                on_change=do_save)
 
     def _recalculate_polyfit_data(self):
         """Recalculates polyfit data based on current calibration points."""
@@ -339,6 +365,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
             self._ui_elements.save_button.config(state='normal')
         # Poly
         for i in range(0, 4):
+            tbl.set(row_to_id[i], column="initial", value=f"{self._initial_polyfit[3-i]:e}")
             tbl.set(row_to_id[i], column="current", value=f"{self._new_polyfit[3-i]:e}")
         # R^2
         tbl.set(row_to_id[4], column="current", value=f"{self._new_polyfit_stats[0]:e}")
@@ -909,7 +936,10 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         # Prep text
         text = f"Pixel: {pixel}\nCur WL: {nearest_x:.6f}"
         if pixel in self._calibration_points:
-            text += f"\nNew WL: {self._calibration_points[pixel]:.6f}"
+            text += f"\nSet WL: {self._calibration_points[pixel]:.6f}"
+        if self._new_polyfit is not None:
+            new_val = np.polyval(self._new_polyfit, pixel)
+            text += f"\nNew WL: {new_val:.6f}"
         refs = self._strong_lines.find_in_range(nearest_x - self._ref_match_delta[0],
                                                 nearest_x + self._ref_match_delta[1])
         if len(refs) > 0:
