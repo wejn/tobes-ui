@@ -638,9 +638,9 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
                                                 on_change=self._apply_sampling_ctrl),
             'reference_match_control': ReferenceMatchControl(controls_frame,
                                                              on_change=self._apply_refmatch_ctrl),
+            'x_axis_control': XAxisControl(controls_frame, on_change=self._apply_x_axis_ctrl),
             'peak_detection_control': PeakDetectionControl(controls_frame,
                                                            on_change=self._apply_peak_detect_ctrl),
-            'x_axis_control': XAxisControl(controls_frame, on_change=self._apply_x_axis_ctrl),
         }
 
         col = 0
