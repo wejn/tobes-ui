@@ -109,6 +109,13 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
             raise ValueError(f"Event {event} is not callable")
 
     def _setup_ui(self):
+        # tweak rowheight of Treeviews
+        font = tk.font.nametofont('TkDefaultFont')
+        metrics = font.metrics()
+        if 'linespace' in metrics:
+            style = ttk.Style(self._root)
+            style.configure('Treeview', font=font, rowheight=int(metrics['linespace']))
+
         paned_window = tk.PanedWindow(self._root, orient=tk.HORIZONTAL, sashrelief=tk.RAISED)
         paned_window.pack(fill=tk.BOTH, expand=True)
 
@@ -190,7 +197,6 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         # Polynomial fit
         poly_frame = ttk.Frame(parent, height=200)
         poly_frame.pack(fill=tk.X, padx=5, pady=5)
-        poly_frame.pack_propagate(False)
 
         poly_label = ttk.Label(poly_frame, text="Polynomial Fit")
         poly_label.pack()
