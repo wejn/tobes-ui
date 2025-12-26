@@ -109,6 +109,9 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
             raise ValueError(f"Event {event} is not callable")
 
     def _setup_ui(self):
+        self._root.grid_rowconfigure(0, weight=1)
+        self._root.grid_columnconfigure(0, weight=1)
+
         # tweak rowheight of Treeviews
         font = tk.font.nametofont('TkDefaultFont')
         metrics = font.metrics()
@@ -117,7 +120,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
             style.configure('Treeview', font=font, rowheight=int(metrics['linespace']))
 
         paned_window = tk.PanedWindow(self._root, orient=tk.HORIZONTAL, sashrelief=tk.RAISED)
-        paned_window.pack(fill=tk.BOTH, expand=True)
+        paned_window.grid(row=0, column=0, sticky='nsew')
 
         left_frame = self._setup_left_frame(paned_window)
         right_frame = self._setup_right_frame(paned_window)
@@ -137,10 +140,12 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
     def _setup_calibration_points_table(self, parent):
         """Sets up the entire "Calibration Points" table (Treeview)."""
         table_frame = ttk.Frame(parent)
-        table_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        table_frame.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+        table_frame.grid_columnconfigure(0, weight=1)
+        table_frame.grid_rowconfigure(1, weight=1)
 
         poly_label = ttk.Label(table_frame, text="Calibration Points")
-        poly_label.pack()
+        poly_label.grid(row=0, column=0, columnspan=2, sticky="n")
 
         # Create treeview for table
         columns = ('pixel', 'wl', 'new_wl')
@@ -161,8 +166,8 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         scrollbar = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=tree.yview)
         tree.configure(yscrollcommand=scrollbar.set)
 
-        tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        tree.grid(row=1, column=0, sticky="nsew")
+        scrollbar.grid(row=1, column=1, sticky="ns")
 
         def _on_delete(_event):
             """Handler for deleting points from the table."""
@@ -196,13 +201,17 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         """Sets up the entire "Polynomial Fit" table (Treeview)"""
         # Polynomial fit
         poly_frame = ttk.Frame(parent, height=200)
-        poly_frame.pack(fill=tk.X, padx=5, pady=5)
+        poly_frame.grid(row=1, column=0, sticky="ew", padx=5, pady=5)
+        poly_frame.grid_columnconfigure(0, weight=1)
+        poly_frame.grid_rowconfigure(1, weight=1)
 
         poly_label = ttk.Label(poly_frame, text="Polynomial Fit")
-        poly_label.pack()
+        poly_label.grid(row=0, column=0, sticky="n")
 
         poly_table_frame = ttk.Frame(poly_frame)
-        poly_table_frame.pack(fill=tk.BOTH, expand=True)
+        poly_table_frame.grid(row=1, column=0, sticky="nsew")
+        poly_table_frame.grid_columnconfigure(0, weight=1)
+        poly_table_frame.grid_rowconfigure(0, weight=1)
 
         poly_columns = ('parameter', 'initial', 'current')
         poly_tree = ttk.Treeview(poly_table_frame, columns=poly_columns, show='headings', height=6)
@@ -215,7 +224,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         poly_tree.column('initial', width=80, anchor='e')
         poly_tree.column('current', width=80, anchor='e')
 
-        poly_tree.pack(fill=tk.BOTH, expand=True)
+        poly_tree.grid(row=0, column=0, sticky="nsew")
 
         parameters = [
             ('X⁰', f"{self._initial_polyfit[3]:e}"),
@@ -232,6 +241,8 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
     def _setup_left_frame(self, parent):
         left_frame = ttk.Frame(parent)
+        left_frame.grid_columnconfigure(0, weight=1)
+        left_frame.grid_rowconfigure(0, weight=1)
 
         self._ui_elements.calibration_points_table = self._setup_calibration_points_table(
                 left_frame)
@@ -242,36 +253,41 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
         # Controls
         controls_frame = ttk.Frame(left_frame)
-        controls_frame.pack(fill=tk.X, padx=5, pady=5)
+        controls_frame.grid(row=2, column=0, sticky="ew", padx=5, pady=5)
+        controls_frame.columnconfigure(0, weight=0)
+        controls_frame.columnconfigure(1, weight=0)
+        controls_frame.columnconfigure(2, weight=1)  # spacer
+        controls_frame.columnconfigure(3, weight=0)
+
         self._ui_elements.capture_button = ttk.Button(controls_frame, text="Capture",
                                                       command=self._capture_action)
-        self._ui_elements.capture_button.pack(side=tk.LEFT, padx=5)
+        self._ui_elements.capture_button.grid(row=0, column=0, padx=5)
         ToolTip(self._ui_elements.capture_button, 'Capture/freeze spectrum from the spectrometer.')
 
         self._ui_elements.save_button = ttk.Button(controls_frame, text="Save Cali",
                                                    command=self._save_calibration_action,
                                                    state='disabled',
                                                    )
-        self._ui_elements.save_button.pack(side=tk.LEFT, padx=5)
+        self._ui_elements.save_button.grid(row=0, column=1, padx=5)
         ToolTip(self._ui_elements.save_button, 'Save the wavelength calibration.')
 
         self._ui_elements.quit_button = ttk.Button(controls_frame, text="Quit",
                                                    command=self._quit_action)
-        self._ui_elements.quit_button.pack(side=tk.RIGHT, padx=5)
+        self._ui_elements.quit_button.grid(row=0, column=3, padx=5)
         ToolTip(self._ui_elements.quit_button, 'Stop capture and quit the app.')
 
         # Strong lines
         slc = StrongLinesControl(left_frame)
         slc.on_change = self._apply_strong_line_ctrl
-        slc.pack(fill="x", padx=5)
+        slc.grid(row=3, column=0, sticky="ew", padx=5)
 
         status_frame = ttk.LabelFrame(left_frame, height=90, text='Status')
-        status_frame.pack(fill=tk.X, padx=5, pady=5)
-        status_frame.pack_propagate(False)
+        status_frame.grid(row=4, column=0, sticky="ew", padx=5, pady=5)
+        status_frame.grid_propagate(False)
 
         self._ui_elements.status_label = ttk.Label(status_frame, text="", justify=tk.LEFT,
                                                    anchor='nw')
-        self._ui_elements.status_label.pack(fill=tk.BOTH, expand=True, padx=5)
+        self._ui_elements.status_label.grid(row=0, column=0, sticky="nsew", padx=5)
         self._update_status('Initializing...')
         ToolTip(self._ui_elements.status_label,
                 text=lambda: 'Status:\n' + self._ui_elements.status_label.cget('text'), above=True)
@@ -630,7 +646,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         col = 0
         for _name, control in controls.items():
             control.grid(column=col, row=0, sticky="news", padx=5, pady=5)
-            control.columnconfigure(col, weight=1)
+            control.grid_columnconfigure(col, weight=1)
             col += 1
 
         self._ui_elements.update(controls)
@@ -651,7 +667,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
                     col = 0
                     width = 0
                 control.grid(column=col, row=row, sticky="news", padx=5, pady=5)
-                control.columnconfigure(col, weight=1)
+                control.grid_columnconfigure(col, weight=1)
                 col += 1
                 width += control.winfo_reqwidth() + 10
 

@@ -21,7 +21,6 @@ class ReferenceMatchControl(CalibrationControlPanel):  # pylint: disable=too-man
                                                    min_val=0.0, max_val=20.0, initial=3,
                                                    allow_float=True, increment=0.1,
                                                    on_change=self._change_cb)
-        # FIXME: this might need floats, not ints
         self._delta_plus_spinbox.grid(row=0, column=0, sticky='ew', padx=5, pady=2)
         ToolTip(self._delta_plus_spinbox, ("Wavelength Δ (positive) within which to\n" +
                                            "match against reference lines, in nm"))

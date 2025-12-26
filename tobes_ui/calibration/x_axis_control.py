@@ -29,7 +29,6 @@ class XAxisControl(CalibrationControlPanel):  # pylint: disable=too-many-ancesto
         ToolTip(fixed_radio, "Use fixed min..max for X axis")
 
         fixed_widgets_frame = ttk.Frame(self)
-        # FIXME: this might need floats, not ints
         self._fixed_min_spinbox = ClampedSpinbox(fixed_widgets_frame, min_val=1.0, max_val=2500.0,
                                                  initial=380, allow_float=True,
                                                  on_change=self._change_cb)
@@ -38,12 +37,12 @@ class XAxisControl(CalibrationControlPanel):  # pylint: disable=too-many-ancesto
                                                  on_change=self._change_cb)
         self._fixed_min_spinbox.max_val = lambda: min(self._fixed_max_spinbox.get(), 2500) - 10
         self._fixed_max_spinbox.min_val = lambda: max(self._fixed_min_spinbox.get(), 1) + 10
-        self._fixed_min_spinbox.pack(side=tk.LEFT)
+        self._fixed_min_spinbox.grid(row=0, column=0, sticky="w")
         ToolTip(self._fixed_min_spinbox, "Min for X axis (for first pixel)")
 
-        ttk.Label(fixed_widgets_frame, text="..").pack(side=tk.LEFT, padx=2)
+        ttk.Label(fixed_widgets_frame, text="..").grid(row=0, column=1, sticky="w", padx=2)
 
-        self._fixed_max_spinbox.pack(side=tk.LEFT)
+        self._fixed_max_spinbox.grid(row=0, column=2, sticky="w")
         ToolTip(self._fixed_max_spinbox, "Max for X axis (for last pixel)")
 
         # --- Layout ---

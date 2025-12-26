@@ -21,7 +21,9 @@ class StrongLinesControl(CalibrationControlPanel):
 
     def _setup_gui(self):
         self._all_checkboxes = ttk.Frame(self)
-        self._all_checkboxes.pack(fill=tk.BOTH, expand=True)
+        self._all_checkboxes.grid(row=0, column=0, columnspan=2, sticky="nsew")
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
         ToolTip(self._all_checkboxes, "Element(s) to enable strong lines for")
 
         row = 0
@@ -36,18 +38,18 @@ class StrongLinesControl(CalibrationControlPanel):
             self._all_checkboxes.columnconfigure(idx%self._max_cols, weight=1)
 
         self._sep = ttk.Separator(self, orient='horizontal')
-        self._sep.pack(fill='x', pady=5)
+        self._sep.grid(row=1, column=0, columnspan=2, sticky="ew", pady=5)
 
         self._persistent_only = tk.BooleanVar(value=False)
         self._po_cbox = ttk.Checkbutton(self, text='Persistent only',
                                         variable=self._persistent_only, command=self._change_cb)
-        self._po_cbox.pack()
+        self._po_cbox.grid(row=2, column=0, columnspan=2)
         ToolTip(self._po_cbox, "Use only persistent lines of the selected element(s)")
 
         self._intensity = ClampedSpinbox(parent=self, min_val=0, max_val=1000,
                                          label_text="Min. intensity:", increment=50)
         self._intensity.on_change = lambda val: self._change_cb()
-        self._intensity.pack()
+        self._intensity.grid(row=3, column=0, columnspan=2)
         ToolTip(self._intensity, "Minimal intensity of the strong lines to select (0..1000)")
 
         self._ionization_1 = tk.BooleanVar(value=True)
@@ -56,9 +58,9 @@ class StrongLinesControl(CalibrationControlPanel):
         self._ionization_2 = tk.BooleanVar(value=False)
         self._io2_cbox = ttk.Checkbutton(self, text='Ionization II',
                                          variable=self._ionization_2, command=self._change_cb)
-        self._io1_cbox.pack(side="left", padx=(5,0))
+        self._io1_cbox.grid(row=4, column=0, sticky="w", padx=(5,0))
         ToolTip(self._io1_cbox, "Show lines related to first level of ionization")
-        self._io2_cbox.pack(side="right", padx=(0,5))
+        self._io2_cbox.grid(row=4, column=1, sticky="e", padx=(0,5))
         ToolTip(self._io2_cbox, "Show lines related to second level of ionization")
 
 

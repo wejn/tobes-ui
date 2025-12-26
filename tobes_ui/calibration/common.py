@@ -51,7 +51,7 @@ class ToolTip:
             padx=5,
             pady=3
         )
-        label.pack()
+        label.grid(row=0, column=0)
 
         # Adjust position if it goes off the screen
 
@@ -104,7 +104,7 @@ class ClampedSpinbox(ttk.Frame):  # pylint: disable=too-many-ancestors
         self._last_emitted = None
         self._disabled = False
 
-        ttk.Label(self, text=label_text).pack(side="left")
+        ttk.Label(self, text=label_text).grid(row=0, column=0, sticky="w")
 
         self._spinbox = ttk.Spinbox(
             self,
@@ -117,10 +117,12 @@ class ClampedSpinbox(ttk.Frame):  # pylint: disable=too-many-ancestors
             command=self._apply_value,
             increment=increment
         )
-        self._spinbox.pack(side="right", padx=(5, 0))
+        self._spinbox.grid(row=0, column=1, sticky="e", padx=(5, 0))
 
         self._spinbox.bind("<FocusOut>", lambda e: self._apply_value())
         self._spinbox.bind("<Return>", lambda e: self._apply_value(lose_focus=True))
+
+        self.grid_columnconfigure(0, weight=1)
 
     @property
     def min_val(self):

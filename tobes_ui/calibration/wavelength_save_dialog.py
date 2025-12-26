@@ -83,8 +83,11 @@ if __name__ == "__main__":
         root.protocol("WM_DELETE_WINDOW", root.destroy)
         root.bind('<Escape>', lambda event: root.destroy())
 
+        root.grid_columnconfigure(0, weight=1)
+
         root.geometry("400x300")
-        ttk.Label(root, text="This is the main window with some dummy content.").pack(pady=10)
+        ttk.Label(root, text="This is the main window with some dummy content.").grid(
+                row=0, column=0, pady=10)
 
         old = np.array([-1.10723200e-09, -2.10060600e-05, 3.80489000e-01, 3.41206390e+02])
         new = np.array([-2.03692509e-09, -1.83460977e-05, 3.78184170e-01, 3.43182843e+02])
@@ -95,9 +98,9 @@ if __name__ == "__main__":
         ttk.Button(root,
                    text="Open Save Wavelength Cali Dialog",
                    command=lambda: WavelengthCalibrationSaveDialog(root, old, new, on_change),
-                   ).pack(pady=10)
+                   ).grid(row=1, column=0, pady=10)
 
-        ttk.Button(root, text="Quit", command=root.destroy).pack(pady=10)
+        ttk.Button(root, text="Quit", command=root.destroy).grid(row=2, column=0, pady=10)
 
         root.mainloop()
 

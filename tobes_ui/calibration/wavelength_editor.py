@@ -176,8 +176,11 @@ if __name__ == "__main__":
         root.protocol("WM_DELETE_WINDOW", root.destroy)
         root.bind('<Escape>', lambda event: root.destroy())
 
+        root.grid_columnconfigure(0, weight=1)
+
         root.geometry("400x300")
-        ttk.Label(root, text="This is the main window with some dummy content.").pack(pady=10)
+        ttk.Label(root, text="This is the main window with some dummy content.").grid(
+                row=0, column=0, pady=10)
 
         strong_lines_container = StrongLinesContainer(
                 {k: v.persistent_lines for k, v in STRONG_LINES.items()})
@@ -198,19 +201,22 @@ if __name__ == "__main__":
         ttk.Button(root,
                    text="Open Add Wavelength Dialog (no pxl)",
                    command=lambda: WavelengthEditor(root, None, pixels, pixel_to_wl, None,
-                                                    ref_lines, test_cb)).pack(pady=10)
+                                                    ref_lines, test_cb)).grid(
+                                                            row=1, column=0, pady=10)
 
         ttk.Button(root,
                    text="Open Edit Wavelength Dialog",
                    command=lambda: WavelengthEditor(root, pixel, pixels, pixel_to_wl, new_wl,
-                                                    ref_lines, test_cb)).pack(pady=10)
+                                                    ref_lines, test_cb)).grid(
+                                                            row=2, column=0, pady=10)
 
         ttk.Button(root,
                    text="Open Edit Wavelength Dialog (fixed)",
                    command=lambda: WavelengthEditor(root, pixel, [pixel, pixel], pixel_to_wl,
-                                                    new_wl, ref_lines, test_cb)).pack(pady=10)
+                                                    new_wl, ref_lines, test_cb)).grid(
+                                                            row=3, column=0, pady=10)
 
-        ttk.Button(root, text="Quit", command=root.destroy).pack(pady=10)
+        ttk.Button(root, text="Quit", command=root.destroy).grid(row=4, column=0, pady=10)
 
         root.mainloop()
 
