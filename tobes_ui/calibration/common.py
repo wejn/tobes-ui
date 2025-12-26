@@ -20,16 +20,20 @@ class ToolTip:
 
         self.widget.bind("<Enter>", self.schedule)
         self.widget.bind("<Leave>", self.hide_tooltip)
+        self.widget.bind("<ButtonPress>", self.hide_tooltip)
+        self.widget.bind("<Destroy>", self.hide_tooltip)
         self.widget.bind("<Motion>", self.move)  # update position if mouse moves
 
     def schedule(self, _event=None):
         """Schedule showing the tooltip after a delay."""
-        self.after_id = self.widget.after(self.delay, self.show_tooltip)
+        if self.after_id is None:
+            self.after_id = self.widget.after(self.delay, self.show_tooltip)
 
     def show_tooltip(self):
         """Actually create and display the tooltip."""
-        if self.tooltip:
-            return  # already showing
+        if self.tooltip is not None or self.after_id is None:
+            return
+        self.after_id = None
 
         x = self.widget.winfo_rootx() + 20
         if self.above:
@@ -81,7 +85,7 @@ class ToolTip:
 
     def move(self, _event):
         """Optional: reschedule if the mouse moves inside the widget."""
-        if self.tooltip is None and self.after_id is None:
+        if self.tooltip is None:
             if self.after_id is not None:
                 self.widget.after_cancel(self.after_id)
                 self.after_id = None
