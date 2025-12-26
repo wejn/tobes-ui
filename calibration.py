@@ -67,7 +67,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
         self._spectrum_agg = SpectrumAggregator(1)
         self._spectrum = None  # Spectrum captured by spectrometer (last)
-        self._y_axis_max = SlidingMax(5)  # FIXME: make configurable?
+        self._y_axis_max = SlidingMax(5)
         self._strong_lines = StrongLinesContainer({})
         self._peak_detector = None  # callable to detect peaks in spectrum data
         self._peaks = []  # list of peaks detected, indexed against spd_raw, not phys pixels
@@ -134,7 +134,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
             paned_window.paneconfig(left_frame, minsize=left_frame.winfo_reqwidth())
             paned_window.paneconfig(right_frame, minsize=right_frame.winfo_reqwidth())
             paned_window.sash_place(0, min(left_frame.winfo_reqwidth(), int(total_width * 0.3)), 0)
-            # FIXME: ^^ probably doesn't work as I would expect...
+            # TODO: ^^ probably doesn't work as I would expect...
         paned_window.bind('<Configure>', _pw_on_resize)
 
     def _setup_calibration_points_table(self, parent):
@@ -562,7 +562,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
                     'exposure_mode': ExposureMode.MANUAL,
                 })
 
-        self._spectrometer.property_set('max_fps', 0)  # FIXME: maybe configurable?
+        self._spectrometer.property_set('max_fps', 0)  # TODO: maybe configurable?
 
     def _apply_peak_detect_ctrl(self, data):
         """Applies peak detection control data (configures peak finder)"""
@@ -617,7 +617,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
 
             width = 0
 
-            # FIXME: issue with this is that when you start new row, the width can stretch
+            # TODO: issue with this is that when you start new row, the width can stretch
             # (because when the cell on the next row is wider, it ends up stretching the
             # cell in all rows -- preceding and following)
 
@@ -756,7 +756,6 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
     def _on_plot_scroll(self, event):
         """Callback on scroll events."""
         if self._ui_elements.xaxis_zoom is not None:
-            # FIXME: this zooming is terrible. better than nothing, tho.
             if event.button == 'up':
                 self._ui_elements.xaxis_zoom.zoom_in(center=event.xdata)
             elif event.button == 'down':
