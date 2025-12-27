@@ -93,6 +93,10 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
             except sb.SeaBreezeError:
                 pass
 
+        eeprom_feature = self._spectrometer.f.eeprom
+        if eeprom_feature:
+            self._consts.wavelength_calibration = self.read_wavelength_calibration()
+
         self._consts.features = [k for k, v in self._spectrometer.features.items() if v]
         LOGGER.debug("Initialized %s with %s", self._spectrometer, self._consts.features)
 
@@ -453,12 +457,15 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
 
     def supports_wavelength_calibration(self):
         """Introspection method to check whether the spectrometer supports WL calibration."""
-        return True
+        return 'eeprom' in self.constants().features
 
     def read_wavelength_calibration(self):
         """Read WL calibration: [a3, a2, a1, a0] for polynomial a3*x^3 + a2*x^2 + a1*x + a0."""
         coeffs = []
         eeprom = self._spectrometer.f.eeprom
+        if not eeprom:
+            raise ValueError("eeprom access feature not present")
+
         # Slots 1-4 are wavelength calibration
         for i in range(1, 5):
             try:
@@ -500,5 +507,7 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
             if r != s:
                 LOGGER.error('slot %d does not match: want: %s, is: %r', n, s, r)
                 all_ok = False
+
+        self._consts.wavelength_calibration = calibration
 
         return all_ok
