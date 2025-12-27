@@ -150,7 +150,6 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         # Create treeview for table
         columns = ('pixel', 'wl', 'new_wl')
         tree = ttk.Treeview(table_frame, columns=columns, show='headings', height=4)
-        # FIXME: fix the rowheight that's terrible now
 
         # Define headings
         tree.heading('pixel', text='pixel')
