@@ -837,7 +837,7 @@ class CalibrationGUI: # pylint: disable=too-few-public-methods
         canvas = FigureCanvasTkAgg(fig, parent)
         canvas.draw()
 
-        fig.tight_layout(pad=0.1)
+        fig.set_layout_engine('compressed')
 
         canvas.mpl_connect('pick_event', self._on_peak_pick)
         canvas.mpl_connect('scroll_event', self._on_plot_scroll)
