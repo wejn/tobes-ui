@@ -210,6 +210,11 @@ class RefreshableSpectralPlot:
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
+        # Force redraw on startup (better than the initially clipped plot)
+        widget = self.fig.canvas.get_tk_widget()
+        widget.pack(padx=1, pady=1)
+        widget.after(100, lambda: widget.pack(padx=0, pady=0))
+
         # Start background data generation
         self.running = True
         self.thread = threading.Thread(target=self._data_loop, daemon=True)
