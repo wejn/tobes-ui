@@ -51,8 +51,8 @@ class WavelengthCalibrationGUI: # pylint: disable=too-few-public-methods
         self._root = root
         self._root.title("Wavelength Calibration")
         self._root.protocol("WM_DELETE_WINDOW", self._on_close)
-        #self._root.geometry("1024x768")
-        #self._root.minsize(800, 600)
+        self._root.geometry("1200x800")
+        self._root.minsize(1200, 800)
 
         self._spectrometer = spectrometer
         self._capture_state = CaptureState.PAUSE
@@ -84,14 +84,7 @@ class WavelengthCalibrationGUI: # pylint: disable=too-few-public-methods
 
         self._setup_ui()
 
-        # debug info
-        w = self._root.winfo_reqwidth()  # pylint: disable=invalid-name
-        h = self._root.winfo_reqheight()  # pylint: disable=invalid-name
-        print(f'window: {w}x{h}')
-        screen_width = root.winfo_screenwidth()
-        screen_height = root.winfo_screenheight()
-        print(f"Primary display size: {screen_width}x{screen_height}")
-
+        # Kick off event Q processing...
         self._root.after(0, self._process_event_queue)
 
         self._update_status('Ready.')
