@@ -28,10 +28,9 @@ on python-seabreeze.
 ## Usage
 
 ```
-$ python3 -m tobes_ui.main -h
 usage: main.py [-h] [-b] [-L] [-e EXPOSURE] [-q | -t GRAPH_TYPE] [-o | -n]
                [-f FILE_TEMPLATE] [-d [DATA ...]] [-s HISTORY_SIZE] [-l LOG_LEVEL]
-               [--log-file LOG_FILE]
+               [--log-file LOG_FILE] [-m MODE]
                [input_device]
 
 Totally Bearable Spectrometer UI
@@ -45,27 +44,28 @@ options:
   -h, --help            show this help message and exit
   -b, --backends        List all spectrometer backends
   -L, --loaders         List all file loaders
-  -e EXPOSURE, --exposure EXPOSURE
+  -e, --exposure EXPOSURE
                         Exposure time in milliseconds (0.1-5000) or 'auto' (default: auto)
   -q, --quick-graph     Enable quick (LINE) graph mode
-  -t GRAPH_TYPE, --graph_type GRAPH_TYPE
+  -t, --graph_type GRAPH_TYPE
                         Graph type (LINE, SPECTRUM, CIE1931, CIE1960UCS, CIE1976UCS, TM30,
                         OVERLAY) (default SPECTRUM)
   -o, --oneshot         One shot mode (single good capture)
   -n, --no-refresh      Start without refresh
-  -f FILE_TEMPLATE, --file_template FILE_TEMPLATE
+  -f, --file_template FILE_TEMPLATE
                         File template (without .ext) for data export (default:
                         'spectrum-{timestamp_full}{graph_type}'),
                         '{name}-{timestamp_full}{graph_type}' might be also useful
-  -d [DATA ...], --data [DATA ...]
+  -d, --data [DATA ...]
                         File(s) to load for viewing (disables data refresh); (loaders: hpcs,
                         json)
-  -s HISTORY_SIZE, --history-size HISTORY_SIZE
+  -s, --history-size HISTORY_SIZE
                         Size of the measurement history (default: 50)
-  -l LOG_LEVEL, --log-level LOG_LEVEL
+  -l, --log-level LOG_LEVEL
                         Logging level to configure: DEBUG, INFO, WARN, ERROR, FATAL (default
                         WARN)
   --log-file LOG_FILE   Logfile to write to (defaults to none (=console))
+  -m, --mode MODE       Mode to run in: PLOT, WLC (default PLOT)
 ```
 
 My typical use is:
@@ -81,6 +81,9 @@ python3 -m tobes_ui.main oo: -e auto -o
 # To "replay" existing samples:
 python3 -m tobes_ui.main -d examples/*.json
 # or (if you use pipx): tobes-ui -d ...
+
+# To wavelength calibrate (OO only):
+python3 -m tobes_ui.main oo: -m wlc
 ```
 
 The first invocation gives one-shot spectrum on auto exposure (from `/dev/ttyUSB0`):
@@ -95,6 +98,8 @@ The "replay" invocation shows you saved data from examples (no spectrometer need
 ![screenshot of replay](https://raw.githubusercontent.com/wejn/tobes-ui/master/pictures/replay.png)
 
 ![screenshot of replay overlay log](https://raw.githubusercontent.com/wejn/tobes-ui/master/pictures/replay-overlay-log.png)
+
+The "wavelength calibration" will be documented later (FIXME).
 
 There are several icons on the toolbar:
 

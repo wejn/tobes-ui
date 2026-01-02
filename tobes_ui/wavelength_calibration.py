@@ -628,6 +628,7 @@ class WavelengthCalibrationGUI: # pylint: disable=too-few-public-methods
         controls_frame.grid(row=0, column=0, sticky='nsew', padx=5, pady=5)
 
         controls = {
+            # FIXME: Fetch initial IC data from spectrometer
             'integration_control': IntegrationControl(controls_frame,
                                                       on_change=self._apply_integration_ctrl),
             'sampling_control': SamplingControl(controls_frame,
