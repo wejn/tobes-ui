@@ -536,6 +536,12 @@ class RefreshableSpectralPlot:
 
                 self._tweak_y_axis()
 
+        # set window title
+        widget = self.fig.canvas.get_tk_widget()
+        title = self._graph_title(spd)
+        if widget and title:
+            widget.master.title(f'{title} :: {self.graph_type} :: tobes_ui')
+
         # Maximize plot area
         self.fig.set_layout_engine('compressed')
 
