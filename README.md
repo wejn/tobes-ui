@@ -99,7 +99,12 @@ The "replay" invocation shows you saved data from examples (no spectrometer need
 
 ![screenshot of replay overlay log](https://raw.githubusercontent.com/wejn/tobes-ui/master/pictures/replay-overlay-log.png)
 
-The "wavelength calibration" will be documented later (FIXME).
+The "wavelength calibration" allows you to calibrate wavelength of supported spectrometers
+(currently only Ocean Optics):
+
+![bigger screenshot of wlc](https://raw.githubusercontent.com/wejn/tobes-ui/master/pictures/wlc-bigger.png)
+
+## Plot tools
 
 There are several icons on the toolbar:
 
