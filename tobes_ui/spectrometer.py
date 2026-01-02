@@ -9,6 +9,7 @@ from enum import Enum
 import json
 
 import colour
+import numpy as np
 
 from tobes_ui.logger import LOGGER
 from tobes_ui.properties import PropertyContainer
@@ -45,6 +46,20 @@ class ExposureStatus(Enum):
         return str(self.name).lower()
 
 
+class SpectrumEncoder(json.JSONEncoder):
+    """Custom encoder to serialize various classes in meta"""
+    def default(self, o):
+        if isinstance(o, np.poly1d):
+            return o.coefficients.tolist()
+        if isinstance(o, range):
+            return (o.start, o.stop)
+        if isinstance(o, ExposureMode):
+            return str(o)
+        if isinstance(o, ExposureStatus):
+            return str(o)
+        return super().default(o)
+
+
 @dataclass
 class Spectrum:
     """Wraps measured spectrum"""
@@ -59,6 +74,7 @@ class Spectrum:
     name: str
     y_axis: str
     device: str
+    meta: dict[str, any]
 
     REQUIRED_KEYS = [
             'status',
@@ -85,7 +101,8 @@ class Spectrum:
             "name": self.name,
             "y_axis": self.y_axis,
             "device": self.device,
-        }, indent=4)
+            "meta": self.meta,
+        }, indent=4, cls=SpectrumEncoder)
 
     def to_spectral_distribution(self):
         """Convert Spectrum to colour.SpectralDistribution"""
@@ -112,6 +129,8 @@ class Spectrum:
             data["y_axis"] = 'counts'
         if "device" not in data:
             data["device"] = None
+        if "meta" not in data:
+            data["meta"] = {}
         return cls(
             status=data["status"],
             exposure=data["exposure"],
@@ -126,7 +145,8 @@ class Spectrum:
             ts=datetime.fromtimestamp(data["ts"]),
             name=data["name"],
             y_axis=data["y_axis"],
-            device=data["device"]
+            device=data["device"],
+            meta=data["meta"],
         )
 
     @classmethod

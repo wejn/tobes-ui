@@ -433,7 +433,11 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
                     ts=datetime.now(),
                     name=None,
                     device=self.device_id,
-                    y_axis="counts"
+                    y_axis="counts",
+                    meta={
+                        'constants': self.constants(),
+                        'properties': self.properties(),
+                    }
             )
 
             if where_to:

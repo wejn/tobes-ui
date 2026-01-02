@@ -204,7 +204,10 @@ Sample exported data:
     "ts": 1751704901.025932,
     "name": "my fancy spectrum",
     "y_axis": "$W\\cdot{}m^{-2}\\cdot{}nm^{-1}$",
-    "device": "Y21B7W10034CCPD"
+    "device": "Y21B7W10034CCPD",
+    "meta": {
+        "key": "value"
+    }
 }
 ```
 
@@ -223,6 +226,7 @@ Meaning of the keys:
 | name | str | None | Human name for the measurement |
 | y_axis | str | `"counts"` | Unit for the Y axis |
 | device | str | None | Identifier of the device that took the measurement |
+| meta | dict[str, any] | `{}` | Spectrometer-specific metadata |
 
 ## License
 
