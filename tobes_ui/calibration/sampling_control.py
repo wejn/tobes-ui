@@ -22,7 +22,7 @@ class SamplingControl(CalibrationControlPanel):  # pylint: disable=too-many-ance
 
         # --- Widgets ---
         self._num_samples_spinbox = ClampedSpinbox(self, label_text='Samples:',
-                                                   min_val=1, max_val=10, initial=1,
+                                                   min_val=1, max_val=1000, initial=1,
                                                    on_change=self._change_cb)
         self._num_samples_spinbox.grid(row=0, column=0, columnspan=2, sticky='w', padx=5, pady=2)
         ToolTip(self._num_samples_spinbox, "Number of samples to average")

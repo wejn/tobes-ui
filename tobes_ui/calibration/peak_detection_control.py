@@ -16,7 +16,7 @@ class PeakDetectionControl(CalibrationControlPanel):  # pylint: disable=too-many
         # --- Widgets ---
         self._prominence_spinbox = ClampedSpinbox(self, label_text="Prominence [%]:",
                                                   min_val=1, max_val=100, initial=50,
-                                                  on_change=self._change_cb)
+                                                  increment=5, on_change=self._change_cb)
         self._prominence_spinbox.grid(row=0, column=0, sticky='ew', padx=5, pady=2)
         ToolTip(self._prominence_spinbox, "Requisite peak prominence, in %")
 

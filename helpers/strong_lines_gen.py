@@ -25,22 +25,35 @@ ELEMENT_URLS = {
     "Hg": "https://physics.nist.gov/PhysRefData/Handbook/Tables/mercurytable2_a.htm",
     "Kr": "https://physics.nist.gov/PhysRefData/Handbook/Tables/kryptontable2_a.htm",
     "N": "https://physics.nist.gov/PhysRefData/Handbook/Tables/nitrogentable2_a.htm",
+    "Na": "https://physics.nist.gov/PhysRefData/Handbook/Tables/sodiumtable2_a.htm",
     "Ne": "https://physics.nist.gov/PhysRefData/Handbook/Tables/neontable2_a.htm",
     "O": "https://physics.nist.gov/PhysRefData/Handbook/Tables/oxygentable2_a.htm",
     "Xe": "https://physics.nist.gov/PhysRefData/Handbook/Tables/xenontable2_a.htm"
+}
+
+IONIZATION_MAP = {
+    "I": 1,
+    "II": 2,
+    "III": 3,
+    "IV": 4,
 }
 
 def parse_pre_block(text):
     """Parses <pre> block from the html."""
     data = []
     for line in text.splitlines():
-        match = re.match(r"^\s*(\d+)\s*([A-Za-z,*]*)\s+([\d.]+)", line)
+        match = re.match(r"^\s*(\d+)\s*([A-Za-z,*]*)\s+([\d.]+)\s+..\s+([IV]+)", line)
         if match:
             intensity = int(match.group(1))
             flags = list(match.group(2)) if match.group(2) else []
             flags = ''.join([x for x in flags if x != ","])
             wavelength_aa = match.group(3)
-            data.append([intensity, re.sub(r'(\d+)(\d)\.(\d+)', r'\1.\2\3', wavelength_aa), flags])
+            ionization = IONIZATION_MAP[match.group(4)]
+            data.append([
+                intensity,
+                re.sub(r'(\d+)(\d)\.(\d+)', r'\1.\2\3', wavelength_aa),
+                flags,
+                ionization])
     return data
 
 def extract_element_data_from_pre(url):

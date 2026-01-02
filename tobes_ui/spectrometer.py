@@ -11,6 +11,7 @@ import json
 import colour
 
 from tobes_ui.logger import LOGGER
+from tobes_ui.properties import PropertyContainer
 
 
 @dataclass
@@ -135,6 +136,11 @@ class Spectrum:
             return cls.from_json(file.read())
 
 
+class SpectrometerProperties(PropertyContainer):
+    """Properties common to all spectrometers."""
+    # None at the moment
+
+
 class Spectrometer(ABC):
     """Abstract base class for spectrometers."""
     _registry = []
@@ -216,3 +222,57 @@ class Spectrometer(ABC):
                 LOGGER.debug("Spectrometer type=%s doesn't work: %s", spec_cls, ex)
 
         raise ValueError(f'No spectrometer implementation can take {input_device} as input')
+
+    def supports_wavelength_calibration(self):
+        """Introspection method to check whether the spectrometer supports WL calibration."""
+        return False
+
+    def read_wavelength_calibration(self):
+        """Optional hook method for reading WL calibration (if supported)."""
+        raise NotImplementedError("This is by default not supported; override if needed")
+
+    def write_wavelength_calibration(self, calibration):
+        """Optional hook method for writing WL calibration (if supported)."""
+        raise NotImplementedError("This is by default not supported; override if needed")
+
+    @abstractmethod
+    def properties_list(self):
+        """Return list of configurable properties.
+
+        You MUST use subclass of SpectrometerProperties for your properties,
+        and this method should call properties() on its instance.
+        """
+
+    @abstractmethod
+    def property_get(self, name):
+        """Get value of property with given name.
+
+        You MUST use subclass of SpectrometerProperties for your properties,
+        and this method should call get() on its instance.
+        """
+
+    @abstractmethod
+    def property_set(self, name, value):
+        """Set property of given name to value.
+
+        You MUST use subclass of SpectrometerProperties for your properties,
+        and this method should call set() on its instance.
+        """
+
+    def properties(self):
+        """Return list of properties with their values"""
+        return {item['name']: self.property_get(item['name']) for item in self.properties_list()}
+
+    def properties_set_many(self, props):
+        """Set many properties in a single call using name:value hash"""
+        for name, value in props.items():
+            self.property_set(name, value)
+
+    def constants(self):
+        """Return list of spectrometer-related constants with their values. Optional.
+
+        This is useful to return integration limits and various other internals.
+        It is not expected that these are truly constants (they can change between calls),
+        but they are not expected to be modified by the user -- the way properties are.
+        """
+        return {}  # By default: no constants

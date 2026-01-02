@@ -13,14 +13,22 @@ class ReferenceMatchControl(CalibrationControlPanel):  # pylint: disable=too-man
         self._initialized = False
 
         # --- Widgets ---
-        self._delta_spinbox = ClampedSpinbox(self, label_text="WL Δ [±nm]:",
-                                             min_val=1, max_val=20, initial=3,
-                                             on_change=self._change_cb)
-        # FIXME: this might need floats, not ints
-        self._delta_spinbox.grid(row=0, column=0, sticky='ew', padx=5, pady=2)
-        ToolTip(self._delta_spinbox, ("Wavelength Δ within which to\n" +
-                                      "match against reference lines, in nm"))
+        self._delta_plus_spinbox = ClampedSpinbox(self, label_text="WL Δ [+nm]:",
+                                                  min_val=0.0, max_val=20.0, initial=3,
+                                                  allow_float=True, increment=0.1,
+                                                  on_change=self._change_cb)
+        self._delta_minus_spinbox = ClampedSpinbox(self, label_text="WL Δ [-nm]:",
+                                                   min_val=0.0, max_val=20.0, initial=3,
+                                                   allow_float=True, increment=0.1,
+                                                   on_change=self._change_cb)
+        self._delta_plus_spinbox.grid(row=0, column=0, sticky='ew', padx=5, pady=2)
+        ToolTip(self._delta_plus_spinbox, ("Wavelength Δ (positive) within which to\n" +
+                                           "match against reference lines, in nm"))
+        self._delta_minus_spinbox.grid(row=1, column=0, sticky='ew', padx=5, pady=2)
+        ToolTip(self._delta_minus_spinbox, ("Wavelength Δ (negative) within which to\n" +
+                                            "match against reference lines, in nm"))
 
+        self.columnconfigure(0, weight=1)
         self.columnconfigure(0, weight=1)
 
         self._initialized = True
@@ -33,6 +41,7 @@ class ReferenceMatchControl(CalibrationControlPanel):  # pylint: disable=too-man
             return
         if self.on_change:
             self._data = {
-                'delta': self._delta_spinbox.get(),
+                'delta_plus': self._delta_plus_spinbox.get(),
+                'delta_minus': self._delta_minus_spinbox.get(),
             }
             self.on_change(self._data)

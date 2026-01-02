@@ -5,6 +5,7 @@ import logging
 
 LOGGER_NAME = 'tobes-ui'
 LOGGER = logging.getLogger(LOGGER_NAME)
+SUB_LOGGER = lambda name: logging.getLogger(f"{LOGGER_NAME}.{name}")
 
 class LogLevel(Enum):
     """Defines log level"""
@@ -28,3 +29,10 @@ def configure_logging(loglevel: LogLevel, file: str = None):
     else:
         logging.basicConfig(level=logging.ERROR, format=fmt, datefmt='%Y-%m-%d %H:%M:%S')
     LOGGER.setLevel(loglevel.value)
+
+def set_level(loglevel: LogLevel, sub_logger: str = None):
+    """Configure level on the fly, for the main logger or sub-logger"""
+    if sub_logger:
+        SUB_LOGGER(sub_logger).setLevel(loglevel.value)
+    else:
+        LOGGER.setLevel(loglevel.value)

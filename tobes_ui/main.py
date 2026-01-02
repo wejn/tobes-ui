@@ -4,11 +4,13 @@
 
 import argparse
 import atexit
+from enum import Enum
 import json
 import logging
 import pprint
 import signal
 import sys
+import tkinter as tk
 
 import matplotlib
 from matplotlib.backend_tools import default_toolbar_tools
@@ -20,11 +22,26 @@ from tobes_ui.plot import RefreshableSpectralPlot
 from tobes_ui.spectrometer import ExposureMode, Spectrometer
 import tobes_ui.spectrometers
 from tobes_ui.types import GraphType, RefreshType
+from tobes_ui.wavelength_calibration import WavelengthCalibrationGUI
 
 # pylint: disable=broad-exception-caught
 
 # Remove all tools by default (ouch)
 default_toolbar_tools.clear()
+
+
+class ToolMode(Enum):
+    """ToolMode in which to operate"""
+    PLOT = "Plot spectrum"
+    WLC = "Wavelength Calibration"
+
+    def __init__(self, desc: str):
+        self.desc = desc
+
+    def __str__(self):
+        """Convert to readable string"""
+        return f'{self.name.lower()} ({self.desc}'
+
 
 def parse_args():
     """Parse the arguments for the cli"""
@@ -161,6 +178,19 @@ def parse_args():
         help='Logfile to write to (defaults to none (=console))'
     )
 
+    def tool_mode(value):
+        try:
+            return ToolMode[value.upper()]
+        except KeyError as exc:
+            raise argparse.ArgumentTypeError(f"Invalid mode {value}") from exc
+
+    parser.add_argument(
+        '-m', '--mode',
+        type=tool_mode,
+        default=ToolMode.PLOT,
+        help=f'Mode to run in: {", ".join(e.name for e in ToolMode)} (default PLOT)'
+    )
+
     return parser.parse_args()
 
 def _init_meter(meter, argv):
@@ -282,14 +312,28 @@ def main():
         refresh = RefreshType.CONTINUOUS
 
     matplotlib.use("TkAgg")
-    app = RefreshableSpectralPlot(
-            data,
-            refresh_func=meter.stream_data if meter else None,
-            graph_type=GraphType.LINE if argv.quick_graph else argv.graph_type,
-            refresh_type=refresh,
-            file_template=argv.file_template,
-            history_size=argv.history_size)
-    app.start_plot()
+
+    match argv.mode:
+        case ToolMode.PLOT:
+            app = RefreshableSpectralPlot(
+                    data,
+                    refresh_func=meter.stream_data if meter else None,
+                    graph_type=GraphType.LINE if argv.quick_graph else argv.graph_type,
+                    refresh_type=refresh,
+                    file_template=argv.file_template,
+                    history_size=argv.history_size)
+            app.start_plot()
+        case ToolMode.WLC:
+            if not meter.supports_wavelength_calibration():
+                print("Spectrometer doesn't support WL calibration.")
+                sys.exit(2)
+            root = tk.Tk()
+            WavelengthCalibrationGUI(root, meter)
+            root.mainloop()
+        case _:
+            print(f"Unsupported mode: {argv.mode}")
+            sys.exit(2)
+
 
 if __name__ == "__main__":
     main()
