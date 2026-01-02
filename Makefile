@@ -4,7 +4,7 @@ all:
 	python3 -m tobes_ui.main /dev/ttyUSB0 -e auto -o
 
 oo:
-	python3 -m tobes_ui.main oo: -e auto -o
+	python3 -m tobes_ui.main oo: -e auto -o -q
 
 wlc:
 	python3 -m tobes_ui.main oo: -m wlc
