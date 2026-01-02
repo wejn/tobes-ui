@@ -236,6 +236,10 @@ class ClampedSpinbox(ttk.Frame):  # pylint: disable=too-many-ancestors
         self._last_valid = value_str
         self._change_cb()
 
+    def spinbox(self):
+        """Get the underlying spinbox. Used (mainly?) for focus."""
+        return self._spinbox
+
 
 class CalibrationControlPanel(ttk.LabelFrame, abc.ABC):  # pylint: disable=too-many-ancestors
     """Control panel template."""

@@ -121,7 +121,10 @@ class WavelengthEditor(Dialog):
         master.grid_rowconfigure(2, weight=1)
         master.grid_rowconfigure(3, weight=1)
 
-        return entry
+        if self._pixel:
+            return entry
+        else:
+            return pixel_spinbox.spinbox()
 
     def _validate_float(self, value_if_allowed):
         """Validation command for the entry widget."""
