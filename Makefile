@@ -6,6 +6,9 @@ all:
 oo:
 	python3 -m tobes_ui.main oo: -e auto -o
 
+wlc:
+	python3 -m tobes_ui.main oo: -m wlc
+
 help:
 	@COLUMNS=94 python3 -m tobes_ui.main -h
 
