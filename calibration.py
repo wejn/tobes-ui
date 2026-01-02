@@ -41,7 +41,7 @@ class CaptureState(Enum):
     EXIT = 2
 
 
-class CalibrationGUI: # pylint: disable=too-few-public-methods
+class WavelengthCalibrationGUI: # pylint: disable=too-few-public-methods
     """GUI for Ocean spectrometer wavelength calibration."""
 
     def __init__(self, root, spectrometer, initial_polyfit):
@@ -1042,7 +1042,7 @@ if __name__ == "__main__":
         print("Read initial wavelength calibration coefficients:", wlc)
 
         root = tk.Tk()
-        CalibrationGUI(root, spectrometer, initial_polyfit=wlc)
+        WavelengthCalibrationGUI(root, spectrometer, initial_polyfit=wlc)
         root.mainloop()
 
     main()
