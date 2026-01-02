@@ -44,7 +44,10 @@ class CaptureState(Enum):
 class WavelengthCalibrationGUI: # pylint: disable=too-few-public-methods
     """GUI for Ocean spectrometer wavelength calibration."""
 
-    def __init__(self, root, spectrometer, initial_polyfit):
+    def __init__(self, root, spectrometer):
+        if not spectrometer.supports_wavelength_calibration():
+            raise ValueError("Spectrometer doesn't support WL calibration.")
+
         self._root = root
         self._root.title("Wavelength Calibration")
         self._root.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -57,6 +60,7 @@ class WavelengthCalibrationGUI: # pylint: disable=too-few-public-methods
         self._worker_thread = threading.Thread(target=self._data_refresh_loop, daemon=True)
         self._worker_thread.start()
 
+        initial_polyfit = self._spectrometer.read_wavelength_calibration()
         self._initial_polyfit = np.array(initial_polyfit)  # Current pixel -> wavelength polynomial
         self._new_polyfit = None  # New (calibrated) pixel -> wavelength polynomial
         self._new_polyfit_stats = None  # New polyfit stats
@@ -1038,11 +1042,8 @@ if __name__ == "__main__":
             print("Spectrometer doesn't support WL calibration.")
             sys.exit(2)
 
-        wlc = spectrometer.read_wavelength_calibration()
-        print("Read initial wavelength calibration coefficients:", wlc)
-
         root = tk.Tk()
-        WavelengthCalibrationGUI(root, spectrometer, initial_polyfit=wlc)
+        WavelengthCalibrationGUI(root, spectrometer)
         root.mainloop()
 
     main()
