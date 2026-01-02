@@ -3,7 +3,7 @@
 This is a UI for several spectrometers:
 - [Torch Bearer](https://www.torchbearer.tech/) Spectrometer (`Y21B7W10034CCPD`)
   that is available on Amazon and AliExpress ([TB Store](https://www.aliexpress.com/store/1104401209))
-- Ocean Optics Flame-S (and maybe others)
+- Ocean Optics Flame-S, USB4000 (and maybe others)
 
 Originally forked from
 [ZoidTechnology/Torch-Bearer-Tools](https://github.com/ZoidTechnology/Torch-Bearer-Tools)[^1]
