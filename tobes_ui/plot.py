@@ -442,6 +442,7 @@ class RefreshableSpectralPlot:
                 'transparent_background': False,
                 'show': False,
                 'axes': self.axes,
+                'tight_layout': False,
         }
         legend = None
         match self.graph_type:
@@ -449,14 +450,17 @@ class RefreshableSpectralPlot:
                 xy_point = XYZ_to_xy(sd_to_XYZ(spd))
                 plot_planckian_locus_in_chromaticity_diagram_CIE1931(
                         {"X": xy_point}, title=self._graph_title(spd), **kwargs)
+
             case GraphType.CIE1960UCS:
                 xy_point = XYZ_to_xy(sd_to_XYZ(spd))
                 plot_planckian_locus_in_chromaticity_diagram_CIE1960UCS(
                         {"X": xy_point}, title=self._graph_title(spd), **kwargs)
+
             case GraphType.CIE1976UCS:
                 xy_point = XYZ_to_xy(sd_to_XYZ(spd))
                 plot_planckian_locus_in_chromaticity_diagram_CIE1976UCS(
                         {"X": xy_point}, title=self._graph_title(spd), **kwargs)
+
             case GraphType.TM30:
                 xy_point = XYZ_to_xy(sd_to_XYZ(spd))
                 cct = colour.temperature.xy_to_CCT(xy_point, method='daylight')
@@ -472,8 +476,8 @@ class RefreshableSpectralPlot:
                 else:
                     plt.title(self._graph_title(spd))
                     spec_full = colour_fidelity_index_ANSIIESTM3018(spd, True)
-                    kwargs.update({'hspace': CONSTANTS_COLOUR_STYLE.geometry.short / 2})
                     plot_colour_vector_graphic(spec_full, **kwargs)
+
             case GraphType.SPECTRUM:
                 self.axes.set_aspect('auto')
                 cmfs_data = {}
@@ -491,9 +495,9 @@ class RefreshableSpectralPlot:
                 plt.title(self._graph_title(spd))
 
                 self._tweak_y_axis()
+
             case GraphType.OVERLAY:
                 self.axes.set_aspect('auto')
-                self.fig.tight_layout()
                 plt.title('Overlay graph')
                 for idx, graph in enumerate(self._history):
                     spd = graph.to_spectral_distribution()
@@ -514,13 +518,9 @@ class RefreshableSpectralPlot:
                     self.axes.set_xlim(xstart, xstop)
                 self._tweak_y_axis()
 
-                self.fig.tight_layout()
-                self.fig.figure.subplots_adjust(
-                        hspace=CONSTANTS_COLOUR_STYLE.geometry.short / 2)
             case _:
                 # GraphType.LINE goes here, too
                 self.axes.set_aspect('auto')
-                self.fig.tight_layout()
                 plt.title(self._graph_title(spd))
                 self.axes.plot(list(spd.wavelengths),
                              list(spd.values),
@@ -536,9 +536,8 @@ class RefreshableSpectralPlot:
 
                 self._tweak_y_axis()
 
-                self.fig.tight_layout()
-                self.fig.figure.subplots_adjust(
-                        hspace=CONSTANTS_COLOUR_STYLE.geometry.short / 2)
+        # Maximize plot area
+        self.fig.set_layout_engine('compressed')
 
         # Re-setup cursor after clearing
         self._setup_cursor(legend)
