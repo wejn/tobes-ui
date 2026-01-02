@@ -1022,11 +1022,11 @@ if __name__ == "__main__":
         """Zee main(), like in C"""
         matplotlib.use('TkAgg')
 
-        configure_logging(LogLevel.DEBUG) # FIXME: configurable?
+        configure_logging(LogLevel.DEBUG)
         set_level(LogLevel.INFO, 'oceanoptics')  # way less noisy, TY
 
         try:
-            spectrometer = Spectrometer.create("oo:") # FIXME: maybe configurable?
+            spectrometer = Spectrometer.create("oo:")
         except Exception as ex: # pylint: disable=broad-exception-caught
             print("No spectrometer available", ex)
             sys.exit(1)
