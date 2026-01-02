@@ -9,13 +9,14 @@ from tobes_ui.calibration.common import (CalibrationControlPanel, ClampedSpinbox
 class IntegrationControl(CalibrationControlPanel):  # pylint: disable=too-many-ancestors
     """Integration time control."""
 
-    def __init__(self, parent, **kwargs):
+    def __init__(self, parent, initial_ic=None, **kwargs):
+        self._initial_ic = initial_ic
         super().__init__(parent, text='Integration', **kwargs)
 
     def _setup_gui(self):
         """Setup GUI elements for the control."""
         self._initialized = False
-        self._mode = tk.StringVar(value='auto')
+        self._mode = tk.StringVar(value='auto' if self._initial_ic is None else 'manual')
         self._integration_time_var = tk.StringVar(value='n/a')
 
         # --- Widgets ---
@@ -41,8 +42,9 @@ class IntegrationControl(CalibrationControlPanel):  # pylint: disable=too-many-a
         ToolTip(self._auto_max_spinbox, "Max integration period [ms]")
 
         manual_widgets_frame = ttk.Frame(self)
+        initial_ic = int(self._initial_ic) if self._initial_ic is not None else 100
         self._manual_value_spinbox = ClampedSpinbox(manual_widgets_frame, min_val=1, max_val=65535,
-                                                    initial=100, on_change=self._change_cb)
+                                                    initial=initial_ic, on_change=self._change_cb)
         self._manual_value_spinbox.grid(row=0, column=0, sticky="w")
         ToolTip(self._manual_value_spinbox, "Integration period [ms]")
 

@@ -627,9 +627,13 @@ class WavelengthCalibrationGUI: # pylint: disable=too-few-public-methods
         controls_frame = ttk.Frame(right_frame)
         controls_frame.grid(row=0, column=0, sticky='nsew', padx=5, pady=5)
 
+        if self._spectrometer.exposure_mode == ExposureMode.MANUAL:
+            initial_ic = self._spectrometer.exposure_time / 1000
+        else:
+            initial_ic = None
         controls = {
             # FIXME: Fetch initial IC data from spectrometer
-            'integration_control': IntegrationControl(controls_frame,
+            'integration_control': IntegrationControl(controls_frame, initial_ic=initial_ic,
                                                       on_change=self._apply_integration_ctrl),
             'sampling_control': SamplingControl(controls_frame,
                                                 on_change=self._apply_sampling_ctrl),
