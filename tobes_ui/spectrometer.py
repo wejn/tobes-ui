@@ -132,8 +132,8 @@ class Spectrum:
         if "meta" not in data:
             data["meta"] = {}
         return cls(
-            status=data["status"],
-            exposure=data["exposure"],
+            status=ExposureStatus[data["status"].upper()],
+            exposure=ExposureMode[data["exposure"].upper()],
             time=data["time"],
             spd={ int(k): v for k,v in data["spd"].items()},
             wavelength_range=range(

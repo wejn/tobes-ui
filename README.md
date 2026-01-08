@@ -37,8 +37,8 @@ Totally Bearable Spectrometer UI
 
 positional arguments:
   input_device          Spectrometer device (dev:string); ; e.g. /dev/ttyUSB0, or
-                        type:/dev/foo (registered types: oo, ocean, oceanoptics, tb,
-                        torchbearer)
+                        type:/dev/foo (registered types: fake, fake-spectrometer, oo, ocean,
+                        oceanoptics, tb, torchbearer)
 
 options:
   -h, --help            show this help message and exit
@@ -66,6 +66,10 @@ options:
                         WARN)
   --log-file LOG_FILE   Logfile to write to (defaults to none (=console))
   -m, --mode MODE       Mode to run in: PLOT, WLC (default PLOT)
+usage: main.py [-h] [-b] [-L] [-e EXPOSURE] [-q | -t GRAPH_TYPE] [-o | -n]
+               [-f FILE_TEMPLATE] [-d [DATA ...]] [-s HISTORY_SIZE] [-l LOG_LEVEL]
+               [--log-file LOG_FILE] [-m MODE]
+               [input_device]
 ```
 
 My typical use is:
@@ -84,6 +88,9 @@ python3 -m tobes_ui.main -d examples/*.json
 
 # To wavelength calibrate (OO only):
 python3 -m tobes_ui.main oo: -m wlc
+
+# To wavelength calibrate using fake (replay) spectrometer
+python3 -m tobes_ui.main fake:examples/cali-sample.json -m wlc
 ```
 
 The first invocation gives one-shot spectrum on auto exposure (from `/dev/ttyUSB0`):
@@ -100,7 +107,7 @@ The "replay" invocation shows you saved data from examples (no spectrometer need
 ![screenshot of replay overlay log](https://raw.githubusercontent.com/wejn/tobes-ui/master/pictures/replay-overlay-log.png)
 
 The "wavelength calibration" allows you to calibrate wavelength of supported spectrometers
-(currently only Ocean Optics):
+(currently only Ocean Optics or fake (replay) spectrometer):
 
 ![bigger screenshot of wlc](https://raw.githubusercontent.com/wejn/tobes-ui/master/pictures/wlc-bigger.png)
 
