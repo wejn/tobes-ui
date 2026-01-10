@@ -51,7 +51,10 @@ class FakeSpectrometer(Spectrometer, registered_types = ['fake', 'fake-spectrome
             for k, v in self._data.meta['constants'].items():
                 self._consts[k] = v
 
-        exp_lim = self._consts.exposure_limits
+        if 'exposure_limits' in self._consts:
+            exp_lim = self._consts.exposure_limits
+        else:
+            exp_lim = (1, 5000000)
         self._props = FakeProperties(
             exposure_mode=self._data.exposure,
             exposure_time=int(self._data.time),
