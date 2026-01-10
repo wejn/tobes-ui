@@ -11,7 +11,6 @@ import colour
 from colour.colorimetry import sd_to_XYZ
 from colour.models import XYZ_to_xy
 from colour.plotting import (
-    CONSTANTS_COLOUR_STYLE,
     plot_planckian_locus_in_chromaticity_diagram_CIE1931,
     plot_planckian_locus_in_chromaticity_diagram_CIE1960UCS,
     plot_planckian_locus_in_chromaticity_diagram_CIE1976UCS,
@@ -24,11 +23,14 @@ from matplotlib import pyplot as plt
 from matplotlib.backend_bases import KeyEvent
 from matplotlib.backend_managers import ToolManager
 from matplotlib.backend_tools import ToolBase
+from matplotlib.path import Path
+from matplotlib.patches import PathPatch
 import matplotlib.text
 import numpy as np
 
 from .cursors import SingleGraphCursor, OverlayGraphCursor
 from .logger import LOGGER
+from .rainbow import get_rainbow_for_range
 from .spectrometer import ExposureStatus
 from .types import GraphType, RefreshType
 from .tools import (
@@ -480,16 +482,40 @@ class RefreshableSpectralPlot:
 
             case GraphType.SPECTRUM:
                 self.axes.set_aspect('auto')
-                cmfs_data = {}
-                cmfs_source = colour.MSDS_CMFS["CIE 1931 2 Degree Standard Observer"]
-                use_range = self.VISIBLE_SPECTRUM if self.vis_x else self.data.wavelength_range
-                for wavelength in range(
-                    use_range.start,
-                    use_range.stop + 1
-                ):
-                    cmfs_data[wavelength] = cmfs_source[wavelength]
-                cmfs = colour.MultiSpectralDistributions(cmfs_data)
-                colour.plotting.plot_single_sd(spd, cmfs, **kwargs)
+                use_range = self.data.wavelength_range
+
+                # Create clipping path from the data curve
+                verts = [(spd.wavelengths[0], 0)]
+                for x, y in zip(spd.wavelengths, spd.values):
+                    verts.append((x, y))
+                verts.append((spd.wavelengths[-1], 0))
+                verts.append((spd.wavelengths[0], 0))
+
+                clip_path = Path(verts)
+
+                rainbow = get_rainbow_for_range(use_range.start, use_range.stop)
+
+                y_max = spd.values.max()
+
+                im = self.axes.imshow(rainbow, aspect='auto',
+                               extent=[use_range.start, use_range.stop, 0, y_max * 1.05],
+                               origin='lower', zorder=0)
+
+                # Apply clipping path to the rainbow image
+                patch = PathPatch(clip_path, transform=self.axes.transData,
+                                 facecolor='none', edgecolor='none')
+                self.axes.add_patch(patch)
+                im.set_clip_path(patch)
+
+                # Plot the actual line
+                self.axes.plot(spd.wavelengths, spd.values, 'k-', linewidth=1.5, zorder=10)
+
+                wl_range = self.data.wavelength_range
+                if self.vis_x:
+                    self.axes.set_xlim(self.VISIBLE_SPECTRUM.start, self.VISIBLE_SPECTRUM.stop + 1)
+                else:
+                    self.axes.set_xlim(wl_range.start, wl_range.stop)
+
                 plt.xlabel("Wavelength $\\lambda$ (nm)")
                 plt.ylabel(f'{self.YLABEL} ({self.data.y_axis})')
                 plt.title(self._graph_title(spd))
@@ -568,7 +594,10 @@ class RefreshableSpectralPlot:
                     self.fig.canvas.flush_events()
                 self.axes.clear()
                 self.clear_overlay()
+                #start = time.perf_counter()
                 self._draw_graph()
+                #end = time.perf_counter()
+                #print(f'Drawing took: {end - start:.6f} seconds')
             else:
                 self.axes.clear()
                 self.axes.set_axis_off()
