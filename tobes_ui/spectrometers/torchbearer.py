@@ -263,7 +263,8 @@ class TorchBearerSpectrometer(Spectrometer, registered_types = ['tb', 'torchbear
                     ts=datetime.now(),
                     name=None,
                     device=device,
-                    y_axis="$W\\cdot{}m^{-2}\\cdot{}nm^{-1}$"
+                    y_axis="$W\\cdot{}m^{-2}\\cdot{}nm^{-1}$",
+                    meta={}
             )
 
             if where_to:
