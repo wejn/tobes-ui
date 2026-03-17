@@ -4,6 +4,7 @@
 
 import copy
 from datetime import datetime
+import json
 import pprint
 import struct
 import time
@@ -39,11 +40,12 @@ class FakeSpectrometer(Spectrometer, registered_types = ['fake', 'fake-spectrome
     def __init__(self, path):
         if not path:
             raise ValueError("Need a path to json file to function")
-        else:
-            try:
-                self._data = Loader.load('json:' + path)
-            except (OSError, ValueError, json.decoder.JSONDecodeError) as exc:
-                raise ValueError("Couldn't load json: {exc}") from exc
+        if path.startswith('/dev'):
+            raise ValueError("Devices are not a good csv source")
+        try:
+            self._data = Loader.load('json:' + path)
+        except (OSError, ValueError, json.decoder.JSONDecodeError) as exc:
+            raise ValueError(f"Couldn't load json: {exc}") from exc
 
         self._consts = AttrDict()
 
