@@ -5,6 +5,7 @@
 import copy
 from datetime import datetime
 import json
+import os
 import pprint
 import struct
 import time
@@ -42,6 +43,8 @@ class FakeSpectrometer(Spectrometer, registered_types = ['fake', 'fake-spectrome
             raise ValueError("Need a path to json file to function")
         if path.startswith('/dev'):
             raise ValueError("Devices are not a good csv source")
+        if not os.path.isfile(path):
+            raise ValueError("Non-file entities are not a good csv source")
         try:
             self._data = Loader.load('json:' + path)
         except (OSError, ValueError, json.decoder.JSONDecodeError) as exc:
