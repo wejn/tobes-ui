@@ -3,6 +3,7 @@
 # pylint: disable=too-many-instance-attributes
 
 from abc import ABC, abstractmethod
+from pathlib import Path
 
 from tobes_ui.logger import LOGGER
 from tobes_ui.spectrometer import Spectrum
@@ -36,6 +37,13 @@ class Loader(ABC):
         if ':' in file:
             type_, file_id = file.split(':', 2)
 
+            path = Path(file_id).expanduser()
+            if path.is_file():
+                file_id = str(path)
+            else:
+                LOGGER.warning(f"Expanded '{file_id}' to '{path}' but it isn't"
+                               " a file, using original.")
+
             if type_ in Loader._loader_types:
                 LOGGER.debug("Trying loader type=%s with id=%s", type_, file_id)
                 try:
@@ -50,6 +58,14 @@ class Loader(ABC):
 
         LOGGER.debug("Brute-forcing loaders for %s", file)
         # Brute force
+
+        path = Path(file).expanduser()
+        if path.is_file():
+            file = str(path)
+        else:
+            LOGGER.warning(f"Expanded '{file}' to '{path}' but it isn't a file,"
+                           " using original.")
+
         for loader_cls in Loader._registry:
             LOGGER.debug("Trying loader class: %s", loader_cls)
             try:

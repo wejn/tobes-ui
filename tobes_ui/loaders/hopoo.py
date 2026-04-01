@@ -75,5 +75,6 @@ class HopooLoader(Loader, registered_types=['hpcs']):
             ts=snap_time,
             name=name,
             device=device,
-            y_axis="$μW\\cdot{}cm^{-2}\\cdot{}nm^{-1}$"
+            y_axis="$μW\\cdot{}cm^{-2}\\cdot{}nm^{-1}$",
+            meta={}
         )
