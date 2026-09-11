@@ -9,7 +9,7 @@ from tobes_ui.loader import Loader
 from tobes_ui.logger import LOGGER
 from tobes_ui.spectrometer import ExposureMode, ExposureStatus, Spectrum
 
-class HopooLoader(Loader, registered_types=['hpcs']):
+class HopooLoader(Loader, registered_types=['hpcs', 'hpcs-csv']):
     """Load hpcs csv for hpcs320 and 330 as tobes Spectrum"""
     @classmethod
     def load(cls, file: str) -> "Spectrum":

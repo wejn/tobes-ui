@@ -9,8 +9,9 @@ Originally forked from
 [ZoidTechnology/Torch-Bearer-Tools](https://github.com/ZoidTechnology/Torch-Bearer-Tools)[^1]
 and improved (beyond recognition).
 
-It also supports displaying its own `json` saves and importing `csv` data from 
-yet another Chinese range of spectrometers (Hopoocolor HPCS-320, HPCS-330).
+It also supports displaying its own `json` saves and importing `csv` or `ohs`
+data from yet another Chinese range of spectrometers (Hopoocolor HPCS-320,
+HPCS-330P).
 
 ## Install
 
@@ -58,7 +59,7 @@ options:
                         '{name}-{timestamp_full}{graph_type}' might be also useful
   -d, --data [DATA ...]
                         File(s) to load for viewing (disables data refresh); (loaders: hpcs,
-                        json)
+                        hpcs-csv, json, ohs, hopoo-ohs)
   -s, --history-size HISTORY_SIZE
                         Size of the measurement history (default: 50)
   -l, --log-level LOG_LEVEL
@@ -66,10 +67,6 @@ options:
                         WARN)
   --log-file LOG_FILE   Logfile to write to (defaults to none (=console))
   -m, --mode MODE       Mode to run in: PLOT, WLC (default PLOT)
-usage: main.py [-h] [-b] [-L] [-e EXPOSURE] [-q | -t GRAPH_TYPE] [-o | -n]
-               [-f FILE_TEMPLATE] [-d [DATA ...]] [-s HISTORY_SIZE] [-l LOG_LEVEL]
-               [--log-file LOG_FILE] [-m MODE]
-               [input_device]
 ```
 
 My typical use is:
