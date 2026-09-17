@@ -4,6 +4,7 @@
 
 import copy
 from datetime import datetime
+from itertools import takewhile
 import pprint
 import struct
 import time
@@ -96,6 +97,37 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
         eeprom_feature = self._spectrometer.f.eeprom
         if eeprom_feature:
             self._consts.wavelength_calibration = self.read_wavelength_calibration()
+
+            def get_slot(n):
+                try:
+                    return True, self._spectrometer.f.eeprom.eeprom_read_slot(n).decode()
+                except Exception:
+                    return False, None
+            self._consts.eeprom_slots = [
+                    value
+                    for ok, value
+                    in takewhile(lambda x: x[0], map(get_slot, range(33)))]
+
+            try:
+                if len(self._consts.eeprom_slots) > 16:
+                    slot_15 = self._consts.eeprom_slots[15].split(b'\x00',2)[0]
+                    slot_16 = self._consts.eeprom_slots[16].split(b'\x00',2)[0]
+                    if slot_15 and slot_16:
+                        grating, filt, slit = slot_15.strip().split(' ', 3)
+                        awl, cpld = slot_16.strip().split(' ', 2)
+                        a, w, l, *_ = awl
+                        self._consts.optical_bench = {
+                                'grating': grating,
+                                'filter': filt,
+                                'slit': slit,
+                                'awl': awl,
+                                'array_coating': a,
+                                'array_wavelength': w,
+                                'l2_lens': l,
+                                'cpld': cpld,
+                        }
+            except Exception:
+                LOGGER.debug("Can't dump optical bench data", exc_info=True)
 
         self._consts.features = [k for k, v in self._spectrometer.features.items() if v]
         LOGGER.debug("Initialized %s with %s", self._spectrometer, self._consts.features)
