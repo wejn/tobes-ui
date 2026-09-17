@@ -14,6 +14,7 @@ class SingleGraphCursor:
         self._annot = self._axes.annotate(
                 '', xy=(0, 0), xytext=(20, 20),
                 textcoords="offset points",
+                zorder=20,
                 bbox={
                     'boxstyle': "round",
                     'fc': "white",
@@ -78,6 +79,7 @@ class OverlayGraphCursor:
         self._annot = self._axes.annotate(
                 '', xy=(0, 0), xytext=(20, 20),
                 textcoords="offset points",
+                zorder=20,
                 bbox={
                     'boxstyle': "round",
                     'fc': "white",
