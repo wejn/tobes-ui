@@ -100,7 +100,8 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
 
             def get_slot(n):
                 try:
-                    return True, self._spectrometer.f.eeprom.eeprom_read_slot(n).decode()
+                    slot = self._spectrometer.f.eeprom.eeprom_read_slot(n)
+                    return True, slot.decode('latin1')
                 except Exception:
                     return False, None
             self._consts.eeprom_slots = [
@@ -110,8 +111,8 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
 
             try:
                 if len(self._consts.eeprom_slots) > 16:
-                    slot_15 = self._consts.eeprom_slots[15].split(b'\x00',2)[0]
-                    slot_16 = self._consts.eeprom_slots[16].split(b'\x00',2)[0]
+                    slot_15 = self._consts.eeprom_slots[15].split('\x00',2)[0]
+                    slot_16 = self._consts.eeprom_slots[16].split('\x00',2)[0]
                     if slot_15 and slot_16:
                         grating, filt, slit = slot_15.strip().split(' ', 3)
                         awl, cpld = slot_16.strip().split(' ', 2)
