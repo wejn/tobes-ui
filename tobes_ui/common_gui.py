@@ -38,6 +38,22 @@ class CommonGUI:  # pylint: disable=too-few-public-methods
 
         self._update_status('Ready.')
 
+    @abstractmethod
+    def _setup_ui(self):
+        """Setup UI, inserting elements into self._ui_elements as needed."""
+        # Use self._root, insert addressable elements into self._ui_elements
+
+    @abstractmethod
+    def _process_spectrum(self, spectrum):
+        """Processes captured spectrum, runs in main thread"""
+        # Use this to process retrieved spectrum, in any way you see fit
+
+    @abstractmethod
+    def _on_capture_stop(self):
+        """Event that runs when capture is stopped in refresh loop."""
+        # Useful if you only want to post-process something when the spectra
+        # stops changing.
+
     def _process_event_queue(self):
         while not self._event_queue.empty():
             event = self._event_queue.get_nowait()
@@ -53,10 +69,6 @@ class CommonGUI:  # pylint: disable=too-few-public-methods
             self._event_queue.put(event)
         else:
             raise ValueError(f"Event {event} is not callable")
-
-    @abstractmethod
-    def _setup_ui(self):
-        """Setup UI, inserting elements into self._ui_elements as needed."""
 
     def _set_refresh_type(self, rt):
         match rt:
@@ -76,10 +88,6 @@ class CommonGUI:  # pylint: disable=too-few-public-methods
                 pass # Ignore
 
         self._refresh_type = rt
-
-    @abstractmethod
-    def _process_spectrum(self, spectrum):
-        """Processes captured spectrum, runs in main thread"""
 
     def _data_refresh_loop(self):
         # WARNING: Does NOT run in main thread; do not run any Tkinter code here!
@@ -104,10 +112,6 @@ class CommonGUI:  # pylint: disable=too-few-public-methods
                         return self._refresh_type == RefreshType.CONTINUOUS
                     self._push_event(lambda: self._update_status('Capture running...'))
                     self._spectrometer.stream_data(handle_spectrum)
-
-    @abstractmethod
-    def _on_capture_stop(self):
-        """Event that runs when capture ist stopped in refresh loop."""
 
     def _update_status(self, message):
         if 'status_label' in self._ui_elements:
