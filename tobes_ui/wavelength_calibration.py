@@ -594,8 +594,8 @@ class WavelengthCalibrationGUI: # pylint: disable=too-few-public-methods
                 })
             case 'manual':
                 self._spectrometer.properties_set_many({
-                    'exposure_time': data['value'] * 1000, # input in ms, set in µs
                     'exposure_mode': ExposureMode.MANUAL,
+                    'exposure_time': data['value'] * 1000, # input in ms, set in µs
                 })
 
         self._spectrometer.property_set('max_fps', 0)  # TODO: maybe configurable?

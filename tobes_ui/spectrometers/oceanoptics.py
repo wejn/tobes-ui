@@ -270,8 +270,11 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
         As such, running a read of the spectrum() once after changing IT is generally
         needed to make sure the result is OK in all cases.
         """
-        self._spectrometer.integration_time_micros(integration_time)
         if self._integration_time_set is None or self._integration_time_set != integration_time:
+            # set IT (only if necessary)
+            self._spectrometer.integration_time_micros(integration_time)
+
+            # trash the read
             LOGGER.debug("Throwaway read because IT: %.2f -> %.2f",
                          self._integration_time_set or -1, integration_time or -1)
             self._spectrometer.spectrum()  # throwaway read
@@ -401,7 +404,8 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
             LOGGER.debug("Getting spectrum...")
             if mode == ExposureMode.AUTOMATIC:
                 exp_time, wavelengths, intensities = self._spd_with_auto(self.exposure_time)
-                self.exposure_time = exp_time  # in auto mode, remember the exposure time
+                if self.exposure_mode == ExposureMode.AUTOMATIC:  # if still in auto...
+                    self.exposure_time = exp_time  # in auto mode, remember the exposure time
             else:
                 self._set_integration_time(self.exposure_time)
                 wavelengths, intensities = self._spectrometer.spectrum()
