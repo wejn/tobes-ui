@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Calibration for Ocean Optics spectrometer"""
 
-from enum import Enum
 import queue
 import pprint # pylint: disable=unused-import
 import sys
@@ -32,13 +31,7 @@ from tobes_ui.common import AttrDict, SlidingMax, SpectrumAggregator
 from tobes_ui.logger import LogLevel, configure_logging, LOGGER, set_level
 from tobes_ui.spectrometer import ExposureMode, Spectrometer
 from tobes_ui.strong_lines_container import StrongLinesContainer
-
-
-class CaptureState(Enum):
-    """State machine of the spectrum capture"""
-    PAUSE = 0
-    RUN = 1
-    EXIT = 2
+from tobes_ui.types import RefreshType
 
 
 class WavelengthCalibrationGUI: # pylint: disable=too-few-public-methods
@@ -55,7 +48,7 @@ class WavelengthCalibrationGUI: # pylint: disable=too-few-public-methods
         self._root.minsize(1200, 800)
 
         self._spectrometer = spectrometer
-        self._capture_state = CaptureState.PAUSE
+        self._refresh_type = RefreshType.NONE  # paused
         self._event_queue = queue.Queue()  # TK events submitted from non-main thread
         self._worker_thread = threading.Thread(target=self._data_refresh_loop, daemon=True)
         self._worker_thread.start()
@@ -93,7 +86,7 @@ class WavelengthCalibrationGUI: # pylint: disable=too-few-public-methods
         while not self._event_queue.empty():
             event = self._event_queue.get_nowait()
             event()
-        if self._capture_state == CaptureState.RUN:
+        if self._refresh_type in [RefreshType.ONESHOT, RefreshType.CONTINUOUS]:
             # Make queue processing more snappy when capturing...
             self._root.after(20, self._process_event_queue)
         else:
@@ -412,27 +405,27 @@ class WavelengthCalibrationGUI: # pylint: disable=too-few-public-methods
 
     def _capture_action(self):
         """Capture button action handler"""
-        match self._capture_state:
-            case CaptureState.RUN:
+        match self._refresh_type:
+            case RefreshType.CONTINUOUS:
                 # Stop capture
                 LOGGER.debug("Stopping capture...")
                 self._update_status('Stopping capture...')
-                self._capture_state = CaptureState.PAUSE
+                self._refresh_type = RefreshType.NONE
                 self._ui_elements.capture_button.config(text="Capture")
 
-            case CaptureState.PAUSE:
+            case RefreshType.NONE:
                 # Start capture
                 LOGGER.debug("Starting capture...")
                 self._update_status('Starting capture...')
                 self._clear_peaks()
                 self._spectrum_agg.clear()
-                self._capture_state = CaptureState.RUN
+                self._refresh_type = RefreshType.CONTINUOUS
                 self._ui_elements.capture_button.config(text="Freeze")
 
             case _:
                 # Ignore
-                LOGGER.debug("unhandled state: %s", self._capture_state)
-                self._update_status(f'Capture error: {self._capture_state}')
+                LOGGER.debug("unhandled state: %s", self._refresh_type)
+                self._update_status(f'Capture error: {self._refresh_type}')
 
     def _process_spectrum(self, spectrum):
         """Processes captured spectrum"""
@@ -487,7 +480,7 @@ class WavelengthCalibrationGUI: # pylint: disable=too-few-public-methods
                 references = True  # redraw references on xlimit change
 
         if (self._spectrum
-            and (((spectrum or references) and self._capture_state != CaptureState.RUN)
+            and (((spectrum or references) and self._refresh_type != RefreshType.CONTINUOUS)
                  or peaks)):
             # Update peaks (because they depend on spectrum and refs)
             constants = self._spectrometer.constants()
@@ -563,24 +556,30 @@ class WavelengthCalibrationGUI: # pylint: disable=too-few-public-methods
     def _data_refresh_loop(self):
         # WARNING: Does NOT run in main thread; do not run any Tkinter code here!
         while True:
-            match self._capture_state:
-                case CaptureState.EXIT:
+            match self._refresh_type:
+                case RefreshType.DISABLED:
                     return
 
-                case CaptureState.PAUSE:
+                case RefreshType.NONE:
                     time.sleep(0.1)
 
-                case CaptureState.RUN:
+                case RefreshType.ONESHOT | RefreshType.CONTINUOUS:
                     def handle_spectrum(value):
                         #LOGGER.debug("Got spectrum data with %s status and %.2f integration",
                         #             value.status, value.time)
+                        # FIXME: test if it is "good"...
                         self._push_event(lambda: self._process_spectrum(value))
-                        if self._capture_state != CaptureState.RUN:
+                        if self._refresh_type in [RefreshType.NONE, RefreshType.ONESHOT]:
+                            self._refresh_type = RefreshType.NONE
                             self._push_event(lambda: self._update_status('Capture stopped.'))
-                            self._push_event(self._detect_peaks)
-                        return self._capture_state == CaptureState.RUN
+                            self._push_event(self._on_capture_stop)
+                        return self._refresh_type == RefreshType.CONTINUOUS
                     self._push_event(lambda: self._update_status('Capture running...'))
                     self._spectrometer.stream_data(handle_spectrum)
+
+    def _on_capture_stop(self):
+        """Event that runs when capture ist stopped in refresh loop."""
+        self._detect_peaks()
 
     def _apply_integration_ctrl(self, data):
         """Applies integration control data to spectrometer"""
@@ -612,7 +611,7 @@ class WavelengthCalibrationGUI: # pylint: disable=too-few-public-methods
 
         self._peak_detector = peak_detector
 
-        if self._capture_state != CaptureState.RUN:
+        if self._refresh_type == RefreshType.NONE:
             self._detect_peaks()
 
     def _apply_refmatch_ctrl(self, data):
@@ -910,7 +909,7 @@ class WavelengthCalibrationGUI: # pylint: disable=too-few-public-methods
         return [nearest, idx[nearest]]
 
     def _on_motion(self, event):
-        if self._capture_state != CaptureState.PAUSE or self._spectrum is None:
+        if self._refresh_type != RefreshType.NONE or self._spectrum is None:
             return
         if 'pixel_annotation' not in self._ui_elements:
             return
@@ -1008,7 +1007,7 @@ class WavelengthCalibrationGUI: # pylint: disable=too-few-public-methods
 
     def _on_close(self):
         self._update_status('Terminating capture...')
-        self._capture_state = CaptureState.EXIT
+        self._refresh_type = RefreshType.DISABLED
         if self._worker_thread:
             self._worker_thread.join()
             self._worker_thread = None
