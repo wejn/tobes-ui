@@ -48,7 +48,7 @@ class WavelengthCalibrationGUI: # pylint: disable=too-few-public-methods
         self._root.minsize(1200, 800)
 
         self._spectrometer = spectrometer
-        self._refresh_type = RefreshType.NONE  # paused
+        self._refresh_type = RefreshType.NONE  # initial
         self._event_queue = queue.Queue()  # TK events submitted from non-main thread
         self._worker_thread = threading.Thread(target=self._data_refresh_loop, daemon=True)
         self._worker_thread.start()
@@ -79,6 +79,8 @@ class WavelengthCalibrationGUI: # pylint: disable=too-few-public-methods
 
         # Kick off event Q processing...
         self._root.after(0, self._process_event_queue)
+
+        self._set_refresh_type(RefreshType.NONE)  # paused
 
         self._update_status('Ready.')
 
@@ -409,23 +411,40 @@ class WavelengthCalibrationGUI: # pylint: disable=too-few-public-methods
             case RefreshType.CONTINUOUS:
                 # Stop capture
                 LOGGER.debug("Stopping capture...")
-                self._update_status('Stopping capture...')
-                self._refresh_type = RefreshType.NONE
+                self._set_refresh_type(RefreshType.NONE)
                 self._ui_elements.capture_button.config(text="Capture")
 
             case RefreshType.NONE:
                 # Start capture
                 LOGGER.debug("Starting capture...")
-                self._update_status('Starting capture...')
                 self._clear_peaks()
                 self._spectrum_agg.clear()
-                self._refresh_type = RefreshType.CONTINUOUS
+                self._set_refresh_type(RefreshType.CONTINUOUS)
                 self._ui_elements.capture_button.config(text="Freeze")
 
             case _:
                 # Ignore
                 LOGGER.debug("unhandled state: %s", self._refresh_type)
-                self._update_status(f'Capture error: {self._refresh_type}')
+                self._update_status(f'unhandled capture state: {self._refresh_type}')
+
+    def _set_refresh_type(self, rt):
+        match rt:
+            case RefreshType.CONTINUOUS:
+                self._update_status('Starting capture...')
+
+            case RefreshType.NONE:
+                self._update_status('Stopping capture...')
+
+            case RefreshType.ONESHOT:
+                self._update_status('Starting single capture...')
+
+            case RefreshType.DISABLED:
+                self._update_status('Disabling capture...')
+
+            case _:
+                pass # Ignore
+
+        self._refresh_type = rt
 
     def _process_spectrum(self, spectrum):
         """Processes captured spectrum"""
