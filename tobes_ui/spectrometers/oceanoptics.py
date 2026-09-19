@@ -546,5 +546,6 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
                 all_ok = False
 
         self._consts.wavelength_calibration = calibration
+        self._consts.eeprom_slots[1:5] = map(lambda x: x.decode('latin1'), slots)
 
         return all_ok
