@@ -54,6 +54,30 @@ class TestSpectrumAggregator:
         np.testing.assert_array_equal(list(result2.spd.values()), [3.0, 4.0])
         np.testing.assert_array_equal(result2.spd_raw, [3.5, 4.5])
 
+    def test_mdn_basic(self):
+        aggregator_mdn = SpectrumAggregator(window_size=3, func="mdn")
+
+        data1 = spectrum([1.0, 2.0, 3.0], [1.5, 2.5])
+        data2 = spectrum([3.0, 1.0, 1.0], [3.5, 4.5])
+        data3 = spectrum([2.0, 3.0, 2.0], [3.5, 3.5])
+        data4 = spectrum([8.0, 8.0, 8.0], [8.5, 8.5])
+
+        result1 = aggregator_mdn.add(data1)
+        np.testing.assert_array_equal(list(result1.spd.values()), [1.0, 2.0, 3.0])
+        np.testing.assert_array_equal(result1.spd_raw, [1.5, 2.5])
+
+        result2 = aggregator_mdn.add(data2)
+        np.testing.assert_array_equal(list(result2.spd.values()), [2.0, 1.5, 2.0])
+        np.testing.assert_array_equal(result2.spd_raw, [2.5, 3.5])
+
+        result3 = aggregator_mdn.add(data3)
+        np.testing.assert_array_equal(list(result3.spd.values()), [2.0, 2.0, 2.0])
+        np.testing.assert_array_equal(result3.spd_raw, [3.5, 3.5])
+
+        result4 = aggregator_mdn.add(data4)
+        np.testing.assert_array_equal(list(result4.spd.values()), [3.0, 3.0, 2.0])
+        np.testing.assert_array_equal(result4.spd_raw, [3.5, 4.5])
+
     def test_window_size_enforcement(self):
         aggregator_avg = SpectrumAggregator(window_size=3, func="avg")
 
@@ -115,7 +139,7 @@ class TestSpectrumAggregator:
     def test_invalid_op(self):
         aggregator_avg = SpectrumAggregator(window_size=3, func="avg")
 
-        with pytest.raises(ValueError, match="func must be 'avg' or 'max'"):
+        with pytest.raises(ValueError, match="Invalid func: 'min'"):
             aggregator_avg.func = "min"
 
     def test_empty_buffer_handling(self):

@@ -24,17 +24,20 @@ class SamplingControl(CalibrationControlPanel):  # pylint: disable=too-many-ance
         self._num_samples_spinbox = ClampedSpinbox(self, label_text='Samples:',
                                                    min_val=1, max_val=1000, initial=1,
                                                    on_change=self._change_cb)
-        self._num_samples_spinbox.grid(row=0, column=0, columnspan=2, sticky='w', padx=5, pady=2)
-        ToolTip(self._num_samples_spinbox, "Number of samples to average")
+        self._num_samples_spinbox.grid(row=0, column=0, columnspan=3, sticky='w', padx=5, pady=2)
+        ToolTip(self._num_samples_spinbox, "Number of samples to sample")
 
-        avg_radio = ttk.Radiobutton(self, text="Average", variable=self._mode, value='avg')
+        avg_radio = ttk.Radiobutton(self, text="Avg", variable=self._mode, value='avg')
         ToolTip(avg_radio, "Average the samples")
         max_radio = ttk.Radiobutton(self, text="Max", variable=self._mode, value='max')
         ToolTip(max_radio, "Pick max for each wl from the samples")
+        mdn_radio = ttk.Radiobutton(self, text="Mdn", variable=self._mode, value='mdn')
+        ToolTip(mdn_radio, "Pick median for each wl from the samples")
 
         # --- Layout ---
         avg_radio.grid(row=1, column=0, padx=5, pady=2)
         max_radio.grid(row=1, column=1, padx=5, pady=2)
+        mdn_radio.grid(row=1, column=2, padx=5, pady=2)
 
         self._initialized = True
         self._change_cb()  # Set initial state & trigger first callback
