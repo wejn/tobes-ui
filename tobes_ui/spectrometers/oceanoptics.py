@@ -474,6 +474,10 @@ class OceanOpticsSpectrometer(Spectrometer, registered_types = ['oo', 'ocean', '
                     meta={
                         'constants': self.constants(),
                         'properties': self.properties(),
+                        'capture': {
+                            'dark_mean': dark_mean,
+                            'not_used_pixels': list(not_used_pixels),
+                        },
                     }
             )
 
