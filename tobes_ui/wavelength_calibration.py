@@ -18,13 +18,14 @@ from tobes_ui.calibration.common import ToolTip
 from tobes_ui.calibration.strong_lines_control import StrongLinesControl
 from tobes_ui.calibration.integration_control import IntegrationControl
 from tobes_ui.calibration.sampling_control import SamplingControl
+from tobes_ui.calibration.smoothing_control import SmoothingControl
 from tobes_ui.calibration.peak_detection_control import PeakDetectionControl
 from tobes_ui.calibration.reference_match_control import ReferenceMatchControl
 from tobes_ui.calibration.wavelength_editor import WavelengthEditor
 from tobes_ui.calibration.wavelength_save_dialog import WavelengthCalibrationSaveDialog
 from tobes_ui.calibration.x_axis_control import XAxisControl
 from tobes_ui.calibration.x_axis_zoom_control import XAxisZoomControl
-from tobes_ui.common import AttrDict, SlidingMax, SpectrumAggregator
+from tobes_ui.common import AttrDict, SlidingMax, SpectrumAggregator, SpectrumSmoother, SpectrumAggregatorSmoother
 from tobes_ui.common_gui import CommonGUI
 from tobes_ui.logger import LogLevel, configure_logging, LOGGER, set_level
 from tobes_ui.spectrometer import ExposureMode, Spectrometer
@@ -47,6 +48,8 @@ class WavelengthCalibrationGUI(CommonGUI): # pylint: disable=too-few-public-meth
         self._x_axis_idx = None  # polyfit for the x axis (index for each pixel)
 
         self._spectrum_agg = SpectrumAggregator(1)
+        self._spectrum_sm = SpectrumSmoother(0, "boxcar")
+        self._spectrum_agg_sm = SpectrumAggregatorSmoother(self._spectrum_agg, self._spectrum_sm)
         self._spectrum = None  # Spectrum captured by spectrometer (last)
         self._y_axis_max = SlidingMax(5)
         self._strong_lines = StrongLinesContainer({})
@@ -379,7 +382,7 @@ class WavelengthCalibrationGUI(CommonGUI): # pylint: disable=too-few-public-meth
                 # Start capture
                 LOGGER.debug("Starting capture...")
                 self._clear_peaks()
-                self._spectrum_agg.clear()
+                self._spectrum_agg_sm.clear()
                 self._set_refresh_type(RefreshType.CONTINUOUS)
                 self._ui_elements.capture_button.config(text="Freeze")
 
@@ -393,7 +396,7 @@ class WavelengthCalibrationGUI(CommonGUI): # pylint: disable=too-few-public-meth
         if 'integration_control' in self._ui_elements:
             self._ui_elements.integration_control.integration_time = spectrum.time
         spectrum.spd = {1: 1}  # Optimization to save some time, because we don't use `spd`
-        self._spectrum = self._spectrum_agg.add(spectrum)
+        self._spectrum = self._spectrum_agg_sm.add(spectrum)
         self._update_plot(spectrum=True)
 
     PEAK_COLORS = AttrDict({
@@ -577,6 +580,8 @@ class WavelengthCalibrationGUI(CommonGUI): # pylint: disable=too-few-public-meth
             'x_axis_control': XAxisControl(controls_frame, on_change=self._apply_x_axis_ctrl),
             'peak_detection_control': PeakDetectionControl(controls_frame,
                                                            on_change=self._apply_peak_detect_ctrl),
+            'smoothing_control': SmoothingControl(controls_frame,
+                                                  on_change=self._apply_smoothing_ctrl),
         }
 
         col = 0
@@ -630,8 +635,20 @@ class WavelengthCalibrationGUI(CommonGUI): # pylint: disable=too-few-public-meth
         LOGGER.debug(data)
         self._spectrum_agg.func = data['mode'] or 'avg'
         self._spectrum_agg.window_size = data['samples'] or 1
-        self._spectrum = self._spectrum_agg.last()
+        self._spectrum = self._spectrum_agg_sm.last()
         self._update_plot(spectrum=True)
+        if self._refresh_type == RefreshType.NONE:
+            self._detect_peaks()
+
+    def _apply_smoothing_ctrl(self, data):
+        """Applies Smoothing Control data"""
+        LOGGER.debug(data)
+        self._spectrum_sm.func = data['mode'] or 'boxcar'
+        self._spectrum_sm.window_size = data['width'] or 0
+        self._spectrum = self._spectrum_agg_sm.last()
+        self._update_plot(spectrum=True)
+        if self._refresh_type == RefreshType.NONE:
+            self._detect_peaks()
 
     def _apply_x_axis_ctrl(self, data):
         """Applies X-Axis Control data"""

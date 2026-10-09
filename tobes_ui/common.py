@@ -3,9 +3,10 @@
 from collections import deque
 import copy
 import time
-from typing import Any, Literal
+from typing import Literal
 
 import numpy as np
+from scipy.ndimage import convolve1d
 
 from tobes_ui.spectrometer import Spectrum
 
@@ -96,7 +97,7 @@ class Aggregator:
             raise ValueError("window_size must be positive")
         if func not in self._VALID_FUNCS:
             raise ValueError(
-                f"Invalid func {value!r}; "
+                f"Invalid func {func!r}; "
                 f"expected one of {sorted(self._VALID_FUNCS)}"
             )
 
@@ -170,7 +171,7 @@ class Aggregator:
             self._max.fill(-np.inf)
 
     def add(self, instance):
-        """Add a reading and return the aggregated result."""
+        """Add a reading and return the processed result."""
         instance = np.asarray(instance)
 
         if instance.ndim != 1:
@@ -328,18 +329,22 @@ class Aggregator:
         return self._aggregate()
 
 
-class SpectrumAggregator:
-    """Aggregates spectrum readings over given window_size with given func"""
+class SpectrumProcessor:
+    """Processes spectrum readings over given window_size with given func"""
 
-    _VALID_FUNCS = {"avg", "max", "mdn"}
+    _VALID_FUNCS = {}
+    _PROCESSOR = None  # Provide!
+    _MIN_ACTIVE_WINDOW = 1  # min window with which the processing is active
 
-    def __init__(self, window_size: int, func: Literal["avg", "max", "mdn"] = "avg"):
-        self._buffers = {
-                'spd': Aggregator(window_size, func),
-                'spd_raw': Aggregator(window_size, func),
-        }
+    def __init__(self, window_size: int, func: str):
         if func not in self._VALID_FUNCS:
             raise ValueError(f"Invalid func: {func!r}")
+        if not callable(self._PROCESSOR):
+            raise ValueError("no processor provided")
+        self._buffers = {
+                'spd': self._PROCESSOR(window_size, func),
+                'spd_raw': self._PROCESSOR(window_size, func),
+        }
         self._func = func
         self._window_size = window_size
         self._items = 0
@@ -364,8 +369,8 @@ class SpectrumAggregator:
         return self._func
 
     @func.setter
-    def func(self, func: Literal["avg", "max", "mdn"]):
-        """Set aggregating func to use (avg, max, or mdn)"""
+    def func(self, func: str):
+        """Set processing func to use"""
         if func not in self._VALID_FUNCS:
             raise ValueError(f"Invalid func: {func!r}")
         for _field_name, buffer in self._buffers.items():
@@ -380,7 +385,7 @@ class SpectrumAggregator:
         self._last = None
 
     def add(self, instance: Spectrum) -> Spectrum:
-        """Add value (instance of spectrum) and return aggregated"""
+        """Add value (instance of spectrum) and return processed"""
         update = {}
         for field_name, buffer in self._buffers.items():
             value = getattr(instance, field_name)
@@ -402,7 +407,7 @@ class SpectrumAggregator:
 
         instance = copy.copy(self._last)
 
-        if self.window_size > 1:
+        if self.window_size >= self._MIN_ACTIVE_WINDOW:
             if not instance.y_axis or instance.y_axis == 'counts':
                 instance.y_axis = "Counts"
 
@@ -422,5 +427,139 @@ class SpectrumAggregator:
         return self._apply(update)
 
     def __repr__(self):
-        return (f"<{__name__}.SpectrumAggregator(op={self.func},"
+        return (f"<{__name__}.{__class__}(op={self.func},"
                 f" window_size={self.window_size}, buf={self._items})>")
+
+
+class SpectrumAggregator(SpectrumProcessor):
+    """Aggregates spectrum readings over given window_size with given func"""
+
+    _VALID_FUNCS = {"avg", "max", "mdn"}
+    _PROCESSOR = Aggregator
+    _MIN_ACTIVE_WINDOW = 2
+
+    def __init__(self, window_size: int, func: Literal["avg", "max", "mdn"] = "avg"):
+        super().__init__(window_size, func)
+
+
+class Smoother:
+    """Smooths readings over a given window."""
+
+    _VALID_FUNCS = {"boxcar", "triangular", "gaussian"}
+
+    def __init__(
+        self,
+        window_size: int,
+        func: Literal["boxcar", "triangular", "gaussian"] = "boxcar",
+    ):
+        if window_size < 0:
+            raise ValueError("window_size must be positive or zero")
+        if func not in self._VALID_FUNCS:
+            raise ValueError(
+                f"Invalid func {func!r}; "
+                f"expected one of {sorted(self._VALID_FUNCS)}"
+            )
+
+        self._window_size = window_size
+        self._func = func
+
+        self._data = None
+
+    @property
+    def window_size(self) -> int:
+        """Get current window size."""
+        return self._window_size
+
+    @window_size.setter
+    def window_size(self, value: int):
+        """Resize the window, retaining the newest values."""
+        if value < 0:
+            raise ValueError("window_size must be positive or zero")
+        self._window_size = value
+
+    @property
+    def func(self) -> str:
+        """Get current func."""
+        return self._func
+
+    @func.setter
+    def func(self, value: Literal["boxcar", "triangular", "gaussian"]):
+        """Set aggregating func to use."""
+        if value not in self._VALID_FUNCS:
+            raise ValueError(
+                f"Invalid func {value!r}; "
+                f"expected one of {sorted(self._VALID_FUNCS)}"
+            )
+
+        self._func = value
+
+    def clear(self):
+        """Clear all buffers while retaining configuration."""
+        self._data = None
+
+    def add(self, instance):
+        """Add a reading and return the smoothed result."""
+        self._data = instance
+
+        return self.last()
+
+    def last(self):
+        """Return last value for current aggregator (what add() would)"""
+        if self._data is None:
+            return None
+        y = np.asarray(self._data)
+        x = np.arange(-self._window_size, self._window_size + 1)
+
+        match self._func:
+            case "boxcar":
+                kernel = np.ones(2 * self._window_size + 1)
+
+            case "triangular":
+                kernel = self._window_size + 1 - np.abs(x)
+
+            case "gaussian":
+                sigma = max(self._window_size / 2, 0.5)
+                kernel = np.exp(-0.5 * (x / sigma) ** 2)
+
+            case _:
+                raise ValueError("internal error: Unknown method")
+
+        kernel = kernel / kernel.sum()
+
+        return convolve1d(y, kernel, mode="nearest")
+
+    def describe(self):
+        """Describe currently active smoothing function"""
+        return f"(sm:{self._func}, win:{self._window_size})"
+
+
+class SpectrumSmoother(SpectrumProcessor):
+    """Smooths spectrum readings over given width (window) with given func"""
+
+    _VALID_FUNCS = {"boxcar", "triangular", "gaussian"}
+    _PROCESSOR = Smoother
+    _MIN_ACTIVE_WINDOW = 1  # window of 1 means one pixel on each side
+
+
+class SpectrumAggregatorSmoother:
+    """Chain of aggregator and smoother."""
+
+    def __init__(self, agg : SpectrumAggregator, sm: SpectrumSmoother):
+        self._agg = agg
+        self._sm = sm
+
+    def add(self, instance):
+        """Add value (instance of spectrum) and return processed"""
+        return self._sm.add(self._agg.add(instance))
+
+    def last(self):
+        """Return last spectrum with current function (what add() would)"""
+        a = self._agg.last()
+        if a:
+            return self._sm.add(a)
+        return None
+
+    def clear(self):
+        """Clear all buffers while retaining configuration."""
+        self._agg.clear()
+        self._sm.clear()
