@@ -1,6 +1,7 @@
 """Common utility classes for various use-cases."""
 
 from collections import deque
+import copy
 import time
 from typing import Any, Literal
 
@@ -316,6 +317,16 @@ class Aggregator:
         # Next insertion goes after the newest element.
         self._pos = self._size % self._window_size
 
+    def describe(self):
+        """Describe currently active aggregation function"""
+        if self._size == self._window_size:
+            return f"(agg:{self._func}, win:{self._size})"
+        return f"(agg:{self._func}, win:{self._size}/{self._window_size})"
+
+    def last(self):
+        """Return last value for current aggregator (what add() would)"""
+        return self._aggregate()
+
 
 class SpectrumAggregator:
     """Aggregates spectrum readings over given window_size with given func"""
@@ -332,6 +343,7 @@ class SpectrumAggregator:
         self._func = func
         self._window_size = window_size
         self._items = 0
+        self._last = None
 
     @property
     def window_size(self) -> int:
@@ -365,6 +377,7 @@ class SpectrumAggregator:
         for _field_name, buffer in self._buffers.items():
             buffer.clear()
         self._items = 0
+        self._last = None
 
     def add(self, instance: Spectrum) -> Spectrum:
         """Add value (instance of spectrum) and return aggregated"""
@@ -379,19 +392,34 @@ class SpectrumAggregator:
         if self._items < self._window_size:
             self._items += 1
 
-        if not instance.y_axis or instance.y_axis == 'counts':
-            instance.y_axis = "Counts"
+        self._last = instance
+
+        return self._apply(update)
+
+    def _apply(self, update):
+        if not self._last:
+            return None
+
+        instance = copy.copy(self._last)
 
         if self.window_size > 1:
+            if not instance.y_axis or instance.y_axis == 'counts':
+                instance.y_axis = "Counts"
+
             instance.spd_raw = update['spd_raw']
             instance.spd = dict(zip(instance.spd.keys(), update['spd']))
-
-            if self._items < self.window_size:
-                instance.y_axis += f" (func: {self.func}, win: {self._items}/{self.window_size})"
-            else:
-                instance.y_axis += f" (func: {self.func}, win: {self.window_size})"
+            instance.y_axis = f"{instance.y_axis} {self._buffers['spd'].describe()}"
+            # FIXME: mark transformation in metadata
 
         return instance
+
+    def last(self):
+        """Return last spectrum with current function (what add() would)"""
+        update = {}
+        for field_name, buffer in self._buffers.items():
+            update[field_name] = buffer.last()
+
+        return self._apply(update)
 
     def __repr__(self):
         return (f"<{__name__}.SpectrumAggregator(op={self.func},"

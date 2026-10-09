@@ -630,6 +630,8 @@ class WavelengthCalibrationGUI(CommonGUI): # pylint: disable=too-few-public-meth
         LOGGER.debug(data)
         self._spectrum_agg.func = data['mode'] or 'avg'
         self._spectrum_agg.window_size = data['samples'] or 1
+        self._spectrum = self._spectrum_agg.last()
+        self._update_plot(spectrum=True)
 
     def _apply_x_axis_ctrl(self, data):
         """Applies X-Axis Control data"""
