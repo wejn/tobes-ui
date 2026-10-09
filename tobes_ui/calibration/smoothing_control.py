@@ -25,16 +25,14 @@ class SmoothingControl(CalibrationControlPanel):  # pylint: disable=too-many-anc
                                              min_val=0, max_val=20, initial=0,
                                              on_change=self._change_cb)
         self._width_spinbox.grid(row=0, column=0, columnspan=3, sticky='w', padx=5, pady=2)
-        ToolTip(self._width_spinbox, "Width for the smoothing")
-
-        w = "\n(width is num pixels on each side)"
+        ToolTip(self._width_spinbox, "Width for the smoothing\n(number of pixels on each side to consider)")
 
         box_radio = ttk.Radiobutton(self, text="Box", variable=self._mode, value='boxcar')
-        ToolTip(box_radio, "Boxcar (uniform)" + w)
+        ToolTip(box_radio, "Boxcar (uniform weights)")
         tri_radio = ttk.Radiobutton(self, text="Tri", variable=self._mode, value='triangular')
-        ToolTip(tri_radio, "Triangular (Bartlett)" + w)
+        ToolTip(tri_radio, "Triangular (Bartlett)")
         gau_radio = ttk.Radiobutton(self, text="Gau", variable=self._mode, value='gaussian')
-        ToolTip(gau_radio, "Gaussian" + w)
+        ToolTip(gau_radio, "Gaussian (bell curve)")
 
         # --- Layout ---
         box_radio.grid(row=1, column=0, padx=5, pady=2)
