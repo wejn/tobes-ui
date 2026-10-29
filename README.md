@@ -11,7 +11,7 @@ and improved (beyond recognition).
 
 It also supports displaying its own `json` saves and importing `csv` or `ohs`
 data from yet another Chinese range of spectrometers (Hopoocolor HPCS-320,
-HPCS-330P).
+HPCS-330P). And `csv` from `HPCS-310` colorimeter.
 
 ## Install
 
