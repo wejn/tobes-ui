@@ -306,11 +306,11 @@ def main():
                 files.extend(matches)
             else:
                 files.extend([file_pattern])
-            for filename in files:
-                try:
-                    data.append(Loader.load(filename))
-                except (OSError, ValueError, json.decoder.JSONDecodeError) as exc:
-                    print(f"File '{filename}' couldn't be parsed, skipping: {exc}")
+        for filename in files:
+            try:
+                data.append(Loader.load(filename))
+            except (OSError, ValueError, json.decoder.JSONDecodeError) as exc:
+                print(f"File '{filename}' couldn't be parsed, skipping: {exc}")
 
     if not argv.input_device:
         refresh = RefreshType.DISABLED
