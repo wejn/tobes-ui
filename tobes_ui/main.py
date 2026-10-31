@@ -5,8 +5,10 @@
 import argparse
 import atexit
 from enum import Enum
+import glob
 import json
 import logging
+import os
 import pprint
 import signal
 import sys
@@ -296,11 +298,19 @@ def main():
 
     data = []
     if argv.data:
-        for filename in argv.data:
-            try:
-                data.append(Loader.load(filename))
-            except (OSError, ValueError, json.decoder.JSONDecodeError) as exc:
-                print(f"File '{filename}' couldn't be parsed, skipping: {exc}")
+        files = []
+        for file_pattern in argv.data:
+            matches = glob.glob(os.path.expanduser(file_pattern))
+            if matches:
+                LOGGER.debug('Expanded %s to %s', file_pattern, matches)
+                files.extend(matches)
+            else:
+                files.extend([file_pattern])
+            for filename in files:
+                try:
+                    data.append(Loader.load(filename))
+                except (OSError, ValueError, json.decoder.JSONDecodeError) as exc:
+                    print(f"File '{filename}' couldn't be parsed, skipping: {exc}")
 
     if not argv.input_device:
         refresh = RefreshType.DISABLED
